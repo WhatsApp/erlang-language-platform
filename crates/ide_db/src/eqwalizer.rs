@@ -154,7 +154,7 @@ fn type_at_position(
     if !db.is_eqwalizer_enabled(range.file_id) {
         return None;
     }
-    let project = db.file_app_data(range.file_id)?.project;
+    let project = db.file_app(range.file_id)?.project(db);
     let module_index = db.module_index(project);
     // Check if this file is actually a module (not an .hrl header file).
     // When analyzing code that originated from an included header file,
@@ -204,7 +204,7 @@ fn types_for_file_inner(
     if !db.is_eqwalizer_enabled(file_id) {
         return None;
     }
-    let project = db.file_app_data(file_id)?.project;
+    let project = db.file_app(file_id)?.project(db);
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
         &(*eqwalizer_diagnostics_by_project(db, project, vec![file_id]))
     {
@@ -223,12 +223,10 @@ fn is_eqwalizer_enabled_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -
 
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_eqwalizer_enabled: {file_id:?}"));
-    let app_data = if let Some(app_data) = db.file_app_data(file_id) {
-        app_data
-    } else {
+    let Some(app) = db.file_app(file_id) else {
         return false;
     };
-    let project = app_data.project;
+    let project = app.project(db);
     let eqwalizer_config = project.eqwalizer_config(db);
     let module_index = db.module_index(project);
     let global_opt_in = eqwalizer_config.enable_all;

@@ -542,7 +542,7 @@ fn file_external_defines_dispatch(db: &dyn DefDatabase, file_id: FileId) -> Arc<
 }
 
 /// Extract macro names from application data for external defines.
-/// Macros in AppData.macros are stored as eetf::Term and can be:
+/// An app's macros are stored as eetf::Term and can be:
 /// - An Atom (just the macro name, with implicit value true)
 /// - A Tuple of (Atom key, value) for {MacroName, Value}
 fn file_external_defines_inner(db: &dyn DefDatabase, fid: InternedFileId) -> Arc<Vec<Name>> {
@@ -552,8 +552,8 @@ fn file_external_defines_inner(db: &dyn DefDatabase, fid: InternedFileId) -> Arc
     // simplified macro expansions that work without parse transforms.
     let mut names: Vec<Name> = vec![Name::from_erlang_service("ELP_ERLANG_SERVICE")];
 
-    if let Some(app_data) = db.file_app_data(file_id) {
-        names.extend(app_data.macros.iter().filter_map(|term| {
+    if let Some(app) = db.file_app(file_id) {
+        names.extend(app.macros(db).iter().filter_map(|term| {
             match term {
                 // Just an atom means -D<NAME>
                 eetf::Term::Atom(atom) => Some(Name::from_erlang_service(&atom.name)),

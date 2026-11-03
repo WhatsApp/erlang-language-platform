@@ -133,8 +133,8 @@ fn module_ast_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Arc<ParseRe
         .as_path()
         .expect("path should be absolute");
     let metadata = db.elp_metadata(file_id);
-    let app_data = if let Some(app_data) = db.file_app_data(file_id) {
-        app_data
+    let app = if let Some(app) = db.file_app(file_id) {
+        app
     } else {
         return Arc::new(ParseResult::error(ParseError {
             path: path.to_path_buf().into(),
@@ -144,11 +144,11 @@ fn module_ast_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Arc<ParseRe
         }));
     };
     Arc::new(db.load_ast(
-        app_data.project,
+        app.project(db),
         file_id,
         path,
-        &app_data.macros,
-        &app_data.parse_transforms,
+        app.macros(db),
+        app.parse_transforms(db),
         metadata.into(),
     ))
 }

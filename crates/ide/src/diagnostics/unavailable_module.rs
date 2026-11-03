@@ -93,17 +93,17 @@ impl FunctionCallLinter for UnavailableModuleLinter {
         let module_expr_id = unresolved_call_module(context)?;
         let module_expr = &context.in_clause[module_expr_id];
 
-        let referencing_app_data = sema.db.file_app_data(file_id)?;
-        let referencing_target = referencing_app_data.buck_target_name.as_ref()?;
+        let referencing_app = sema.db.file_app(file_id)?;
+        let referencing_target = referencing_app.buck_target_name(sema.db).as_ref()?;
 
         let module_file_id = sema.resolve_module_expr(file_id, module_expr)?.file.file_id;
-        let defining_app_data = sema.db.file_app_data(module_file_id)?;
+        let defining_app = sema.db.file_app(module_file_id)?;
 
         // A call is a runtime edge, so the module's beam must be loadable in
         // this VM: an application only reached over the network will not do.
         if is_any_owner_reachable(
             sema.db.upcast(),
-            &referencing_app_data,
+            referencing_app,
             module_file_id,
             DepKind::Runtime,
         ) {
@@ -112,8 +112,8 @@ impl FunctionCallLinter for UnavailableModuleLinter {
 
         Some(Context {
             module: module_expr.as_atom()?.as_name().as_str().to_string(),
-            defining_app: defining_app_data.name.to_string(),
-            referencing_app: referencing_app_data.name.to_string(),
+            defining_app: defining_app.name(sema.db).to_string(),
+            referencing_app: referencing_app.name(sema.db).to_string(),
             referencing_target: referencing_target.to_string(),
             module_range: context.in_clause.range_for_expr(module_expr_id),
         })

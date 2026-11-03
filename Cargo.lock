@@ -611,7 +611,6 @@ dependencies = [
  "eetf",
  "elp_project_model",
  "elp_syntax",
- "expect-test",
  "fst",
  "fxhash",
  "indexmap 2.14.2",

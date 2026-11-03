@@ -20,7 +20,7 @@ use std::borrow::Cow;
 
 use elp_eqwalizer::db::EQWALIZER_SPECS;
 use elp_eqwalizer::db::EQWALIZER_TYPES;
-use elp_ide_db::elp_base_db::AppData;
+use elp_ide_db::elp_base_db::App;
 use elp_ide_db::elp_base_db::DepKind;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::any_owning_app;
@@ -86,17 +86,17 @@ impl GenericLinter for UnavailableTypeLinter {
             return None;
         }
 
-        // Early return if we don't have app data - can't determine type availability
-        let referencing_app_data = sema.db.file_app_data(file_id)?;
+        // Early return if we don't have an app - can't determine type availability
+        let referencing_app = sema.db.file_app(file_id)?;
 
         // Extract target once here - if not available, can't create diagnostics anyway
-        let referencing_target = referencing_app_data.buck_target_name.as_ref()?;
+        let referencing_target = referencing_app.buck_target_name(sema.db).as_ref()?;
 
         let mut checker = Checker {
             matches: Vec::new(),
             sema,
             file_id,
-            referencing_app_data: &referencing_app_data,
+            referencing_app,
             referencing_target,
         };
         let form_list = sema.form_list(file_id);
@@ -141,7 +141,7 @@ struct Checker<'a, 'db> {
     matches: Vec<GenericLinterMatchContext<Context>>,
     sema: &'a Semantic<'db>,
     file_id: FileId,
-    referencing_app_data: &'a AppData,
+    referencing_app: App,
     referencing_target: &'a String,
 }
 
@@ -226,8 +226,8 @@ impl Checker<'_, '_> {
             let target_range = target.range(self.sema, body)?;
             let type_alias_def = target.resolve_call(arity, self.sema, self.file_id, body)?;
             let defining_file_id = type_alias_def.file.file_id;
-            let defining_app_data = self.sema.db.file_app_data(defining_file_id)?;
-            let defining_app_name = &defining_app_data.name;
+            let defining_app = self.sema.db.file_app(defining_file_id)?;
+            let defining_app_name = defining_app.name(self.sema.db);
 
             if !self.is_reachable(&type_alias_def) {
                 self.matches.push(GenericLinterMatchContext {
@@ -235,7 +235,7 @@ impl Checker<'_, '_> {
                     context: Context {
                         type_label: target_label.to_string(),
                         defining_app: defining_app_name.to_string(),
-                        referencing_app: self.referencing_app_data.name.to_string(),
+                        referencing_app: self.referencing_app.name(self.sema.db).to_string(),
                         referencing_target: self.referencing_target.to_string(),
                     },
                 });
@@ -268,7 +268,7 @@ impl Checker<'_, '_> {
     /// and reaching any one of them is enough.
     fn is_file_reachable(&self, file_id: FileId) -> bool {
         let sema = self.sema;
-        let project = self.referencing_app_data.project;
+        let project = self.referencing_app.project(sema.db);
         any_owning_app(sema.db.upcast(), project, file_id, |app| {
             self.is_app_reachable(app)
         })
@@ -281,7 +281,7 @@ impl Checker<'_, '_> {
         // network is close enough.
         is_app_reachable(
             self.sema.db.upcast(),
-            self.referencing_app_data,
+            self.referencing_app,
             defining_app,
             DepKind::Extra,
         )

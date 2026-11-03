@@ -1533,7 +1533,7 @@ this_is_inactive() -> ok.
         // requires the dep check to pass.
         //
         // Without orig_app propagation, the nested include_lib
-        // from app_b's header uses file_app_data(bridge.hrl) → app_b's
+        // from app_b's header uses file_app(bridge.hrl) → app_b's
         // deps (no app_c) → dep check fails → include unresolved.
         // With the fix, orig_app carries app_a's identity
         // through the recursive include → app_a's deps (includes

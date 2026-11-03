@@ -206,7 +206,7 @@ pub fn get_include_file(
 ) -> Option<IncludeFile> {
     // This function is the inverse of `base_db::include::resolve_remote_query`.
     // If the result is passed to that function, it should return `included_file_id`.
-    let inc_app_data = db.file_app_data(included_file_id)?;
+    let inc_app = db.file_app(included_file_id)?;
 
     // Try the standard path first: strip the app dir prefix to get the relative path.
     if let Some(result) = try_include_from_app_dir(db, file_id, included_file_id, &include_path) {
@@ -219,7 +219,7 @@ pub fn get_include_file(
     Some(IncludeFile {
         include_lib: true,
         path: candidate,
-        app_name: inc_app_data.name.to_string(),
+        app_name: inc_app.name(db).to_string(),
     })
 }
 
@@ -231,19 +231,19 @@ fn try_include_from_app_dir(
 ) -> Option<IncludeFile> {
     let include_path = include_path.as_path()?;
 
-    let inc_app_data = db.file_app_data(included_file_id)?;
-    let candidate_path = include_path.strip_prefix(inc_app_data.dir.as_path())?;
+    let inc_app = db.file_app(included_file_id)?;
+    let candidate_path = include_path.strip_prefix(inc_app.dir_path(db))?;
 
     // Validate that the path is in the local include list for the app
-    if !inc_app_data
-        .include_dirs
+    if !inc_app
+        .include_dirs(db)
         .iter()
         .any(|dir| include_path.strip_prefix(dir).is_some())
     {
         return None;
     }
 
-    let candidate = format!("{}/{}", inc_app_data.name, candidate_path.as_str());
+    let candidate = format!("{}/{}", inc_app.name(db), candidate_path.as_str());
     // Check that it is valid
     let resolved_file_id =
         IncludeCtx::new(db, db.file_app(file_id), file_id).resolve_include_lib(&candidate)?;
@@ -252,7 +252,7 @@ fn try_include_from_app_dir(
         Some(IncludeFile {
             include_lib: true,
             path: candidate,
-            app_name: inc_app_data.name.to_string(),
+            app_name: inc_app.name(db).to_string(),
         })
     } else {
         None

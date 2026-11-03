@@ -343,16 +343,17 @@ fn files_mentioning_module(sema: &Semantic, file_id: FileId) -> Vec<FileId> {
     let Some(module_name) = sema.module_name(file_id) else {
         return Vec::new();
     };
-    let Some(app_data) = sema.db.file_app_data(file_id) else {
+    let Some(app) = sema.db.file_app(file_id) else {
         return Vec::new();
     };
     // For Buck applications `dir` is the source directory; the tests live
     // next to it.
-    let app_dir = match app_data.dir.file_name() {
-        Some("src") => app_data.dir.parent().unwrap_or(&app_data.dir),
-        _ => &app_data.dir,
+    let dir = app.dir_path(sema.db);
+    let app_dir = match dir.file_name() {
+        Some("src") => dir.parent().unwrap_or(dir),
+        _ => dir,
     };
-    let project = app_data.project;
+    let project = app.project(sema.db);
     let app_files = project
         .source_roots(sema.db)
         .iter()

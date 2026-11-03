@@ -334,7 +334,7 @@ impl RootDatabase {
         let source_file = self.parse(file_id).tree();
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nresolved_includes: {file_id:?}"));
-        let project = self.file_app_data(file_id)?.project;
+        let project = self.file_app(file_id)?.project(self);
         let root_abs = project.root_dir(self);
         let form_list = self.file_form_list(file_id);
         let line_index = self.file_line_index(file_id);
@@ -406,7 +406,7 @@ impl Includes {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\napp_file_path: {file_id:?}"));
         let path = db.file(file_id).path(db);
-        let app_data = db.file_app_data(file_id)?;
+        let app = db.file_app(file_id)?;
 
         let path = path.as_path()?;
         if path.starts_with(root_abs) {
@@ -414,7 +414,7 @@ impl Includes {
                 .map(|rel| -> Utf8PathBuf { rel.as_utf8_path().to_path_buf() })
         } else {
             let otp_root = Utf8PathBuf::from("/otp");
-            let parent_dir = app_data.dir.parent()?;
+            let parent_dir = app.dir_path(db).parent()?;
             let otp_root = otp_root.join(path.strip_prefix(parent_dir)?);
             Some(otp_root)
         }
@@ -463,13 +463,11 @@ pub fn find_best_token(sema: &Semantic<'_>, position: FilePosition) -> Option<In
 impl TypedSemantic for RootDatabase {
     fn eqwalizer_diagnostics(&self, file_id: FileId) -> Option<Vec<EqwalizerDiagnostic>> {
         // Check, if the file is actually a module
-        let app_data = self.file_app_data(file_id)?;
+        let project = self.file_app(file_id)?.project(self);
         let module = self
-            .module_index(app_data.project)
+            .module_index(project)
             .module_for_file(file_id)
             .cloned()?;
-
-        let project = app_data.project;
 
         let eqwalizer_enabled = EqwalizerDatabase::is_eqwalizer_enabled(self, file_id);
         if !eqwalizer_enabled {
@@ -603,9 +601,9 @@ mod tests {
         );
         let file_id = fixture.files[0];
         let project = db
-            .file_app_data(file_id)
+            .file_app(file_id)
             .expect("the file should have an app")
-            .project;
+            .project(&db);
         db.module_ast(file_id);
         let ebin = project.root_dir(&db).join("a/ebin");
         project.set_code_path(&mut db).to(vec![ebin].into());

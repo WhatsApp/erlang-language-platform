@@ -32,11 +32,9 @@ pub fn load_result(fixture_str: &str) -> LoadResult {
 #[cfg(test)]
 mod tests {
     use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
-    use elp_ide::elp_ide_db::elp_base_db::AppData;
     use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
     use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
     use elp_ide::elp_ide_db::elp_base_db::VfsPath;
-    use elp_ide::elp_ide_db::elp_base_db::Workspace;
     use elp_project_model::AppName;
     use elp_project_model::Project;
     use elp_project_model::ProjectAppData;
@@ -51,41 +49,34 @@ mod tests {
     use crate::build::types::LoadResult;
     use crate::cli::Fake;
 
-    /// The apps of the project and of the OTP project, and each file's app
-    /// and the app of its source root.
+    /// The apps a project was loaded with, by name, and each file's app and
+    /// the app of its source root once lowered.
     type Lowered = (
-        [Vec<AppData>; 2],
+        Vec<ProjectAppData>,
         Vec<(AbsPathBuf, Option<AppName>, Option<AppName>)>,
     );
 
     fn lowered(loaded: &LoadResult, paths: &[AbsPathBuf]) -> Lowered {
         let db = loaded.analysis_host.raw_database();
-        let projects = Workspace::get(db).projects(db);
-        let apps = [projects[0], projects[1]].map(|project| {
-            let mut apps: Vec<AppData> = project
-                .source_roots(db)
-                .iter()
-                .filter_map(|root| db.app_data(*root))
-                .map(|app| {
-                    let mut app = (*app).clone();
-                    // The rebar loader collects the apps' parent directories
-                    // in a hash set, so their order depends on the apps'.
-                    app.include_path.sort();
-                    app
-                })
-                .collect();
-            apps.sort_by(|a, b| a.name.0.cmp(&b.name.0));
-            apps
-        });
+        let mut apps = loaded.project.project_apps.clone();
+        apps.sort_by(|a, b| a.name.0.cmp(&b.name.0));
+        for app in &mut apps {
+            // The rebar loader collects the apps' parent directories in a
+            // hash set, so their order depends on the apps'.
+            app.include_path.sort();
+        }
         let files = paths
             .iter()
             .map(|path| {
                 let file_id = loaded
                     .file_id(&VfsPath::from(path.clone()))
                     .unwrap_or_else(|| panic!("{path} should be loaded"));
-                let app = db.file_app_data(file_id).map(|app| app.name.clone());
+                let app = db.file_app(file_id).map(|app| app.name(db).clone());
                 let root = db.file_source_root(file_id).source_root_id(db);
-                let root_app = db.app_data(root).map(|app| app.name.clone());
+                let root_app = db
+                    .source_root_app(root)
+                    .app(db)
+                    .map(|app| app.name(db).clone());
                 (path.clone(), app, root_app)
             })
             .collect();

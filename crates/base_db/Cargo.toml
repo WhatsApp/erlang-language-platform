@@ -28,8 +28,5 @@ smallvec.workspace = true
 stdx.workspace = true
 vfs.workspace = true
 
-[dev-dependencies]
-expect-test.workspace = true
-
 [lints]
 workspace = true

@@ -611,6 +611,6 @@ fn a_listed_file_created_after_loading_gets_its_targets_app() {
         .module_index(loaded.project_input)
         .file_for_module(&ModuleName::new("shared"))
         .unwrap();
-    let app = db.file_app_data(shared).map(|app| app.name.0.clone());
+    let app = db.file_app(shared).map(|app| app.name(db).0.clone());
     assert_eq_expected!(Some("app_a".to_string()), app);
 }

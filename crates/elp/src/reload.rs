@@ -512,8 +512,8 @@ mod tests {
         let app_name = |files: &Files| {
             files
                 .db
-                .file_app_data(file_id)
-                .map(|app_data| app_data.name.clone())
+                .file_app(file_id)
+                .map(|app| app.name(&files.db).clone())
         };
         let expected_app = Some(AppName("app".to_string()));
         assert_eq_expected!(None, files.file_id(&path_of("/app/src/listed.erl")));

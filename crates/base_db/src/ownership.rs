@@ -54,7 +54,7 @@ fn sort_owners(db: &dyn RootQueryDb, path: &VfsPath, apps: &mut [App]) {
         let depth = path
             .strip_prefix(app.dir(db))
             .map_or(usize::MAX, |rel| rel.as_utf8_path().components().count());
-        let extra = app.app_data(db).file_source(path) == Some(FileSource::Extra);
+        let extra = app.file_source(db, path) == Some(FileSource::Extra);
         let dependency = app.app_type(db) != AppType::App;
         (depth, extra, dependency, app.name(db).0.clone())
     });

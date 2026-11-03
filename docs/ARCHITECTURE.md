@@ -603,26 +603,13 @@ root, its OTP project, its Buck index, its code path, its eqWAlizer
 configuration and its source roots. `elp_base_db::input::Workspace`
 lists the projects, and the queries about a project take its `Project`.
 
-### `elp_base_db::input::AppData`
+### `elp_base_db::input::App`
 
-`AppData` captures the information for an app from the rebar
-`project_app_dirs` list.  It includes the `Project` containing this
-app.
-
-They are indexed in salsa with
-`elp_base_db::input::SourceRootId`
-
-```rust
-pub struct AppData {
-    pub project: Project,
-    pub dir: AbsPathBuf,
-    pub include_path: Vec<AbsPathBuf>,
-    pub src_dirs: Vec<String>,
-    pub extra_src_dirs: Vec<String>,
-    pub macros: Vec<eetf::Term>,
-    pub parse_transforms: Vec<eetf::Term>,
-}
-```
+An `App` is a salsa input with the information for an app from the
+loaded project: its project, name, type and directory, the files the
+loader lists for it, its macros and parse transforms, and its include
+and source directories. Its `Project` lists it, and each app's source
+root maps to it through `SourceDatabase::source_root_app`.
 
 ### Analysis and AnalysisHost
 

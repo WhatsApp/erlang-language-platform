@@ -409,7 +409,7 @@ impl Analysis {
     pub fn project(&self, file_id: FileId) -> Cancellable<Option<Project>> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nproject: {file_id:?}"));
-        self.with_db(|db| Some(db.file_app_data(file_id)?.project))
+        self.with_db(|db| Some(db.file_app(file_id)?.project(db)))
     }
 
     /// The loaded projects, without the OTP project lowering adds after them:
@@ -430,7 +430,7 @@ impl Analysis {
         self.with_db(|db| {
             // Context for T171541590
             let _ = stdx::panic_context::enter(format!("\nproject_root: {file_id:?}"));
-            let project = db.file_app_data(file_id)?.project;
+            let project = db.file_app(file_id)?.project(db);
             Some(project.root_dir(db).to_path_buf())
         })
     }
@@ -440,8 +440,7 @@ impl Analysis {
         self.with_db(|db| {
             // Context for T171541590
             let _ = stdx::panic_context::enter(format!("\nmodule_name: {file_id:?}"));
-            let app_data = db.file_app_data(file_id)?;
-            db.module_index(app_data.project)
+            db.module_index(db.file_app(file_id)?.project(db))
                 .module_for_file(file_id)
                 .cloned()
         })

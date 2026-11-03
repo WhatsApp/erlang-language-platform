@@ -1520,7 +1520,7 @@ bar() -> ok.
         // resolve_include so that the buck dependency check in
         // resolve_remote_query uses the correct app's buck_target_name.
         // Without the app, the include resolution takes the
-        // file_app_data fallback which may return wrong app data
+        // file_app fallback which may return the wrong app
         // when source roots don't uniquely identify the app.
         check_functions(
             r#"

@@ -208,8 +208,8 @@ impl SymbolDefinition {
             let file_id = self.file().file_id;
             // Context for T171541590
             let _ = stdx::panic_context::enter(format!("\nsearch_scope: {file_id:?}"));
-            let project = match sema.db.file_app_data(file_id) {
-                Some(app_data) => app_data.project,
+            let project = match sema.db.file_app(file_id) {
+                Some(app) => app.project(sema.db),
                 None => return SearchScope::single_file(file_id, None),
             };
             SearchScope::project(sema.db, project)

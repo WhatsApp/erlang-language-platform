@@ -246,7 +246,7 @@ impl Semantic<'_> {
     pub fn resolve_module_names(&self, from_file: FileId) -> Option<ModuleIter> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nresolve_module_names: {from_file:?}"));
-        let project = self.db.file_app_data(from_file)?.project;
+        let project = self.db.file_app(from_file)?.project(self.db);
         let module_index = self.db.module_index(project);
         Some(ModuleIter(module_index))
     }
@@ -290,8 +290,8 @@ impl Semantic<'_> {
     }
 
     pub fn module_name_duplicates(&self, file_id: FileId) -> Option<FxHashSet<FileId>> {
-        let app_data = self.db.file_app_data(file_id)?;
-        let module_index = self.db.module_index(app_data.project);
+        let project = self.db.file_app(file_id)?.project(self.db);
+        let module_index = self.db.module_index(project);
         let module_name = module_index.module_for_file(file_id)?;
         module_index.duplicates(module_name)
     }
@@ -299,7 +299,7 @@ impl Semantic<'_> {
     pub fn resolve_module_name(&self, file_id: FileId, name: &str) -> Option<Module> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nresolve_module_names {file_id:?}"));
-        let project = self.db.file_app_data(file_id)?.project;
+        let project = self.db.file_app(file_id)?.project(self.db);
         let module_index = self.db.module_index(project);
         let module_file_id = module_index.file_for_module(name)?;
         Some(Module {

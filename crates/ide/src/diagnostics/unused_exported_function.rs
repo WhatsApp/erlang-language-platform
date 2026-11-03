@@ -87,7 +87,7 @@ impl GenericLinter for UnusedExportedFunctionLinter {
 
         let callbacks = sema.resolve_callbacks(file_id);
 
-        let project = sema.db.file_app_data(file_id)?.project;
+        let project = sema.db.file_app(file_id)?.project(sema.db);
         let scope = SearchScope::project(sema.db, project).exclude_file(file_id);
 
         // Hoist the single-file scope before the loop to avoid allocating

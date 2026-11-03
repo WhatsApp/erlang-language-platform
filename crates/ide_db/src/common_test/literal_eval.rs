@@ -118,9 +118,8 @@ const CALLBACK_SAFE_PARSE_TRANSFORMS: &[&str] = &["ms_transform", "wa_assert_par
 ///
 /// Anything whose shape is not recognised counts as unsafe.
 fn has_unsafe_parse_transform(db: &dyn DefDatabase, file_id: FileId, def_map: &DefMap) -> bool {
-    let app_transform_unsafe = db.file_app_data(file_id).is_some_and(|app_data| {
-        app_data
-            .parse_transforms
+    let app_transform_unsafe = db.file_app(file_id).is_some_and(|app| {
+        app.parse_transforms(db)
             .iter()
             .any(|transform| !is_safe_transform_term(transform))
     });

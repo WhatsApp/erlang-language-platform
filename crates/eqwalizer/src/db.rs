@@ -294,12 +294,12 @@ fn from_beam_path(
     file_id: FileId,
     module: &ModuleName,
 ) -> Option<AbsPathBuf> {
-    let app_data = db.file_app_data(file_id)?;
-    if app_data.app_type != AppType::Otp {
+    let app = db.file_app(file_id)?;
+    if app.app_type(db) != AppType::Otp {
         // Only OTP modules are loaded from BEAM
         return None;
     }
-    let ebin = app_data.ebin_path.as_ref()?;
+    let ebin = app.ebin(db).as_ref()?;
     let filename = format!("{}.beam", module.as_str());
     Some(ebin.join(filename))
 }

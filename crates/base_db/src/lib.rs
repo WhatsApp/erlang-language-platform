@@ -65,7 +65,6 @@ pub use file_set_config::FileSetConfigBuilder;
 pub use include::IncludeCtx;
 pub use include::generated_file_include_lib;
 pub use input::App;
-pub use input::AppData;
 pub use input::FileSource;
 pub use input::IncludeOtp;
 pub use input::Project;
@@ -389,10 +388,6 @@ pub struct InternedFileId {
 /// model. Everything else in ELP is derived from these queries.
 #[ra_ap_query_group_macro::query_group]
 pub trait RootQueryDb: SourceDatabase + salsa::Database {
-    /// The data of the app of a source root.
-    #[salsa::invoke_interned(app_data)]
-    fn app_data(&self, id: SourceRootId) -> Option<Arc<AppData>>;
-
     /// The apps of `project` that list the file, the primary owner first. A
     /// query about one file depends on this rather than on the project's whole
     /// index, so it runs again only when that file's owners change.
@@ -434,13 +429,6 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     /// O(1) (mirroring the built-in pattern index).
     #[salsa::input]
     fn extra_dynamic_call_patterns(&self) -> Arc<FxHashMap<PatternKey, DynamicCallPatternInput>>;
-
-    #[salsa::transparent]
-    #[salsa::invoke(file_app_data_dispatch)]
-    fn file_app_data(&self, file_id: FileId) -> Option<Arc<AppData>>;
-
-    #[salsa::invoke(file_app_data_inner)]
-    fn file_app_data_interned(&self, fid: InternedFileId) -> Option<Arc<AppData>>;
 
     /// Returns a map from module name to FileId of the containing file.
     fn module_index(&self, project: Project) -> Arc<ModuleIndex>;
@@ -584,18 +572,6 @@ pub trait SourceDatabase: salsa::Database {
     fn set_source_root_app(&mut self, id: SourceRootId, app: Option<App>);
 }
 
-fn app_data(db: &dyn RootQueryDb, id: SourceRootId) -> Option<Arc<AppData>> {
-    Some(db.source_root_app(id).app(db)?.app_data(db))
-}
-
-fn file_app_data_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<Arc<AppData>> {
-    db.file_app_data_interned(InternedFileId::new(db, file_id))
-}
-
-fn file_app_data_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<Arc<AppData>> {
-    Some(db.file_app(fid.file_id(db))?.app_data(db))
-}
-
 fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
     let mut builder = ModuleIndex::builder();
 
@@ -603,9 +579,8 @@ fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
         let source_root = db.source_root(source_root_id).source_root(db);
         for file_id in source_root.iter() {
             if db.file_kind(file_id).is_module()
-                && let Some(app_data) = db.file_app_data(file_id)
-                && let Some((file_id, file_source, path)) =
-                    source_root.file_info(file_id, &app_data)
+                && let Some(app) = db.file_app(file_id)
+                && let Some((file_id, file_source, path)) = source_root.file_info(db, file_id, app)
                 && let Some((name, Some("erl"))) = path.name_and_extension()
             {
                 builder.insert(file_id, file_source, ModuleName::new(name));
@@ -624,8 +599,7 @@ fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
     builder.build()
 }
 
-/// Whether `defining_app` is reachable from the application described by
-/// `referencing_app_data`, following the edges `dep_kind` allows - see
+/// Whether `defining_app` is reachable from `referencing_app`, following the edges `dep_kind` allows - see
 /// [`DepKind`], which is what decides whether `distributed_dependencies` count.
 ///
 /// An application is always reachable from itself. OTP applications are always
@@ -635,19 +609,19 @@ fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
 /// target, has nothing to check against and is treated as reachable.
 pub fn is_app_reachable(
     db: &dyn RootQueryDb,
-    referencing_app_data: &AppData,
+    referencing_app: App,
     defining_app: &AppName,
     dep_kind: DepKind,
 ) -> bool {
-    if &referencing_app_data.name == defining_app {
+    if referencing_app.name(db) == defining_app {
         return true;
     }
 
-    let Some(referencing_target) = referencing_app_data.buck_target_name.as_ref() else {
+    let Some(referencing_target) = referencing_app.buck_target_name(db).as_ref() else {
         return true;
     };
 
-    let project = referencing_app_data.project;
+    let project = referencing_app.project(db);
     let Some(buck_index) = project.buck_index(db) else {
         return true;
     };
@@ -689,19 +663,19 @@ pub fn any_owning_app(
 }
 
 /// Whether any application `callee_file` is compiled into is reachable from
-/// `referencing_app_data` under `dep_kind`.
+/// `referencing_app` under `dep_kind`.
 ///
 /// Prefer this to `is_app_reachable` when asking whether a call resolves: a
 /// file compiled into several targets has no single defining application, and
 /// linking any one of them satisfies the call.
 pub fn is_any_owner_reachable(
     db: &dyn RootQueryDb,
-    referencing_app_data: &AppData,
+    referencing_app: App,
     callee_file: FileId,
     dep_kind: DepKind,
 ) -> bool {
-    any_owning_app(db, referencing_app_data.project, callee_file, |app| {
-        is_app_reachable(db, referencing_app_data, app, dep_kind)
+    any_owning_app(db, referencing_app.project(db), callee_file, |app| {
+        is_app_reachable(db, referencing_app, app, dep_kind)
     })
     .unwrap_or(true)
 }
@@ -897,7 +871,7 @@ fn is_otp_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<bool> {
 
 fn is_otp_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<bool> {
     let file_id = fid.file_id(db);
-    let project = db.file_app_data(file_id)?.project;
+    let project = db.file_app(file_id)?.project(db);
     Some(project.otp(db) == Some(project))
 }
 
@@ -909,9 +883,9 @@ fn is_test_suite_or_test_helper_inner(db: &dyn RootQueryDb, fid: InternedFileId)
     let file_id = fid.file_id(db);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_test_suite_or_test_helper: {file_id:?}"));
-    let app_data = db.file_app_data(file_id)?;
+    let app = db.file_app(file_id)?;
     let path = db.file(file_id).path(db);
-    if app_data.is_extra_src_file(path) {
+    if app.is_extra_src_file(db, path) {
         Some(true)
     } else {
         Some(false)
@@ -926,8 +900,7 @@ fn file_app_type_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<AppT
     let file_id = fid.file_id(db);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_app_type: {file_id:?}"));
-    let app_data = db.file_app_data(file_id)?;
-    Some(app_data.app_type)
+    Some(db.file_app(file_id)?.app_type(db))
 }
 
 fn file_app_name_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppName> {
@@ -938,8 +911,7 @@ fn file_app_name_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<AppN
     let file_id = fid.file_id(db);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_app_name: {file_id:?}"));
-    let app_data = db.file_app_data(file_id)?;
-    Some(app_data.name.clone())
+    Some(db.file_app(file_id)?.name(db).clone())
 }
 
 fn file_project_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<Project> {
@@ -950,15 +922,13 @@ fn file_project_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<Proje
     let file_id = fid.file_id(db);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_project: {file_id:?}"));
-    let app_data = db.file_app_data(file_id)?;
-    Some(app_data.project)
+    Some(db.file_app(file_id)?.project(db))
 }
 
 pub fn module_name(db: &dyn RootQueryDb, file_id: FileId) -> Option<ModuleName> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nmodule_name: {file_id:?}"));
-    let app_data = db.file_app_data(file_id)?;
-    let module_index = db.module_index(app_data.project);
+    let module_index = db.module_index(db.file_app(file_id)?.project(db));
     module_index.module_for_file(file_id).cloned()
 }
 

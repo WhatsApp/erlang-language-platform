@@ -18,7 +18,6 @@ use vfs::FileId;
 use vfs::VfsPath;
 
 use crate::App;
-use crate::AppData;
 use crate::Project;
 use crate::RootQueryDb;
 use crate::SourceRoot;
@@ -98,10 +97,10 @@ impl<'a> IncludeCtx<'a> {
     ) -> Option<FileId> {
         let file_id = fid.file_id(db);
         let project = db.file_project(file_id)?;
-        let app_data = db.file_app_data(file_id)?;
+        let app = db.file_app(file_id)?;
         if let Some(file_id) = db.mapped_include_file(
             project,
-            IncludeMappingScope::Local(app_data.name.clone()),
+            IncludeMappingScope::Local(app.name(db).clone()),
             path.clone(),
         ) {
             Some(file_id)
@@ -110,7 +109,7 @@ impl<'a> IncludeCtx<'a> {
             let include_file_index = db.include_file_index(project);
             if let Some(file_path) = include_file_index
                 .buck_index
-                .find_local(&app_data.name, &path)
+                .find_local(app.name(db), &path)
             {
                 include_file_index
                     .path_to_file_id
@@ -119,9 +118,9 @@ impl<'a> IncludeCtx<'a> {
             } else {
                 // Fallback for non-buck2 projects
                 let path: &str = &path;
-                app_data.include_path.iter().find_map(|include| {
+                app.include_path(db).iter().find_map(|include| {
                     let name = include.join(path);
-                    db.include_file_id(app_data.project, VfsPath::from(name.clone()))
+                    db.include_file_id(app.project(db), VfsPath::from(name.clone()))
                 })
             }
         }
@@ -144,16 +143,13 @@ impl<'a> IncludeCtx<'a> {
         // *either* app has the target as a dependency.  This handles:
         //   - A→B→C where A deps C but B doesn't (orig check passes)
         //   - A→B→C where B deps C but A doesn't (current check passes)
-        let orig_app_data = orig_app.map(|app| app.app_data(db));
-        let current_app_data = db.file_app_data(current_file_id);
+        let current_app = db.file_app(current_file_id);
 
-        // Need at least one valid app_data to proceed.
-        let _app_data = orig_app_data.as_ref().or(current_app_data.as_ref())?;
+        // Need at least one valid app to proceed.
+        orig_app.or(current_app)?;
 
         let (app_name, include_path) = path.split_once('/')?;
-        let target_app_data = project
-            .app_named(db, AppName(app_name.to_string()))?
-            .app_data(db);
+        let target_app = project.app_named(db, AppName(app_name.to_string()))?;
         if let Some(buck_index) = project.buck_index(db) {
             if let Some(p) = buck_index
                 .includes
@@ -165,17 +161,14 @@ impl<'a> IncludeCtx<'a> {
                     // Accept if the target is a dep of either the originating app
                     // or the current file's app.
                     let target = AppName(app_name.to_string());
-                    let is_dep = [&orig_app_data, &current_app_data]
-                        .iter()
-                        .filter_map(|d| d.as_ref())
-                        .any(|d| {
-                            d.buck_target_name.as_ref().is_some_and(|t| {
-                                db.reachable_targets(project, t.clone(), DepKind::Runtime)
-                                    .is_some_and(|reachable| {
-                                        buck_index.app_deps.is_reachable_in(&reachable, &target)
-                                    })
-                            })
-                        });
+                    let is_dep = [orig_app, current_app].into_iter().flatten().any(|app| {
+                        app.buck_target_name(db).as_ref().is_some_and(|t| {
+                            db.reachable_targets(project, t.clone(), DepKind::Runtime)
+                                .is_some_and(|reachable| {
+                                    buck_index.app_deps.is_reachable_in(&reachable, &target)
+                                })
+                        })
+                    });
 
                     if is_dep {
                         p
@@ -189,10 +182,7 @@ impl<'a> IncludeCtx<'a> {
                     // We do have an entry in the include mapping, but
                     // it does not resolve to a valid FileId.
                     // This should also not happen.
-                    let name = orig_app_data
-                        .as_ref()
-                        .or(current_app_data.as_ref())
-                        .map(|d| d.name.clone());
+                    let name = orig_app.or(current_app).map(|app| app.name(db).clone());
                     log::warn!(
                         "include mapping does not resolve to FileId: app:{:?}, path:{}, p:{:?}",
                         name,
@@ -210,9 +200,9 @@ impl<'a> IncludeCtx<'a> {
             // This is the path followed when it is not a buck2
             // project, as those are currently the only ones that
             // populate the buck index.
-            let path = target_app_data.dir.join(include_path);
+            let path = target_app.dir_path(db).join(include_path);
             db.include_file_id(project, VfsPath::from(path.clone()))
-                .or_else(|| find_generated_include_lib(db, project, include_path, &target_app_data))
+                .or_else(|| find_generated_include_lib(db, project, include_path, target_app))
         }
     }
 }
@@ -221,7 +211,7 @@ fn find_generated_include_lib(
     db: &dyn RootQueryDb,
     project: Project,
     include_path: &str,
-    target_app_data: &AppData,
+    target_app: App,
 ) -> Option<FileId> {
     // buck2 builds create an include file mapping when
     // invoking the OTP compiler, by manipulating symlinks
@@ -233,13 +223,13 @@ fn find_generated_include_lib(
     // here.
     //
 
-    // The target_app_data has an `include_path` field. An "include/"
+    // The target app has an `include_path` field. An "include/"
     // prefix on the path should be replaced with an entry from the
     // set of include paths/
     // Note: we use the more relaxed include_path here, as the thrift
     // includes are not all for direct dependencies at present.
     let path = include_path.strip_prefix("include/")?;
-    target_app_data.include_path.iter().find_map(|dir| {
+    target_app.include_path(db).iter().find_map(|dir| {
         let path = dir.join(path);
         db.include_file_id(project, VfsPath::from(path.clone()))
     })
@@ -253,7 +243,7 @@ pub fn generated_file_include_lib(
 ) -> Option<String> {
     // In `find_generated_include_lib`, the processing does
     // - split the path into app and rest
-    // - get the app_data based on the app
+    // - get the app based on the app name
     // - if the rest starts with "include/"
     //   - strip it
     //   - find a dir in the app include_path list such that the
@@ -261,14 +251,14 @@ pub fn generated_file_include_lib(
     //
     // We need to do the reverse here.
 
-    let inc_app_data = db.file_app_data(included_file_id)?;
-    let candidate_path = inc_app_data
+    let inc_app = db.file_app(included_file_id)?;
+    let candidate_path = inc_app
         // Note: we use include_dirs here, as it keeps the include dirs local to the app only.
         // include_path is the search path including all dependency include_dir`s
-        .include_dirs
+        .include_dirs(db)
         .iter()
         .find_map(|dir| include_path.as_path()?.strip_prefix(dir))?;
-    let candidate = format!("{}/include/{}", inc_app_data.name, candidate_path.as_str());
+    let candidate = format!("{}/include/{}", inc_app.name(db), candidate_path.as_str());
     let resolved_file_id =
         IncludeCtx::new(db, db.file_app(file_id), file_id).resolve_include_lib(&candidate)?;
     if resolved_file_id == included_file_id {

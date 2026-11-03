@@ -239,11 +239,11 @@ impl Documentation<'_> {
 fn is_file_in_otp(db: &dyn DocDatabase, file_id: FileId) -> Option<bool> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_file_in_otp: {file_id:?}"));
-    if let Some(app_data) = db.file_app_data(file_id) {
-        Some(app_data.app_type == AppType::Otp)
+    if let Some(app) = db.file_app(file_id) {
+        Some(app.app_type(db) == AppType::Otp)
     } else {
         log::error!(
-            "Unknown application - could not load app_data to determine whether file is on OTP"
+            "Unknown application - could not load the app to determine whether file is on OTP"
         );
         None
     }
@@ -339,8 +339,8 @@ impl DocLoader for crate::RootDatabase {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nload_eep48_docs: {file_id:?}"));
         let src_db: &dyn RootQueryDb = self.upcast();
-        let app_data = if let Some(app_data) = src_db.file_app_data(file_id) {
-            app_data
+        let app = if let Some(app) = src_db.file_app(file_id) {
+            app
         } else {
             log::error!("No corresponding appdata found for file, so no docs can be loaded");
             return FileDoc {
@@ -350,7 +350,7 @@ impl DocLoader for crate::RootDatabase {
             };
         };
 
-        let project = app_data.project;
+        let project = app.project(src_db);
         let erlang_service = self.erlang_service_for(project);
         let path = SourceDatabase::file(self, file_id)
             .path(self)

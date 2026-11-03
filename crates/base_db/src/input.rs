@@ -18,7 +18,6 @@ use elp_project_model::EqwalizerConfig;
 use elp_project_model::ProjectAppData;
 use elp_project_model::buck::BuckProjectIndex;
 use elp_project_model::buck::TargetFullName;
-use paths::RelPath;
 use paths::Utf8Path;
 use salsa::plumbing::AsId;
 use vfs::AbsPath;
@@ -73,21 +72,14 @@ impl SourceRoot {
         self.file_set.iter()
     }
 
-    pub fn iter_app_files<'a>(
-        &'a self,
-        app_data: &'a AppData,
-    ) -> impl Iterator<Item = (FileId, FileSource, &'a VfsPath)> + 'a {
-        self.iter()
-            .flat_map(move |file_id| self.file_info(file_id, app_data))
-    }
-
     pub fn file_info(
         &self,
+        db: &dyn RootQueryDb,
         file_id: FileId,
-        app_data: &AppData,
+        app: App,
     ) -> Option<(FileId, FileSource, &VfsPath)> {
         let path = self.path_for_file(&file_id)?;
-        let source = app_data.file_source(path)?;
+        let source = app.file_source(db, path)?;
         Some((file_id, source, path))
     }
 }
@@ -168,26 +160,52 @@ pub struct App {
     pub is_test_target: Option<bool>,
 }
 
-#[salsa::tracked]
 impl App {
-    /// The app's fields as [`AppData`].
-    #[salsa::tracked]
-    pub fn app_data(self, db: &dyn RootQueryDb) -> Arc<AppData> {
-        Arc::new(AppData {
-            project: self.project(db),
-            name: self.name(db).clone(),
-            buck_target_name: self.buck_target_name(db).clone(),
-            dir: as_real_path(self.dir(db)).to_path_buf(),
-            include_dirs: self.include_dirs(db).to_vec(),
-            include_path: self.include_path(db).to_vec(),
-            src_path: self.src_dirs(db).to_vec(),
-            extra_src_dirs: self.extra_src_dirs(db).to_vec(),
-            macros: self.macros(db).to_vec(),
-            parse_transforms: self.parse_transforms(db).to_vec(),
-            app_type: self.app_type(db),
-            ebin_path: self.ebin(db).clone(),
-            is_test_target: self.is_test_target(db),
-        })
+    /// The app's directory, which lowering gives as a real path.
+    pub fn dir_path(self, db: &dyn RootQueryDb) -> &AbsPath {
+        as_real_path(self.dir(db))
+    }
+
+    /// Whether `path` is one of the app's sources or extra sources, or neither.
+    pub(crate) fn file_source(self, db: &dyn RootQueryDb, path: &VfsPath) -> Option<FileSource> {
+        if self.is_src_file(db, path) {
+            Some(FileSource::Src)
+        } else if self.is_extra_src_file(db, path) {
+            Some(FileSource::Extra)
+        } else if self.is_test_target(db) == Some(true) {
+            // buck test target source file. It only has one.
+            Some(FileSource::Extra)
+        } else {
+            None
+        }
+    }
+
+    fn is_src_file(self, db: &dyn RootQueryDb, path: &VfsPath) -> bool {
+        if let Some(path) = path.as_path() {
+            // src_dirs are recursive, check path begins with one
+            return self
+                .src_dirs(db)
+                .iter()
+                .any(|src_dir| path.starts_with(src_dir));
+        }
+        false
+    }
+
+    pub(crate) fn is_extra_src_file(self, db: &dyn RootQueryDb, path: &VfsPath) -> bool {
+        if let Some(path) = path
+            .as_path()
+            .and_then(|path| path.strip_prefix(self.dir_path(db)))
+        {
+            // extra_src_dirs are not recursive, check parent dir is one
+            let path: &Utf8Path = path.as_ref();
+            if let Some(parent) = path.parent() {
+                return self
+                    .extra_src_dirs(db)
+                    .iter()
+                    .any(|src_dir| parent == Path::new(src_dir));
+            }
+        }
+        false
     }
 }
 
@@ -232,76 +250,6 @@ impl fmt::Debug for App {
 impl fmt::Debug for Project {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Project").field(&self.as_id()).finish()
-    }
-}
-
-/// The fields of an [`App`], for the consumers that read them this way.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AppData {
-    pub project: Project,
-    pub name: AppName,
-    /// Target name if this application originates from a buck target
-    pub buck_target_name: Option<TargetFullName>,
-    pub dir: AbsPathBuf,
-    /// Include directories belonging to this app only. Used for
-    /// include_lib resolution
-    pub include_dirs: Vec<AbsPathBuf>,
-    /// The set of local include directories as well as those of all
-    /// dependencies
-    pub include_path: Vec<AbsPathBuf>,
-    pub src_path: Vec<AbsPathBuf>,
-    pub extra_src_dirs: Vec<String>,
-    pub macros: Vec<eetf::Term>,
-    pub parse_transforms: Vec<eetf::Term>,
-    pub app_type: AppType,
-    pub ebin_path: Option<AbsPathBuf>,
-    /// When the app is generated from buck, each test module shows
-    /// up as a different own app.
-    pub is_test_target: Option<bool>,
-}
-
-impl AppData {
-    /// Whether `path` is one of the app's sources or extra sources, or neither.
-    pub(crate) fn file_source(&self, path: &VfsPath) -> Option<FileSource> {
-        if self.is_src_file(path) {
-            Some(FileSource::Src)
-        } else if self.is_extra_src_file(path) {
-            Some(FileSource::Extra)
-        } else if self.is_test_target == Some(true) {
-            // buck test target source file. It only has one.
-            Some(FileSource::Extra)
-        } else {
-            None
-        }
-    }
-
-    fn is_src_file(&self, path: &VfsPath) -> bool {
-        if let Some(path) = path.as_path() {
-            // src_dirs are recursive, check path begins with one
-            return self
-                .src_path
-                .iter()
-                .any(|src_dir| path.starts_with(src_dir));
-        }
-        false
-    }
-
-    pub(crate) fn is_extra_src_file(&self, path: &VfsPath) -> bool {
-        if let Some(path) = self.local_file_path(path) {
-            // extra_src_dirs are not recursive, check parent dir is one
-            let path: &Utf8Path = path.as_ref();
-            if let Some(parent) = path.parent() {
-                return self
-                    .extra_src_dirs
-                    .iter()
-                    .any(|src_dir| parent == Path::new(src_dir));
-            }
-        }
-        false
-    }
-
-    fn local_file_path<'a>(&self, path: &'a VfsPath) -> Option<&'a RelPath> {
-        path.as_path()?.strip_prefix(&self.dir)
     }
 }
 

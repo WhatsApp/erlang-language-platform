@@ -328,9 +328,9 @@ impl GleanIndexer {
                     .iter()
                     .chain(otp_source_roots.iter())
                 {
-                    if let Some(app_data) = db.app_data(source_root_id) {
-                        let app_name = app_data.name.as_str().to_string();
-                        let type_ = match app_data.app_type {
+                    if let Some(app) = db.source_root_app(source_root_id).app(db) {
+                        let app_name = app.name(db).as_str().to_string();
+                        let type_ = match app.app_type(db) {
                             AppType::App => Some(glean::AppType::FirstParty),
                             AppType::Otp => Some(glean::AppType::Otp),
                             AppType::Dep => Some(glean::AppType::ThirdParty),
@@ -348,8 +348,8 @@ impl GleanIndexer {
                         let source_root = db.source_root(source_root_id).source_root(db);
                         for file_id in source_root.iter() {
                             let file_app = db
-                                .file_app_data(file_id)
-                                .map(|ad| ad.name.as_str().to_string())
+                                .file_app(file_id)
+                                .map(|app| app.name(db).as_str().to_string())
                                 .unwrap_or_else(|| app_name.clone());
                             index.insert(file_id.into(), file_app);
                         }
@@ -498,8 +498,8 @@ impl GleanIndexer {
     fn indexed_source_files(db: &RootDatabase, project: Project) -> Vec<(FileId, VfsPath)> {
         let mut files = vec![];
         for &source_root_id in project.source_roots(db).iter() {
-            if let Some(app_data) = db.app_data(source_root_id)
-                && app_data.app_type == AppType::App
+            if let Some(app) = db.source_root_app(source_root_id).app(db)
+                && app.app_type(db) == AppType::App
             {
                 let source_root = db.source_root(source_root_id).source_root(db);
                 for file_id in source_root.iter() {
@@ -628,15 +628,17 @@ impl GleanIndexer {
                 sema.resolve_behaviour(file_id, &name)
                     .into_iter()
                     .filter_map(move |(behaviour_mod, callbacks)| {
-                        let app_data = db.app_data(
-                            db.file_source_root(behaviour_mod.file.file_id)
-                                .source_root_id(db),
-                        )?;
-                        if app_data.app_type != AppType::Otp {
+                        let app = db
+                            .source_root_app(
+                                db.file_source_root(behaviour_mod.file.file_id)
+                                    .source_root_id(db),
+                            )
+                            .app(db)?;
+                        if app.app_type(db) != AppType::Otp {
                             return None;
                         }
                         let bn = behaviour_name.clone();
-                        let ba = app_data.name.as_str().to_string();
+                        let ba = app.name(db).as_str().to_string();
                         Some(callbacks.into_keys().map(move |na| {
                             types::parser::BehaviourCallbackStub {
                                 callback_name: na.name().to_string(),
