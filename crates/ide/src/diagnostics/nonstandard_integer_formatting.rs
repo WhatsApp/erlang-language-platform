@@ -54,6 +54,10 @@ impl Linter for NonstandardIntegerFormattingLinter {
     fn is_experimental(&self) -> bool {
         true
     }
+
+    fn is_enabled(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -187,20 +191,38 @@ mod tests {
     use expect_test::Expect;
     use expect_test::expect;
 
+    use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests;
     use crate::tests::check_diagnostics_with_config;
 
+    fn config() -> DiagnosticsConfig {
+        DiagnosticsConfig::default()
+            .set_experimental(true)
+            .enable(DiagnosticCode::NonStandardIntegerFormatting)
+    }
+
     #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
-        let config = DiagnosticsConfig::default().set_experimental(true);
-        check_diagnostics_with_config(config, fixture)
+        check_diagnostics_with_config(config(), fixture)
     }
 
     #[track_caller]
     fn check_fix(fixture_before: &str, fixture_after: Expect) {
-        let config = DiagnosticsConfig::default().set_experimental(true);
-        tests::check_fix_with_config(config, fixture_before, fixture_after)
+        tests::check_fix_with_config(config(), fixture_before, fixture_after)
+    }
+
+    #[test]
+    fn disabled_by_default() {
+        check_diagnostics_with_config(
+            DiagnosticsConfig::default().set_experimental(true),
+            r#"
+         //- /src/integer_literal_format.erl
+         -module(integer_literal_format).
+
+         fn() -> {val, 10000}.
+            "#,
+        )
     }
 
     #[test]
