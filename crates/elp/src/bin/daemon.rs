@@ -2583,6 +2583,7 @@ mod tests {
               "apply_fix": false,
               "ignore_fix_only": false,
               "fixme_fix_only": false,
+              "fix_id": null,
               "to": null,
               "recursive": false,
               "with_check": false,

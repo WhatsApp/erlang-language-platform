@@ -1,0 +1,21 @@
+stdout | module specified: fix_selection
+stdout | Diagnostics reported:
+stdout | app_a/src/fix_selection.erl:6:19-6:22::[Warning] [W0025] 'and' has higher precedence than the operator around it, so this may not be grouped as intended.
+stdout | Use 'andalso' instead, or add parentheses to make the grouping explicit.
+stdout | ---------------------------------------------
+stdout |
+stdout | Applying fix in module 'fix_selection' for
+stdout |       6:19-6:22::[Warning] [W0025] 'and' has higher precedence than the operator around it, so this may not be grouped as intended.
+stdout | Use 'andalso' instead, or add parentheses to make the grouping explicit.
+stdout | Applying fix 'boolean_precedence_add_parens' (Add parens to RHS). Available fixes, selectable with --fix-id:
+stdout |   boolean_precedence_replace_operator: Replace 'and' with 'andalso'
+stdout |   boolean_precedence_add_parens: Add parens to RHS
+stdout | @@ -1,6 +1,6 @@
+stdout |  -module(fix_selection).
+stdout |  
+stdout |  -export([positive_integer/1]).
+stdout |  
+stdout |  positive_integer(X) ->
+stdout | -    is_integer(X) and X > 0.
+stdout | +    is_integer(X) and (X > 0).
+stdout |

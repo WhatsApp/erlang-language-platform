@@ -51,6 +51,10 @@ stdout |       --apply-fix                      If the diagnostic has an associa
 stdout |                                        the original file. Use --to to write to a different directory
 stdout |       --ignore-fix-only                Only apply elp:ignore fixes
 stdout |       --fixme-fix-only                 Only apply elp:fixme fixes
+stdout |       --fix-id <FIX_ID>                When applying fixes, apply the fix with this id instead of
+stdout |                                        the first one offered. Diagnostics without such a fix are
+stdout |                                        skipped. When a diagnostic offers several fixes, --apply-fix
+stdout |                                        lists their ids
 stdout |       --to <TO>                        When applying a fix, put the results in this directory path
 stdout |       --recursive                      If applying fixes, apply any new ones that arise from the
 stdout |                                        prior fixes recursively. Limited in scope to the clause of

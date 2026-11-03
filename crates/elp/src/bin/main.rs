@@ -2269,6 +2269,62 @@ mod tests {
             .expect("Bad test");
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_applies_first_fix_by_default(buck: bool) {
+        let tmp_dir = make_tmp_dir();
+        let tmp_path = tmp_dir.path();
+        let expected_dir = Path::new("lint/fix_selection_first");
+        let files = [("app_a/src/fix_selection.erl", "app_a/src/fix_selection.erl")];
+        LintFixSettings::new(tmp_path, expected_dir, &files)
+            .buck(buck)
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--no-stream",
+                    "--module",
+                    "fix_selection",
+                    "--diagnostic-filter",
+                    "W0025",
+                    "--to",
+                    tmp_path,
+                    "--apply-fix",
+                ],
+                "diagnostics",
+                resource_file("diagnostics/lint_fix_selection_first.stdout"),
+            )
+            .expect("Bad test");
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_applies_fix_selected_by_id(buck: bool) {
+        let tmp_dir = make_tmp_dir();
+        let tmp_path = tmp_dir.path();
+        let expected_dir = Path::new("lint/fix_selection_by_id");
+        let files = [("app_a/src/fix_selection.erl", "app_a/src/fix_selection.erl")];
+        LintFixSettings::new(tmp_path, expected_dir, &files)
+            .buck(buck)
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--no-stream",
+                    "--module",
+                    "fix_selection",
+                    "--diagnostic-filter",
+                    "W0025",
+                    "--to",
+                    tmp_path,
+                    "--apply-fix",
+                    "--fix-id",
+                    "boolean_precedence_add_parens",
+                ],
+                "diagnostics",
+                resource_file("diagnostics/lint_fix_selection_by_id.stdout"),
+            )
+            .expect("Bad test");
+    }
+
     #[test]
     fn lint_applies_fix_in_place() {
         // Test that --apply-fix writes to original file (in-place behavior)

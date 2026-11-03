@@ -228,6 +228,11 @@ pub struct Lint {
     /// Only apply elp:fixme fixes
     #[arg(long)]
     pub fixme_fix_only: bool,
+    /// When applying fixes, apply the fix with this id instead of the first
+    /// one offered. Diagnostics without such a fix are skipped. When a
+    /// diagnostic offers several fixes, --apply-fix lists their ids.
+    #[arg(long, value_name = "FIX_ID", requires = "apply_fix")]
+    pub fix_id: Option<String>,
 
     /// When applying a fix, put the results in this directory path
     #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
@@ -1117,19 +1122,14 @@ impl<'a> Lints<'a> {
 
     fn apply_diagnostics_fixes(&self, report: &mut Report<'_>) -> Result<Vec<FixResult>> {
         let mut changes = Vec::new();
-        if self.args.one_shot {
-            for (file_id, (name, diagnostics)) in &self.diags {
-                if let Ok(results) = self.apply_all_fixes(name, diagnostics, *file_id, report) {
-                    changes.extend(results);
-                }
-            }
-        } else {
-            for (file_id, (name, diagnostics)) in &self.diags {
-                if let Some(diagnostic) = diagnostics.first()
-                    && let Ok(results) = self.apply_fixes(name, diagnostic, *file_id, report)
-                {
-                    changes.extend(results);
-                }
+        for (file_id, (name, diagnostics)) in &self.diags {
+            let results = if self.args.one_shot {
+                self.apply_all_fixes(name, diagnostics, *file_id, report)
+            } else {
+                self.apply_fixes(name, diagnostics, *file_id, report)
+            };
+            if let Ok(results) = results {
+                changes.extend(results);
             }
         }
         Ok(changes)
@@ -1146,25 +1146,65 @@ impl<'a> Lints<'a> {
         }
     }
 
-    /// Apply any assists included in the diagnostic
-    fn apply_fixes(
+    /// The fixes of `diagnostic` that pass the group filter, together with
+    /// the one to apply: the one named by --fix-id, else the first.
+    fn select_fix(
         &self,
-        name: &String,
         diagnostic: &diagnostics::Diagnostic,
         file_id: FileId,
-        report: &mut Report<'_>,
-    ) -> Result<Vec<FixResult>> {
+    ) -> Result<(Vec<Assist>, Assist)> {
         let fixes = diagnostic.get_diagnostic_fixes(self.analysis_host.raw_database(), file_id);
         if fixes.is_empty() {
             bail!("No fixes in {:?}", diagnostic);
         }
-        let fixes = fixes
-            .iter()
+        let candidates = fixes
+            .into_iter()
             .filter(|fix| self.filter_fix_by_group(fix))
-            .collect::<Vec<_>>();
-        if fixes.is_empty() {
-            bail!("Only 'ignore' or 'fixme' fixes in {:?}", diagnostic);
+            .collect_vec();
+        let selected = match &self.args.fix_id {
+            Some(fix_id) => candidates.iter().find(|fix| fix.id.0 == fix_id),
+            None => candidates.first(),
+        };
+        let Some(selected) = selected.cloned() else {
+            bail!("No selectable fix in {:?}", diagnostic);
+        };
+        Ok((candidates, selected))
+    }
+
+    /// When a diagnostic offers several fixes, say which one is applied and
+    /// how to select another.
+    fn write_fix_choice(
+        report: &mut Report<'_>,
+        candidates: &[Assist],
+        selected: &Assist,
+    ) -> Result<()> {
+        if candidates.len() < 2 {
+            return Ok(());
         }
+        report.human_line(format_args!(
+            "Applying fix '{}' ({}). Available fixes, selectable with --fix-id:",
+            selected.id.0, selected.label
+        ))?;
+        for fix in candidates {
+            report.human_line(format_args!("  {}: {}", fix.id.0, fix.label))?;
+        }
+        Ok(())
+    }
+
+    /// Apply the selected fix of the first diagnostic that has one
+    fn apply_fixes(
+        &self,
+        name: &String,
+        diagnostics: &[diagnostics::Diagnostic],
+        file_id: FileId,
+        report: &mut Report<'_>,
+    ) -> Result<Vec<FixResult>> {
+        let Some((diagnostic, (candidates, fix))) = diagnostics
+            .iter()
+            .find_map(|diagnostic| Some((diagnostic, self.select_fix(diagnostic, file_id).ok()?)))
+        else {
+            bail!("No fixes in {:?}", diagnostics);
+        };
 
         report.human_line(format_args!(
             "---------------------------------------------\n"
@@ -1181,10 +1221,8 @@ impl<'a> Lints<'a> {
             },
             diagnostic,
         )?;
-        let changed = fixes
-            .iter()
-            .filter_map(|fix| self.apply_one_fix(fix, name))
-            .collect::<Vec<_>>();
+        Self::write_fix_choice(report, &candidates, &fix)?;
+        let changed = self.apply_one_fix(&fix, name).into_iter().collect_vec();
         for result in &changed {
             if let Some(unified) = &result.diff {
                 _ = report.human_line(format_args!("{unified}"));
@@ -1193,6 +1231,7 @@ impl<'a> Lints<'a> {
         Ok(changed)
     }
 
+    /// Apply the selected fix of every diagnostic at once
     fn apply_all_fixes(
         &self,
         name: &String,
@@ -1203,27 +1242,20 @@ impl<'a> Lints<'a> {
         let fixes = diagnostics
             .iter()
             .filter_map(|diagnostic| {
-                let fixes = diagnostic
-                    .get_diagnostic_fixes(self.analysis_host.raw_database(), file_id)
-                    .iter()
-                    .filter(|fix| self.filter_fix_by_group(fix))
-                    .cloned()
-                    .collect_vec();
-                (!fixes.is_empty()).then(|| (diagnostic.clone(), fixes))
+                let (candidates, fix) = self.select_fix(diagnostic, file_id).ok()?;
+                Some((diagnostic, candidates, fix))
             })
             .collect_vec();
         if fixes.is_empty() {
             bail!("No fixes in {:?}", diagnostics);
         }
 
-        let (diagnostics, assists): (Vec<diagnostics::Diagnostic>, Vec<Vec<Assist>>) =
-            fixes.iter().cloned().unzip();
         report.human_line(format_args!(
             "---------------------------------------------\n"
         ))?;
-        let plural = if diagnostics.len() > 1 { "es" } else { "" };
+        let plural = if fixes.len() > 1 { "es" } else { "" };
         report.human_line(format_args!("Applying fix{plural} in module '{name}' for"))?;
-        for diagnostic in &diagnostics {
+        for (diagnostic, candidates, fix) in &fixes {
             let analysis = self.analysis_host.analysis();
             report.write_fix_diagnostic(
                 IdeDiagnosticContext {
@@ -1235,9 +1267,10 @@ impl<'a> Lints<'a> {
                 },
                 diagnostic,
             )?;
+            Self::write_fix_choice(report, candidates, fix)?;
         }
         let source_change =
-            Self::assists_to_source_change(&assists.into_iter().flatten().collect_vec());
+            Self::assists_to_source_change(&fixes.into_iter().map(|(_, _, fix)| fix).collect_vec());
         let changed = self
             .apply_one_source_change(&source_change, name)
             .into_iter()

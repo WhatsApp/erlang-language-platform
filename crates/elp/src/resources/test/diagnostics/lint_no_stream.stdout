@@ -53,6 +53,9 @@ stdout |         [app_a/include/broken_diagnostics.hrl] 3:6-3:15: P1702: bad att
 stdout | app_a/src/diagnostics.erl:6:31-6:45::[Error] [L1295] type undefined_type/0 undefined
 stdout | app_a/src/diagnostics.erl:7:1-7:5::[Warning] [L1230] function main/1 is unused
 stdout | app_a/src/diagnostics.erl:10:1-10:4::[Warning] [L1230] function foo/0 is unused
+stdout | app_a/src/fix_selection.erl:6:19-6:22::[Warning] [W0069] Use `andalso` instead of `and`. OTP 29 will warn for `and` usage.
+stdout | app_a/src/fix_selection.erl:6:19-6:22::[Warning] [W0025] 'and' has higher precedence than the operator around it, so this may not be grouped as intended.
+stdout | Use 'andalso' instead, or add parentheses to make the grouping explicit.
 stdout | app_a/src/lint_recursive.erl:23:5-23:14::[Warning] [W0006] this statement has no effect
 stdout | app_a/src/lint_recursive.erl:6:5-6:7::[Warning] [W0006] this statement has no effect
 stdout | app_a/src/lint_recursive.erl:14:5-14:12::[Warning] [L1268] variable 'Config1' is unused
