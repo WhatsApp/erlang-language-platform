@@ -22,8 +22,9 @@ pub fn bundled_dir(otp: &Otp) -> AbsPathBuf {
 }
 
 /// The `eqwalizer_support` app bundled with ELP. It is loaded with the OTP apps,
-/// once for all projects, so a project's own apps and modules take precedence
-/// over it, as they do over OTP's, but it is not treated as part of OTP.
+/// once for the projects using an OTP installation, so a project's own apps and
+/// modules take precedence over it, as they do over OTP's, but it is not treated
+/// as part of OTP.
 pub(crate) fn bundled_app(otp: &Otp) -> ProjectAppData {
     let dir = bundled_dir(otp);
     ProjectAppData {

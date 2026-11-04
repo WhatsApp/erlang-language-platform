@@ -926,14 +926,14 @@ pub enum AppType {
     App,
     Dep,
     Otp,
-    /// Bundled with ELP. Like the OTP apps, it is loaded once and shared by all
-    /// projects, but it is not part of OTP.
+    /// Bundled with ELP. Like the OTP apps, it is loaded once and shared by the
+    /// projects using an OTP installation, but it is not part of OTP.
     Bundled,
 }
 
 impl AppType {
-    /// Whether the app is loaded once and shared by all projects, rather than
-    /// belonging to one project.
+    /// Whether the app is loaded once and shared by the projects using an OTP
+    /// installation, rather than belonging to one project.
     pub fn is_shared(self) -> bool {
         matches!(self, AppType::Otp | AppType::Bundled)
     }

@@ -33,7 +33,7 @@ pub(crate) fn send_project_size(
         .iter()
         .enumerate()
         .filter_map(|(idx, project)| {
-            if Some(idx) == project_apps.otp_project_idx {
+            if project.project_build_data == ProjectBuildData::Otp {
                 return None;
             }
 
@@ -41,12 +41,7 @@ pub(crate) fn send_project_size(
                 .all_apps
                 .iter()
                 .filter(|(project_idx, _)| *project_idx == idx)
-                .map(|(_, app)| {
-                    (
-                        app.name.as_str(),
-                        watch_paths_for_app(app, idx, project_apps.otp_project_idx).len(),
-                    )
-                })
+                .map(|(_, app)| (app.name.as_str(), watch_paths_for_app(app).len()))
                 .collect();
 
             let app_count = app_watch_counts.len();

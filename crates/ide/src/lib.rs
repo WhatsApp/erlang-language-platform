@@ -412,8 +412,8 @@ impl Analysis {
         self.with_db(|db| Some(db.file_app(file_id)?.project(db)))
     }
 
-    /// The loaded projects, without the OTP project lowering adds after them:
-    /// the one that is its own OTP project.
+    /// The loaded projects, without the OTP projects lowering adds after them:
+    /// those that are their own OTP project.
     pub fn projects(&self) -> Cancellable<Vec<Project>> {
         self.with_db(|db| {
             Workspace::get(db)

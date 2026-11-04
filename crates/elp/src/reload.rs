@@ -46,14 +46,10 @@ pub struct ProjectFolders {
     pub file_set_config: FileSetConfig,
 }
 
-pub fn watch_paths_for_app(
-    app: &ProjectAppData,
-    project_idx: usize,
-    otp_project_idx: Option<usize>,
-) -> Vec<String> {
+pub fn watch_paths_for_app(app: &ProjectAppData) -> Vec<String> {
     let mut paths = Vec::new();
-    for root in app.all_dirs_to_watch() {
-        if Some(project_idx) != otp_project_idx {
+    if !app.app_type.is_shared() {
+        for root in app.all_dirs_to_watch() {
             paths.push(format!("{root}/**/*.{{e,h}}rl"));
         }
     }
@@ -120,12 +116,10 @@ impl ProjectFolders {
 
         let load = loader_config(project_apps);
 
-        let otp_project_idx = project_apps.otp_project_idx;
-
         let mut watch_paths: FxHashSet<_> = project_apps
             .all_apps
             .iter()
-            .flat_map(|(project_idx, app)| watch_paths_for_app(app, *project_idx, otp_project_idx))
+            .flat_map(|(_, app)| watch_paths_for_app(app))
             .collect();
 
         for project in &project_apps.projects {
@@ -162,14 +156,17 @@ impl ProjectFolders {
 
 /// The files in the `src` directory of the `eqwalizer_support` app bundled with
 /// ELP, to be set in the VFS directly, since the loader never sees them. Like the
-/// OTP apps, the app is shared by all projects.
+/// OTP apps, the app belongs to the OTP project of each OTP installation.
 pub(crate) fn bundled_files(
     project_apps: &ProjectApps<'_>,
 ) -> impl Iterator<Item = (VfsPath, Vec<u8>)> + use<> {
-    let dir = project_apps
-        .otp_project_idx
-        .map(|idx| eqwalizer_support::bundled_dir(&project_apps.projects[idx].otp));
-    dir.into_iter().flat_map(|dir| {
+    let dirs: Vec<AbsPathBuf> = project_apps
+        .projects
+        .iter()
+        .filter(|project| project.project_build_data == ProjectBuildData::Otp)
+        .map(|project| eqwalizer_support::bundled_dir(&project.otp))
+        .collect();
+    dirs.into_iter().flat_map(|dir| {
         EQWALIZER_SUPPORT
             .get_dir("src")
             .into_iter()
@@ -347,6 +344,7 @@ mod tests {
     use vfs::AbsPathBuf;
     use vfs::FileId;
 
+    use super::bundled_files;
     use super::file_changes;
     use super::write_file_changes;
 
@@ -521,5 +519,31 @@ mod tests {
 
         files.apply(&[("/app/src/listed.erl", Some("-module(listed)."))]);
         assert_eq_expected!(expected_app, app_name(&files), "once the file has loaded");
+    }
+
+    #[test]
+    fn bundled_files_come_once_per_otp_installation() {
+        let project = |lib_dir: &str| {
+            Project::empty(Otp {
+                lib_dir: AbsPathBuf::assert(lib_dir.into()),
+            })
+        };
+        let projects = [project("/otp1"), project("/otp1"), project("/otp2")];
+        let paths: Vec<String> = bundled_files(&ProjectApps::new(&projects, IncludeOtp::Yes))
+            .map(|(path, _)| path.to_string())
+            .collect();
+
+        let unique: FxHashSet<&String> = paths.iter().collect();
+        assert_eq!(paths.len(), unique.len(), "no file should come twice");
+        let mut dirs: Vec<String> = paths
+            .iter()
+            .filter_map(|path| Some(path.rsplit_once('/')?.0.to_string()))
+            .collect();
+        dirs.sort();
+        dirs.dedup();
+        assert_eq_expected!(
+            vec!["/otp1/eqwalizer_support/src", "/otp2/eqwalizer_support/src"],
+            dirs
+        );
     }
 }

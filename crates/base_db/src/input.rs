@@ -87,7 +87,7 @@ impl SourceRoot {
 /// The loaded projects.
 #[salsa::input(singleton, debug)]
 pub struct Workspace {
-    /// In the order the loader gave them, the OTP project last.
+    /// In the order the loader gave them, then the OTP projects.
     #[returns(ref)]
     pub projects: Arc<[Project]>,
     /// The inputs of the projects that are no longer loaded, with their large
@@ -104,8 +104,8 @@ pub struct Workspace {
 pub struct Project {
     #[returns(ref)]
     pub root: VfsPath,
-    /// Sorted by the key lowering gives each app, so that identical reloads
-    /// compare equal.
+    /// The project's own apps, sorted by the key lowering gives each app so
+    /// that identical reloads compare equal, then the apps of its OTP project.
     #[returns(ref)]
     pub apps: Arc<[App]>,
     /// The inputs of the project's apps that are no longer loaded, with their
@@ -113,8 +113,8 @@ pub struct Project {
     /// No query reads them.
     #[returns(ref)]
     pub removed_apps: Arc<[App]>,
-    /// The OTP project, whose own link is to itself; `None` when OTP isn't
-    /// loaded.
+    /// The OTP project of the project's OTP installation, whose own link is to
+    /// itself; `None` when OTP isn't loaded.
     pub otp: Option<Project>,
     #[returns(ref)]
     pub buck_index: Option<Arc<BuckProjectIndex>>,
@@ -216,19 +216,16 @@ impl Project {
         as_real_path(self.root(db))
     }
 
-    /// The app `name` refers to in the project: the last of the project's apps
-    /// with that name, else the OTP app with that name.
+    /// The app `name` refers to in the project: the last of the project's own
+    /// apps with that name, else of its OTP apps.
     #[salsa::tracked]
     pub fn app_named(self, db: &dyn RootQueryDb, name: AppName) -> Option<App> {
-        let find = |project: Project| {
-            project
-                .apps(db)
-                .iter()
-                .rev()
-                .find(|app| *app.name(db) == name)
-                .copied()
-        };
-        find(self).or_else(|| self.otp(db).filter(|&otp| otp != self).and_then(find))
+        self.apps(db)
+            .iter()
+            .rev()
+            .filter(|app| *app.name(db) == name)
+            .min_by_key(|app| app.project(db) != self)
+            .copied()
     }
 }
 
@@ -278,10 +275,9 @@ pub struct ProjectApps<'a> {
     /// project in `projects`.  The order here will correspond with the vfs
     /// sourceRootId's
     pub all_apps: Vec<(usize, &'a ProjectAppData)>,
-    /// The position of the OTP project in `projects`. Sometimes we don't have
-    /// an OTP project because we are explicitly opting out of using it, e.g.
-    /// for eqWAlizer compatibility
-    pub otp_project_idx: Option<usize>,
+    /// The loaded projects, then an OTP project for each OTP installation they
+    /// use. Sometimes we don't have OTP projects because we are explicitly
+    /// opting out of using them, e.g. for eqWAlizer compatibility
     pub projects: Vec<elp_project_model::Project>,
 }
 
@@ -296,33 +292,24 @@ impl<'a> ProjectApps<'a> {
             .flat_map(|(project_idx, project)| project.all_apps().map(move |p| (project_idx, p)))
             .collect();
 
-        // We assume that all of the `Project`s use the same OTP.
-        // And so we extract the OTP apps from the first one, and put
-        // them into a `Project` specifically for OTP, so we do not
-        // duplicate it for every project. .
-        let first_project = &projects[0];
-        let mut projects: Vec<_> = projects.into();
-        let otp_project_idx = if include_otp == IncludeOtp::Yes {
-            let otp_project_idx = projects.len();
-            let mut all_otp_apps: Vec<(usize, &ProjectAppData)> = first_project
-                .otp_apps()
-                .map(|app| (otp_project_idx, app))
-                .collect();
-            all_apps.append(&mut all_otp_apps);
-            let otp_project = elp_project_model::Project::otp(
-                first_project.otp.clone(),
-                first_project.otp_apps().cloned().collect(),
-            );
-            projects.push(otp_project);
-            Some(otp_project_idx)
-        } else {
-            None
-        };
-
-        ProjectApps {
-            all_apps,
-            otp_project_idx,
-            projects,
+        // The projects using an OTP installation share one OTP project, with
+        // the OTP apps of the first of them, so that no project duplicates it.
+        let mut otp_projects: Vec<elp_project_model::Project> = Vec::new();
+        if include_otp == IncludeOtp::Yes {
+            for project in projects {
+                if otp_projects.iter().any(|otp| otp.otp == project.otp) {
+                    continue;
+                }
+                let otp_project_idx = projects.len() + otp_projects.len();
+                all_apps.extend(project.otp_apps().map(|app| (otp_project_idx, app)));
+                otp_projects.push(elp_project_model::Project::otp(
+                    project.otp.clone(),
+                    project.otp_apps().cloned().collect(),
+                ));
+            }
         }
+        let projects = projects.iter().cloned().chain(otp_projects).collect();
+
+        ProjectApps { all_apps, projects }
     }
 }

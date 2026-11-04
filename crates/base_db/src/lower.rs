@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use elp_project_model::AppType;
 use elp_project_model::ProjectAppData;
+use elp_project_model::ProjectBuildData;
 use elp_project_model::buck::TargetFullName;
 use fxhash::FxHashMap;
 use salsa::Setter;
@@ -57,7 +58,7 @@ pub fn lower(
                 projects.iter().chain(removed).copied().collect(),
                 projects
                     .iter()
-                    .map(|project| project.apps(db).len())
+                    .map(|project| project.source_roots(db).len())
                     .sum::<usize>()
                     + 1,
             )
@@ -72,6 +73,7 @@ pub fn lower(
     }
     let mut apps: Vec<Option<App>> = vec![None; project_apps.all_apps.len()];
     let mut projects = Vec::with_capacity(project_apps.projects.len());
+    let mut own_apps: Vec<Vec<App>> = Vec::with_capacity(project_apps.projects.len());
     // A generated input several apps list goes to the first of them, in the
     // order of the projects and then of their apps.
     let mut gen_src_apps = FxHashMap::default();
@@ -84,28 +86,54 @@ pub fn lower(
             .map(|(idx, _)| SourceRootId(*idx as u32))
             .collect();
         let project = lower_project(db, loaded, root, source_roots, known_project);
+        let mut own = Vec::with_capacity(loaded_apps.len());
         for (idx, app) in lower_apps(db, file_map, project, &loaded_apps) {
             apps[idx] = Some(app);
+            own.push(app);
             let (_, loaded) = project_apps.all_apps[idx];
             for path in loaded.gen_src_files.iter().flatten() {
                 gen_src_apps.entry(path.clone()).or_insert(app);
             }
         }
         projects.push(project);
+        own_apps.push(own);
     }
-    let otp = project_apps
-        .otp_project_idx
-        .map(|otp_project_idx| projects[otp_project_idx]);
-    for &project in &projects {
+
+    // A project links to the OTP project of its OTP installation, and lists
+    // that project's apps after its own.
+    let otp_projects: FxHashMap<&AbsPathBuf, usize> = project_apps
+        .projects
+        .iter()
+        .enumerate()
+        .filter(|(_, loaded)| loaded.project_build_data == ProjectBuildData::Otp)
+        .map(|(idx, loaded)| (&loaded.otp.lib_dir, idx))
+        .collect();
+    for (idx, loaded) in project_apps.projects.iter().enumerate() {
+        let project = projects[idx];
+        let otp_idx = otp_projects.get(&loaded.otp.lib_dir).copied();
+        let otp = otp_idx.map(|otp_idx| projects[otp_idx]);
         if project.otp(db) != otp {
             project.set_otp(db).to(otp);
         }
+        let otp_apps = match otp_idx {
+            Some(otp_idx) if otp_idx != idx => own_apps[otp_idx].as_slice(),
+            _ => &[],
+        };
+        let apps: Arc<[App]> = own_apps[idx].iter().chain(otp_apps).copied().collect();
+        if *project.apps(db) != apps {
+            project.set_apps(db).to(apps);
+        }
     }
 
-    // Whatever is left is no longer loaded, and neither are its apps.
+    // Whatever is left is no longer loaded, and neither are its own apps.
     for &project in &known {
-        let apps = project.apps(db).clone();
-        for &app in apps.iter() {
+        let apps: Vec<App> = project
+            .apps(db)
+            .iter()
+            .copied()
+            .filter(|app| app.project(db) == project)
+            .collect();
+        for &app in &apps {
             clear_app(db, app);
         }
         let removed_apps: Arc<[App]> = apps
@@ -199,8 +227,8 @@ fn app_key_of(db: &dyn RootQueryDb, app: App) -> AppKey {
 }
 
 /// The input for `loaded`: `known`, with the fields that changed set, else a
-/// new one. Its apps are set by [`lower_apps`], and its OTP project once every
-/// project has an input.
+/// new one. Its apps and its OTP project are set once every project has an
+/// input.
 fn lower_project(
     db: &mut dyn RootQueryDb,
     loaded: &elp_project_model::Project,
@@ -239,11 +267,12 @@ fn lower_project(
     project
 }
 
-/// Sets the apps of `project` from `loaded`, given with their source roots'
-/// indices. A loaded app gets the input the project has for its key, a loaded
-/// one before a removed one; apps that share a key take those inputs in order.
-/// Returns each app with its source root's index, in the order of the project's
-/// apps.
+/// Lowers the own apps of `project` from `loaded`, given with their source
+/// roots' indices. A loaded app gets the input the project has for its key, a
+/// loaded one before a removed one; apps that share a key take those inputs in
+/// order. Returns each app with its source root's index, sorted by key, so
+/// that identical reloads compare equal; the sort is stable, so apps that
+/// share a key stay in the loader's order.
 fn lower_apps(
     db: &mut dyn RootQueryDb,
     file_map: &FileMap,
@@ -257,6 +286,7 @@ fn lower_apps(
         .iter()
         .chain(project.removed_apps(db).iter())
         .copied()
+        .filter(|app| app.project(db) == project)
         .collect();
     for &app in known_apps.iter().rev() {
         known.entry(app_key_of(db, app)).or_default().push(app);
@@ -281,13 +311,7 @@ fn lower_apps(
         clear_app(db, app);
     }
 
-    // Sorted by key, so that identical reloads compare equal. The sort is
-    // stable, so apps that share a key stay in the loader's order.
     own.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
-    let apps: Arc<[App]> = own.iter().map(|(_, _, app)| *app).collect();
-    if *project.apps(db) != apps {
-        project.set_apps(db).to(apps);
-    }
     let removed: Arc<[App]> = removed.into();
     if *project.removed_apps(db) != removed {
         project.set_removed_apps(db).to(removed);
@@ -516,6 +540,12 @@ pub(crate) mod tests {
             lower(&mut self.db, &self.file_map, &project_apps);
         }
 
+        /// Lowers `projects` with an OTP project for each OTP installation.
+        fn lower_with_otp(&mut self, projects: &[elp_project_model::Project]) {
+            let project_apps = ProjectApps::new(projects, IncludeOtp::Yes);
+            lower(&mut self.db, &self.file_map, &project_apps);
+        }
+
         fn projects(&self) -> Vec<Project> {
             Workspace::get(&self.db).projects(&self.db).to_vec()
         }
@@ -594,6 +624,30 @@ pub(crate) mod tests {
             config_path: path(&format!("{root}/build_info.json")),
         });
         project.add_apps(apps);
+        project
+    }
+
+    /// A JSON project at `root` on the OTP installation at `lib_dir`, which
+    /// gives it the OTP apps `otp_apps`.
+    fn json_project_on_otp(
+        root: &str,
+        lib_dir: &str,
+        apps: Vec<ProjectAppData>,
+        otp_apps: &[&str],
+    ) -> elp_project_model::Project {
+        let mut project = json_project(root, apps);
+        project.otp = Otp {
+            lib_dir: path(lib_dir),
+        };
+        project.add_apps(
+            otp_apps
+                .iter()
+                .map(|name| {
+                    let dir = path(&format!("{lib_dir}/{name}-1.0"));
+                    ProjectAppData::otp_app_data(&format!("{name}-1.0"), &dir)
+                })
+                .collect(),
+        );
         project
     }
 
@@ -878,5 +932,104 @@ pub(crate) mod tests {
             .app_named(&db, AppName("comp".to_string()))
             .expect("comp should be found in the OTP project");
         assert_eq_expected!(AppType::Otp, app.app_type(&db));
+    }
+
+    #[test]
+    fn app_named_prefers_the_projects_own_app_to_an_otp_app() {
+        let mut model = Model::default();
+        model.lower_with_otp(&[json_project_on_otp(
+            "/p",
+            "/otp",
+            vec![app("ssl", "/p/ssl")],
+            &["ssl"],
+        )]);
+        let db = &model.db;
+        let app_type = |idx: usize| {
+            let app = model
+                .project(idx)
+                .app_named(db, AppName("ssl".to_string()))?;
+            Some(app.app_type(db))
+        };
+        assert_eq_expected!(Some(AppType::App), app_type(0), "in the project");
+        assert_eq_expected!(Some(AppType::Otp), app_type(1), "in the OTP project");
+    }
+
+    #[test]
+    fn projects_on_one_otp_installation_share_its_otp_project() {
+        let mut model = Model::default();
+        model.lower_with_otp(
+            &["/p1", "/p2"]
+                .map(|root| json_project_on_otp(root, "/otp", vec![app("a", root)], &["kernel"])),
+        );
+        let db = &model.db;
+        let expected_otp = Some(model.project(2));
+        let kernel = model.app_named(2, "kernel");
+        for idx in 0..3 {
+            assert_eq_expected!(expected_otp, model.project(idx).otp(db), "in project {idx}");
+        }
+        for idx in 0..2 {
+            let names: Vec<&str> = model
+                .apps(idx)
+                .iter()
+                .map(|app| app.name(db).as_str())
+                .collect();
+            assert_eq_expected!(vec!["a", "kernel"], names, "in project {idx}");
+            assert_eq!(
+                kernel,
+                model.app_named(idx, "kernel"),
+                "project {idx} should list the OTP project's app"
+            );
+        }
+    }
+
+    #[test]
+    fn projects_on_different_otp_installations_get_their_own() {
+        let mut model = Model::default();
+        model.lower_with_otp(&[
+            json_project_on_otp("/p1", "/otp1", vec![app("a", "/p1")], &["kernel"]),
+            json_project_on_otp("/p2", "/otp2", vec![app("b", "/p2")], &["kernel"]),
+        ]);
+        let db = &model.db;
+        let expected_otps = [Some(model.project(2)), Some(model.project(3))];
+        assert_eq_expected!(
+            expected_otps,
+            [model.project(0).otp(db), model.project(1).otp(db)]
+        );
+        let kernel_dir = |idx: usize| model.app_named(idx, "kernel").dir(db).to_string();
+        assert_eq_expected!("/otp1/kernel-1.0", kernel_dir(0));
+        assert_eq_expected!("/otp2/kernel-1.0", kernel_dir(1));
+    }
+
+    #[test]
+    fn an_identical_lowering_with_otp_projects_sets_nothing() {
+        let projects = ["/p1", "/p2"].map(|root| {
+            json_project_on_otp(root, "/otp", vec![app("a", root)], &["kernel", "stdlib"])
+        });
+        let mut model = Model::default();
+        model.lower_with_otp(&projects);
+        let workspace = Workspace::get(&model.db);
+        runs(|| read_model(&model.db, workspace));
+
+        model.lower_with_otp(&projects);
+        assert_eq_expected!(
+            Vec::<&str>::new(),
+            runs(|| read_model(&model.db, workspace)),
+            "after an identical lowering"
+        );
+    }
+
+    #[test]
+    fn a_removed_project_leaves_the_otp_apps_it_listed() {
+        let projects = ["/p1", "/p2"]
+            .map(|root| json_project_on_otp(root, "/otp", vec![app("a", root)], &["kernel"]));
+        let mut model = Model::default();
+        model.lower_with_otp(&projects);
+        model.lower_with_otp(&projects[1..]);
+
+        let kernel = model.app_named(0, "kernel");
+        assert!(
+            !kernel.src_dirs(&model.db).is_empty(),
+            "the OTP app should keep its fields"
+        );
     }
 }
