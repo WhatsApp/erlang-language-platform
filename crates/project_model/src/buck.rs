@@ -932,10 +932,10 @@ pub struct Target {
 impl Target {
     fn app_type(&self) -> AppType {
         match self.target_type {
-            TargetType::ErlangApp => AppType::App,
-            TargetType::ErlangTest => AppType::App,
-            TargetType::ErlangTestUtils => AppType::App,
-            TargetType::ThirdParty => AppType::Dep,
+            TargetType::ErlangApp => AppType::Project,
+            TargetType::ErlangTest => AppType::Project,
+            TargetType::ErlangTestUtils => AppType::Project,
+            TargetType::ThirdParty => AppType::ThirdParty,
         }
     }
 

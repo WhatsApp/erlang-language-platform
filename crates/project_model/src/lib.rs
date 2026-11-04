@@ -832,7 +832,7 @@ impl Project {
     fn deps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         self.project_apps
             .iter()
-            .filter(|app| app.app_type == AppType::Dep)
+            .filter(|app| app.app_type == AppType::ThirdParty)
     }
 
     pub fn otp_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
@@ -923,8 +923,11 @@ impl From<&str> for AppName {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AppType {
-    App,
-    Dep,
+    /// Built by the project.
+    Project,
+    /// A dependency that is neither OTP nor bundled with ELP, such as a rebar
+    /// dependency or a Buck third-party app.
+    ThirdParty,
     Otp,
     /// Bundled with ELP. Like the OTP apps, it is loaded once and shared by the
     /// projects using an OTP installation, but it is not part of OTP.
@@ -932,6 +935,11 @@ pub enum AppType {
 }
 
 impl AppType {
+    /// Whether the project depends on the app rather than building it.
+    pub fn is_dep(self) -> bool {
+        self != AppType::Project
+    }
+
     /// Whether the app is loaded once and shared by the projects using an OTP
     /// installation, rather than belonging to one project.
     pub fn is_shared(self) -> bool {
@@ -985,7 +993,7 @@ impl ProjectAppData {
             dir,
             macros: vec![],
             parse_transforms: vec![],
-            app_type: AppType::App,
+            app_type: AppType::Project,
             include_path: vec![],
             abs_src_dirs: src_dirs,
             gen_src_files: None,
@@ -1241,6 +1249,7 @@ pub fn to_abs_path_buf(path: &Path) -> Result<AbsPathBuf> {
 
 #[cfg(test)]
 mod tests {
+    use elp_base_db::assert_eq_expected;
     use expect_test::expect;
 
     use self::temp_dir::TempDir;
@@ -1251,6 +1260,24 @@ mod tests {
         let dir_str = dir.path().as_os_str().to_string_lossy().to_string();
         let actual_debug = format!("{actual:#?}\n");
         actual_debug.replace(dir_str.as_str(), "TMPDIR")
+    }
+
+    #[test]
+    fn every_app_type_but_project_is_a_dependency() {
+        let deps: Vec<AppType> = [
+            AppType::Project,
+            AppType::ThirdParty,
+            AppType::Otp,
+            AppType::Bundled,
+        ]
+        .into_iter()
+        .filter(|app_type| app_type.is_dep())
+        .collect();
+        assert_eq_expected!(
+            vec![AppType::ThirdParty, AppType::Otp, AppType::Bundled],
+            deps,
+            "only the project's own apps should not be dependencies"
+        );
     }
 
     #[test]

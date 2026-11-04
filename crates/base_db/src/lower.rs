@@ -950,7 +950,7 @@ pub(crate) mod tests {
                 .app_named(db, AppName("ssl".to_string()))?;
             Some(app.app_type(db))
         };
-        assert_eq_expected!(Some(AppType::App), app_type(0), "in the project");
+        assert_eq_expected!(Some(AppType::Project), app_type(0), "in the project");
         assert_eq_expected!(Some(AppType::Otp), app_type(1), "in the OTP project");
     }
 

@@ -330,7 +330,7 @@ impl FixtureWithProjectMeta {
     //- /module.erl app:foo
     //- /opt/lib/comp-1.3/include/comp.hrl otp_app:/opt/lib/comp-1.3
     //- /my_app/test/file_SUITE.erl extra:test
-    //- /dep/src/dep.erl app:dep app_type:dep
+    //- /dep/src/dep.erl app:dep app_type:third_party
     fn parse_meta_line(meta: &str) -> Fixture {
         assert!(meta.starts_with("//-"));
         let meta = meta["//-".len()..].trim();
@@ -404,7 +404,7 @@ impl FixtureWithProjectMeta {
                     }
                 }
                 "app_type" => match value {
-                    "dep" => app_type = Some(AppType::Dep),
+                    "third_party" => app_type = Some(AppType::ThirdParty),
                     _ => panic!("unsupported app_type: {value:?}, use otp_app for OTP apps"),
                 },
                 _ => panic!("bad component: {component:?}"),
@@ -1415,7 +1415,7 @@ bar() -> ok.
                 abs_src_dirs: [],
                 macros: [],
                 parse_transforms: [],
-                app_type: App,
+                app_type: Project,
                 include_path: [],
                 gen_src_files: None,
                 applicable_files: None,
@@ -1843,17 +1843,17 @@ foo() -> ok.
     }
 
     #[test]
-    fn parse_fixture_app_type_dep() {
+    fn parse_fixture_app_type_third_party() {
         let fixture = FixtureWithProjectMeta::parse(
             r#"
-//- /dep/src/dep.erl app:dep app_type:dep
+//- /dep/src/dep.erl app:dep app_type:third_party
 -module(dep).
 "#,
         );
         assert_eq!(
-            AppType::Dep,
+            AppType::ThirdParty,
             fixture.fixture[0].app_data.app_type,
-            "the app should be a dependency"
+            "the app should be a third-party app"
         );
     }
 

@@ -277,11 +277,11 @@ impl RebarProject {
 
         let apps: Vec<_> = into_vec(map_pop(&mut build_info, "apps")?)?
             .into_iter()
-            .map(|term| into_app_data(term, AppType::App))
+            .map(|term| into_app_data(term, AppType::Project))
             .collect::<Result<_>>()?;
         let deps: Vec<_> = into_vec(map_pop(&mut build_info, "deps")?)?
             .into_iter()
-            .map(|term| into_app_data(term, AppType::Dep))
+            .map(|term| into_app_data(term, AppType::ThirdParty))
             .collect::<Result<_>>()?;
         let root = into_abs_path(map_pop(&mut build_info, "source_root")?)?;
 

@@ -33,7 +33,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::erlang_service::DiagnosticLocation;
 use elp_log::telemetry;
 use elp_log::timeit;
-use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
 use indicatif::ParallelProgressIterator;
@@ -134,7 +133,9 @@ pub fn do_parse_all(
                     }
                     _ => {}
                 }
-                if !buck && db.file_app_type(file_id).ok() == Some(Some(AppType::Dep)) {
+                if !buck
+                    && matches!(db.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep())
+                {
                     return empty;
                 }
                 if db.is_otp(file_id).ok() == Some(Some(true)) {

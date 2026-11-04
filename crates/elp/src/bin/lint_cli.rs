@@ -512,7 +512,7 @@ fn do_diagnostics_all(
         if analysis.file_kind(file_id).ok() == Some(FileKind::OutsideProjectModel) {
             return false;
         }
-        if analysis.file_app_type(file_id).ok() == Some(Some(AppType::Dep)) {
+        if matches!(analysis.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep()) {
             return false;
         }
         if ignored_apps.contains(&analysis.file_app_name(file_id).ok()) {
@@ -536,7 +536,7 @@ fn do_diagnostics_all(
 
     // Header files have no module index entry, so enumerate them from the
     // include file index. Unlike `iter_own()` above, that index spans OTP and
-    // the dependencies too, hence the explicit `AppType::App`. Collected by
+    // the dependencies too, hence the explicit `AppType::Project`. Collected by
     // `FileId` so a header reachable under two paths is still linted once.
     let headers: FxHashSet<FileId> = analysis
         .include_file_index(*project)
@@ -545,7 +545,7 @@ fn do_diagnostics_all(
         .values()
         .copied()
         .filter(|file_id| {
-            analysis.file_app_type(*file_id).ok() == Some(Some(AppType::App))
+            analysis.file_app_type(*file_id).ok() == Some(Some(AppType::Project))
                 && should_lint(*file_id)
         })
         .collect();

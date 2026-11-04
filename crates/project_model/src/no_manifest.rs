@@ -64,7 +64,7 @@ impl NoManifestConfig {
             abs_src_dirs: self.abs_src_dirs.clone(),
             ebin: None,
             extra_src_dirs: self.extra_src_dirs.clone(),
-            app_type: AppType::App,
+            app_type: AppType::Project,
             macros: vec![],
             parse_transforms: vec![],
             include_path: vec![otp_root.to_path_buf()],

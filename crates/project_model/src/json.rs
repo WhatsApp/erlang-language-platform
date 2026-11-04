@@ -86,8 +86,8 @@ impl JsonProjectAppData {
             })
             .collect();
         let app_type = match is_dep {
-            true => AppType::Dep,
-            false => AppType::App,
+            true => AppType::ThirdParty,
+            false => AppType::Project,
         };
         Ok(ProjectAppData {
             name: AppName(self.name.clone()),

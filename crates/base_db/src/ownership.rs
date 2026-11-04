@@ -18,7 +18,6 @@ use vfs::FileId;
 use vfs::VfsPath;
 
 use crate::App;
-use crate::AppType;
 use crate::File;
 use crate::FileSource;
 use crate::Project;
@@ -55,7 +54,7 @@ fn sort_owners(db: &dyn RootQueryDb, path: &VfsPath, apps: &mut [App]) {
             .strip_prefix(app.dir(db))
             .map_or(usize::MAX, |rel| rel.as_utf8_path().components().count());
         let extra = app.file_source(db, path) == Some(FileSource::Extra);
-        let dependency = app.app_type(db) != AppType::App;
+        let dependency = app.app_type(db).is_dep();
         (depth, extra, dependency, app.name(db).0.clone())
     });
 }
@@ -99,7 +98,7 @@ mod tests {
     use crate::lower::tests::target;
 
     fn dependency(mut app: ProjectAppData) -> ProjectAppData {
-        app.app_type = AppType::Dep;
+        app.app_type = AppType::ThirdParty;
         app
     }
 

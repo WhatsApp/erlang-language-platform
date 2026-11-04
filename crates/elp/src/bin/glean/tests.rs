@@ -508,7 +508,7 @@ fn xref_call_to_generated_dep_module_test() {
     send(Client, Request, Options) ->
         trpc_dep_service:call(Client, Request, Options).
 
-    //- /dep_app/src/trpc_dep_service.erl app:dep_app buck_target:cell//dep_app:lib app_type:dep
+    //- /dep_app/src/trpc_dep_service.erl app:dep_app buck_target:cell//dep_app:lib app_type:third_party
     -module(trpc_dep_service).
     -codegen_source("dep/service.thrift").
     call(Client, Request, Options) ->

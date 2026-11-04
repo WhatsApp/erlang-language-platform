@@ -45,7 +45,6 @@ use elp_ide::elp_ide_db::elp_base_db::Project;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_log::telemetry;
 use elp_project_model::AppName;
-use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
 use hir::Semantic;
@@ -403,7 +402,7 @@ fn do_parse_all_streaming(
                 (analysis_clone, tx),
                 |(db, tx), (module_name, _file_source, file_id)| {
                     if !otp_file_to_ignore(db, file_id)
-                        && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
+                        && !matches!(db.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep())
                         && (app_name.is_none()
                             || db.file_app_name(file_id).ok().as_ref() == Some(&app_name))
                         && let Ok(Some(result)) =

@@ -331,9 +331,9 @@ impl GleanIndexer {
                     if let Some(app) = db.source_root_app(source_root_id).app(db) {
                         let app_name = app.name(db).as_str().to_string();
                         let type_ = match app.app_type(db) {
-                            AppType::App => Some(glean::AppType::FirstParty),
+                            AppType::Project => Some(glean::AppType::FirstParty),
                             AppType::Otp => Some(glean::AppType::Otp),
-                            AppType::Dep => Some(glean::AppType::ThirdParty),
+                            AppType::ThirdParty => Some(glean::AppType::ThirdParty),
                             // Bundled with ELP rather than part of the project or of OTP.
                             AppType::Bundled => None,
                         };
@@ -499,7 +499,7 @@ impl GleanIndexer {
         let mut files = vec![];
         for &source_root_id in project.source_roots(db).iter() {
             if let Some(app) = db.source_root_app(source_root_id).app(db)
-                && app.app_type(db) == AppType::App
+                && app.app_type(db) == AppType::Project
             {
                 let source_root = db.source_root(source_root_id).source_root(db);
                 for file_id in source_root.iter() {

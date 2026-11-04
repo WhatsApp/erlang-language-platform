@@ -45,7 +45,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileSource;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_log::telemetry;
-use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
 use indicatif::ParallelProgressIterator;
@@ -402,7 +401,7 @@ fn do_parse_all_par(
         .map_with(analysis, |db, (module_name, file_source, file_id)| {
             if !otp_file_to_ignore(db, file_id)
                 && file_source == FileSource::Src
-                && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
+                && !matches!(db.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep())
             {
                 do_parse_one(db, config, to, file_id, module_name.as_str()).unwrap()
             } else {
@@ -433,7 +432,7 @@ fn do_parse_all_seq(
         .flat_map(|(module_name, file_source, file_id)| {
             if !otp_file_to_ignore(&db, file_id)
                 && file_source == FileSource::Src
-                && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
+                && !matches!(db.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep())
             {
                 do_parse_one(&db, config, to, file_id, module_name.as_str()).unwrap()
             } else {
@@ -515,7 +514,7 @@ fn dump_includes_resolutions(
         .map_with(analysis, |db, (_module_name, file_source, file_id)| {
             if !otp_file_to_ignore(db, file_id)
                 && file_source == FileSource::Src
-                && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
+                && !matches!(db.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep())
             {
                 if is_project_file(db, file_id) {
                     db.resolved_includes(file_id).ok()

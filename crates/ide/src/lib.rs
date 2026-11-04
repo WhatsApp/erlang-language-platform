@@ -281,7 +281,7 @@ impl Analysis {
     }
 
     pub fn should_eqwalize(&self, file_id: FileId) -> Cancellable<bool> {
-        let is_in_app = self.file_app_type(file_id).ok() == Some(Some(AppType::App));
+        let is_in_app = self.file_app_type(file_id).ok() == Some(Some(AppType::Project));
         Ok(is_in_app && self.is_eqwalizer_enabled(file_id)?)
     }
 
