@@ -433,8 +433,10 @@ impl Server {
                 return Ok(());
             }
             let event_label = format!("{event:?}");
-            let _timer1 = timeit_exceeds!("main_loop_health", SLOW_DURATION);
-            let _timer2 = timeit_exceeds!(format!("slow_event:{event_label}"), TOO_SLOW_DURATION);
+            let profile_event = !matches!(&event, Event::Telemetry(_));
+            let _timer1 = profile_event.then(|| timeit_exceeds!("main_loop_health", SLOW_DURATION));
+            let _timer2 = profile_event
+                .then(|| timeit_exceeds!(format!("slow_event:{event_label}"), TOO_SLOW_DURATION));
             let _turn = watchdog::arm(event_label);
             self.handle_event(event)?;
             self.telemetry_manager
