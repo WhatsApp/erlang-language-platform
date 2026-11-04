@@ -145,6 +145,9 @@ pub struct App {
     pub macros: Arc<[eetf::Term]>,
     #[returns(ref)]
     pub parse_transforms: Arc<[eetf::Term]>,
+    /// The directory of the app's compiled modules, set only for apps whose
+    /// compiled modules ELP reads: OTP apps. eqWAlizer reads their types from
+    /// the BEAM files, and hover docs come from their EEP-48 chunks.
     #[returns(ref)]
     pub ebin: Option<AbsPathBuf>,
     #[returns(ref)]

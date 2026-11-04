@@ -500,10 +500,31 @@ fn is_ignore_or_fixme_atom(expr: ast::Expr) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use elp_base_db::AppType;
+    use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
+    use elp_base_db::salsa::Setter;
 
     use super::*;
     use crate::RootDatabase;
+
+    #[test]
+    fn eqwalizer_reads_types_from_the_beam_files_of_an_app_with_an_ebin() {
+        let (mut db, file_id) = RootDatabase::with_single_file("//- /src/m.erl\n-module(m).\n");
+        let app = db.file_app(file_id).expect("m should have an app");
+        let project = app.project(&db);
+        let ebin = app.dir_path(&db).join("ebin");
+        let stub = |db: &RootDatabase| db.converted_stub(project, ModuleName::new("m")).map(|_| ());
+
+        app.set_app_type(&mut db).to(AppType::ThirdParty);
+        app.set_ebin(&mut db).to(Some(ebin.clone()));
+        let expected_stub = Err(Error::BEAMNotFound(ebin.join("m.beam").into()));
+        assert_eq_expected!(expected_stub, stub(&db), "a third-party app with an ebin");
+
+        app.set_app_type(&mut db).to(AppType::Otp);
+        app.set_ebin(&mut db).to(None);
+        assert_eq_expected!(Ok(()), stub(&db), "an OTP app without one reads its source");
+    }
 
     #[test]
     fn test_has_eqwalizer_module_marker() {

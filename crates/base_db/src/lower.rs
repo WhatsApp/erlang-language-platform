@@ -333,7 +333,12 @@ fn lower_app(
     let files = app_files(db, file_map, loaded);
     let macros: Arc<[eetf::Term]> = loaded.macros.as_slice().into();
     let parse_transforms: Arc<[eetf::Term]> = loaded.parse_transforms.as_slice().into();
-    let ebin = loaded.ebin.clone();
+    // Other dependencies' ebins go on the code path.
+    let ebin = if loaded.app_type == AppType::Otp {
+        loaded.ebin.clone()
+    } else {
+        None
+    };
     let buck_target_name = loaded.buck_target_name.clone();
     let include_dirs: Arc<[AbsPathBuf]> = loaded.include_dirs.as_slice().into();
     let include_path: Arc<[AbsPathBuf]> = loaded.include_path.as_slice().into();
@@ -1013,6 +1018,25 @@ pub(crate) mod tests {
             Vec::<&str>::new(),
             runs(|| read_model(&model.db, workspace)),
             "after an identical lowering"
+        );
+    }
+
+    #[test]
+    fn only_otp_apps_keep_their_ebin() {
+        let mut dep = app("dep", "/p/dep");
+        dep.app_type = AppType::ThirdParty;
+        dep.ebin = Some(path("/p/dep/ebin"));
+        let mut model = Model::default();
+        model.lower_with_otp(&[json_project_on_otp("/p", "/otp", vec![dep], &["kernel"])]);
+
+        let db = &model.db;
+        let ebin = |name: &str| model.app_named(0, name).ebin(db).clone();
+        assert_eq_expected!(None::<AbsPathBuf>, ebin("dep"), "a third-party app's ebin");
+        assert_eq_expected!(Some(path("/otp/kernel-1.0/ebin")), ebin("kernel"));
+        assert_eq_expected!(
+            vec![path("/p/dep/ebin")],
+            model.project(0).code_path(db).to_vec(),
+            "a third-party app's ebin goes on the code path"
         );
     }
 

@@ -15,7 +15,6 @@ use std::sync::LazyLock;
 use std::time::Instant;
 
 use elp_base_db::AbsPathBuf;
-use elp_base_db::AppType;
 use elp_base_db::FileId;
 use elp_base_db::ModuleName;
 use elp_base_db::Project;
@@ -294,12 +293,7 @@ fn from_beam_path(
     file_id: FileId,
     module: &ModuleName,
 ) -> Option<AbsPathBuf> {
-    let app = db.file_app(file_id)?;
-    if app.app_type(db) != AppType::Otp {
-        // Only OTP modules are loaded from BEAM
-        return None;
-    }
-    let ebin = app.ebin(db).as_ref()?;
+    let ebin = db.file_app(file_id)?.ebin(db).as_ref()?;
     let filename = format!("{}.beam", module.as_str());
     Some(ebin.join(filename))
 }

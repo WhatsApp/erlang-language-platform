@@ -13,7 +13,6 @@
 use std::fmt;
 use std::sync::Arc;
 
-use elp_base_db::AppType;
 use elp_base_db::FileId;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
@@ -233,24 +232,24 @@ impl Documentation<'_> {
     }
 }
 
-// Some(true) -> file is in OTP
-// Some(false) -> file is not in OTP
-// None -> Unknown (e.g. because OTP is not being tracked)
-fn is_file_in_otp(db: &dyn DocDatabase, file_id: FileId) -> Option<bool> {
+// Some(true) -> the file's docs come from its compiled module (EEP-48)
+// Some(false) -> they come from its source
+// None -> Unknown (e.g. because the file has no app)
+fn has_compiled_docs(db: &dyn DocDatabase, file_id: FileId) -> Option<bool> {
     // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nis_file_in_otp: {file_id:?}"));
+    let _ = stdx::panic_context::enter(format!("\nhas_compiled_docs: {file_id:?}"));
     if let Some(app) = db.file_app(file_id) {
-        Some(app.app_type(db) == AppType::Otp)
+        Some(app.ebin(db).is_some())
     } else {
         log::error!(
-            "Unknown application - could not load the app to determine whether file is on OTP"
+            "Unknown application - could not load the app to determine whether the file's docs are compiled"
         );
         None
     }
 }
 
 fn get_file_docs(db: &dyn DocDatabase, file_id: FileId) -> Arc<FileDoc> {
-    let descriptions = if Some(true) == is_file_in_otp(db, file_id) {
+    let descriptions = if Some(true) == has_compiled_docs(db, file_id) {
         db.load_eep48_docs(file_id)
     } else {
         eep59::file_docs(db.upcast(), file_id)
@@ -464,5 +463,40 @@ impl Doc {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_base_db::AppType;
+    use elp_base_db::RootQueryDb;
+    use elp_base_db::assert_eq_expected;
+    use elp_base_db::fixture::WithFixture;
+    use elp_base_db::salsa::Setter;
+
+    use super::has_compiled_docs;
+    use crate::RootDatabase;
+
+    #[test]
+    fn a_file_gets_compiled_docs_when_its_app_has_an_ebin() {
+        let (mut db, file_id) = RootDatabase::with_single_file("//- /src/m.erl\n-module(m).\n");
+        let app = db.file_app(file_id).expect("m should have an app");
+        let ebin = app.dir_path(&db).join("ebin");
+
+        app.set_app_type(&mut db).to(AppType::ThirdParty);
+        app.set_ebin(&mut db).to(Some(ebin));
+        assert_eq_expected!(
+            Some(true),
+            has_compiled_docs(&db, file_id),
+            "a third-party app with an ebin"
+        );
+
+        app.set_app_type(&mut db).to(AppType::Otp);
+        app.set_ebin(&mut db).to(None);
+        assert_eq_expected!(
+            Some(false),
+            has_compiled_docs(&db, file_id),
+            "an OTP app without one"
+        );
     }
 }
