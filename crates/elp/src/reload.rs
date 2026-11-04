@@ -23,6 +23,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::set_source_roots;
+use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::buck::BuckProject;
@@ -46,9 +47,11 @@ pub struct ProjectFolders {
     pub file_set_config: FileSetConfig,
 }
 
-pub fn watch_paths_for_app(app: &ProjectAppData) -> Vec<String> {
+/// The paths to watch for `app` of `project`. The directories of an OTP
+/// project's apps aren't watched, only their listed files.
+pub fn watch_paths_for_app(project: &Project, app: &ProjectAppData) -> Vec<String> {
     let mut paths = Vec::new();
-    if !app.app_type.is_shared() {
+    if project.project_build_data != ProjectBuildData::Otp {
         for root in app.all_dirs_to_watch() {
             paths.push(format!("{root}/**/*.{{e,h}}rl"));
         }
@@ -119,7 +122,7 @@ impl ProjectFolders {
         let mut watch_paths: FxHashSet<_> = project_apps
             .all_apps
             .iter()
-            .flat_map(|(_, app)| watch_paths_for_app(app))
+            .flat_map(|(idx, app)| watch_paths_for_app(&project_apps.projects[*idx], app))
             .collect();
 
         for project in &project_apps.projects {
@@ -346,6 +349,7 @@ mod tests {
 
     use super::bundled_files;
     use super::file_changes;
+    use super::watch_paths_for_app;
     use super::write_file_changes;
 
     #[derive(Default)]
@@ -519,6 +523,28 @@ mod tests {
 
         files.apply(&[("/app/src/listed.erl", Some("-module(listed)."))]);
         assert_eq_expected!(expected_app, app_name(&files), "once the file has loaded");
+    }
+
+    #[test]
+    fn the_directories_of_an_otp_projects_apps_are_not_watched() {
+        let otp = Otp {
+            lib_dir: AbsPathBuf::assert("/otp/lib".into()),
+        };
+        let app = ProjectAppData::otp_app_data(
+            "stdlib-1.0",
+            &AbsPathBuf::assert("/otp/lib/stdlib-1.0".into()),
+        );
+        let otp_project = Project::otp(otp.clone(), vec![app.clone()]);
+
+        assert_eq_expected!(
+            Vec::<String>::new(),
+            watch_paths_for_app(&otp_project, &app)
+        );
+        assert!(
+            watch_paths_for_app(&Project::empty(otp), &app)
+                .contains(&"/otp/lib/stdlib-1.0/src/**/*.{e,h}rl".to_string()),
+            "the same app of another project should have its directories watched"
+        );
     }
 
     #[test]

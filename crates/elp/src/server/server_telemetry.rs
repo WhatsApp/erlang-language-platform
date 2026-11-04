@@ -41,7 +41,7 @@ pub(crate) fn send_project_size(
                 .all_apps
                 .iter()
                 .filter(|(project_idx, _)| *project_idx == idx)
-                .map(|(_, app)| (app.name.as_str(), watch_paths_for_app(app).len()))
+                .map(|(_, app)| (app.name.as_str(), watch_paths_for_app(project, app).len()))
                 .collect();
 
             let app_count = app_watch_counts.len();

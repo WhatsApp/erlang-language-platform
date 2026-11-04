@@ -375,7 +375,8 @@ impl Fixture {
 
         let apps_with_includes = RebarProject::add_app_includes(apps, &[], &otp.lib_dir);
         let rebar_project = RebarProject::new(root, Default::default());
-        let mut project = Project::otp(otp, app_map.otp_apps().cloned().collect());
+        let mut project = Project::empty(otp);
+        project.otp_apps = app_map.otp_apps().cloned().collect();
         project.add_apps(apps_with_includes);
         project.project_build_data = ProjectBuildData::Rebar(rebar_project);
         project.buck_index = project_buck_index;

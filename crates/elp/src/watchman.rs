@@ -239,7 +239,8 @@ fn collect_project_dirs(loaded: &LoadResult, watch_root: &Path) -> Vec<PathBuf> 
     let prefix = format!("{}/", watch_root.display());
     loaded
         .project
-        .non_otp_apps()
+        .project_apps
+        .iter()
         .flat_map(|app| app.all_dirs_to_watch())
         .filter_map(|dir| {
             let dir_str = dir.to_string();

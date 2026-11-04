@@ -289,7 +289,12 @@ impl<'a> ProjectApps<'a> {
         let mut all_apps: Vec<(usize, &ProjectAppData)> = projects
             .iter()
             .enumerate()
-            .flat_map(|(project_idx, project)| project.all_apps().map(move |p| (project_idx, p)))
+            .flat_map(|(project_idx, project)| {
+                project
+                    .project_apps
+                    .iter()
+                    .map(move |app| (project_idx, app))
+            })
             .collect();
 
         // The projects using an OTP installation share one OTP project, with
@@ -301,10 +306,10 @@ impl<'a> ProjectApps<'a> {
                     continue;
                 }
                 let otp_project_idx = projects.len() + otp_projects.len();
-                all_apps.extend(project.otp_apps().map(|app| (otp_project_idx, app)));
+                all_apps.extend(project.otp_apps.iter().map(|app| (otp_project_idx, app)));
                 otp_projects.push(elp_project_model::Project::otp(
                     project.otp.clone(),
-                    project.otp_apps().cloned().collect(),
+                    project.otp_apps.clone(),
                 ));
             }
         }

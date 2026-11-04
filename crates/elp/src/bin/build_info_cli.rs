@@ -120,7 +120,12 @@ pub(crate) fn save_project_info(
         writer.write_all(b"================project_build_data================\n")?;
         writer.write_all(format!("{:#?}\n", project.project_build_data).as_bytes())?;
         writer.write_all(b"================project_app_data================\n")?;
-        writer.write_all(format!("{:#?}\n", project.project_apps).as_bytes())?;
+        let apps: Vec<&ProjectAppData> = project
+            .project_apps
+            .iter()
+            .chain(&project.otp_apps)
+            .collect();
+        writer.write_all(format!("{apps:#?}\n").as_bytes())?;
     }
     Ok(())
 }
@@ -144,7 +149,6 @@ fn buck_targets_and_types(apps: &[ProjectAppData]) -> Vec<String> {
     };
     let mut vec = apps
         .iter()
-        .filter(|app| !app.app_type.is_shared())
         .filter(|app| app.is_buck_generated != Some(true))
         .map(|app| {
             format!(

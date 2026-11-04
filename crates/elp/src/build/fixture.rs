@@ -58,7 +58,13 @@ mod tests {
 
     fn lowered(loaded: &LoadResult, paths: &[AbsPathBuf]) -> Lowered {
         let db = loaded.analysis_host.raw_database();
-        let mut apps = loaded.project.project_apps.clone();
+        let project = &loaded.project;
+        let mut apps: Vec<ProjectAppData> = project
+            .project_apps
+            .iter()
+            .chain(&project.otp_apps)
+            .cloned()
+            .collect();
         apps.sort_by(|a, b| a.name.0.cmp(&b.name.0));
         for app in &mut apps {
             // The rebar loader collects the apps' parent directories in a
@@ -144,10 +150,10 @@ mod tests {
             app_b,
         ];
         let mut project = Project::empty(otp.clone());
-        project.add_apps(vec![ProjectAppData::otp_app_data(
+        project.otp_apps = vec![ProjectAppData::otp_app_data(
             "comp-1.0",
             &root.join("otp/lib/comp-1.0"),
-        )]);
+        )];
         project.add_apps(RebarProject::add_app_includes(apps, &[], &otp.lib_dir));
         let loaded = load_project(
             &Fake::default(),

@@ -761,7 +761,12 @@ fn app_data_from_path(path: &Path) -> Option<JsonProjectAppData> {
 pub struct Project {
     pub otp: Otp,
     pub project_build_data: ProjectBuildData,
+    /// The project's own apps; for an OTP project, its installation's apps.
     pub project_apps: Vec<ProjectAppData>,
+    /// The apps of the project's OTP installation, with the `eqwalizer_support`
+    /// app bundled with ELP, which the projects using the installation share.
+    /// Empty for an OTP project.
+    pub otp_apps: Vec<ProjectAppData>,
     pub eqwalizer_config: EqwalizerConfig,
     pub buck_index: Option<Arc<BuckProjectIndex>>,
 }
@@ -797,6 +802,7 @@ impl Project {
             otp,
             project_build_data: ProjectBuildData::Otp,
             project_apps,
+            otp_apps: Vec::new(),
             eqwalizer_config: EqwalizerConfig::default(),
             buck_index: None,
         }
@@ -807,6 +813,7 @@ impl Project {
             otp,
             project_build_data: ProjectBuildData::Rebar(Default::default()),
             project_apps: Vec::default(),
+            otp_apps: Vec::default(),
             eqwalizer_config: EqwalizerConfig::default(),
             buck_index: None,
         }
@@ -816,29 +823,10 @@ impl Project {
         self.project_apps.extend(apps);
     }
 
-    pub fn all_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
-        match &self.project_build_data {
-            ProjectBuildData::Otp => Either::Left(self.otp_apps()),
-            _ => Either::Right(self.non_otp_apps()),
-        }
-    }
-
-    pub fn non_otp_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
-        self.project_apps
-            .iter()
-            .filter(|app| !app.app_type.is_shared())
-    }
-
     fn deps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         self.project_apps
             .iter()
             .filter(|app| app.app_type == AppType::ThirdParty)
-    }
-
-    pub fn otp_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
-        self.project_apps
-            .iter()
-            .filter(|app| app.app_type.is_shared())
     }
 
     pub fn root(&self) -> Cow<'_, AbsPathBuf> {
@@ -865,7 +853,7 @@ impl Project {
     }
 
     pub fn as_json(&self, root: AbsPathBuf) -> JsonConfig {
-        let project_app_data = self.non_otp_apps().cloned().collect::<Vec<_>>();
+        let project_app_data = self.project_apps.clone();
         let root_without_file = if <AbsPath as AsRef<Utf8Path>>::as_ref(&root).is_file() {
             root.parent().unwrap_or(&root).to_path_buf()
         } else {
@@ -938,12 +926,6 @@ impl AppType {
     /// Whether the project depends on the app rather than building it.
     pub fn is_dep(self) -> bool {
         self != AppType::Project
-    }
-
-    /// Whether the app is loaded once and shared by the projects using an OTP
-    /// installation, rather than belonging to one project.
-    pub fn is_shared(self) -> bool {
-        matches!(self, AppType::Otp | AppType::Bundled)
     }
 }
 
@@ -1101,7 +1083,7 @@ impl Project {
         query_config: &BuckQueryConfig,
         report_progress: &impl Fn(&str),
     ) -> Result<Project> {
-        let (project_build_info, mut project_apps, otp_root, buck_index) = match manifest {
+        let (project_build_info, project_apps, otp_root, buck_index) = match manifest {
             ProjectManifest::Rebar(rebar_setting) => {
                 let cache_key = format!(
                     "{}:{}",
@@ -1193,14 +1175,14 @@ impl Project {
             }
         };
 
-        let (otp, otp_project_apps) = Otp::discover(otp_root, &elp_config.otp);
-        project_apps.extend(otp_project_apps);
-        project_apps.push(eqwalizer_support::bundled_app(&otp));
+        let (otp, mut otp_apps) = Otp::discover(otp_root, &elp_config.otp);
+        otp_apps.push(eqwalizer_support::bundled_app(&otp));
         report_progress("Project info loaded");
         Ok(Project {
             otp,
             project_build_data: project_build_info,
             project_apps,
+            otp_apps,
             eqwalizer_config: elp_config.eqwalizer.clone(),
             buck_index,
         })
@@ -1970,6 +1952,49 @@ mod tests {
         } else {
             panic!()
         }
+    }
+
+    #[test]
+    fn a_loaded_project_keeps_its_otp_installations_apps_apart() {
+        let spec = r#"
+        //- /.elp.toml
+        [build_info]
+        file = "info.json"
+        //- /info.json
+        {
+            "apps": [{"name": "app_a", "dir": "app_a", "src_dirs": ["src"]}],
+            "deps": [{"name": "dep_a", "dir": "dep_a", "src_dirs": ["src"]}]
+        }
+        //- /app_a/src/app.erl
+        -module(app).
+        //- /dep_a/src/dep.erl
+        -module(dep).
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let (elp_config, manifest) = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        )
+        .unwrap();
+        let project = Project::load(
+            &manifest,
+            &elp_config,
+            &BuckQueryConfig::BuildGeneratedCode,
+            &|_| {},
+        )
+        .unwrap();
+        let names = |apps: &[ProjectAppData]| -> Vec<String> {
+            apps.iter()
+                .map(|app| app.name.as_str().to_string())
+                .collect()
+        };
+
+        assert_eq_expected!(vec!["app_a", "dep_a"], names(&project.project_apps));
+        let otp_apps = names(&project.otp_apps);
+        assert!(
+            otp_apps.contains(&"stdlib".to_string())
+                && otp_apps.contains(&"eqwalizer_support".to_string()),
+            "the OTP apps and the bundled app should be the OTP installation's: {otp_apps:?}"
+        );
     }
 
     #[test]

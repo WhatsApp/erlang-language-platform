@@ -639,15 +639,13 @@ pub(crate) mod tests {
         project.otp = Otp {
             lib_dir: path(lib_dir),
         };
-        project.add_apps(
-            otp_apps
-                .iter()
-                .map(|name| {
-                    let dir = path(&format!("{lib_dir}/{name}-1.0"));
-                    ProjectAppData::otp_app_data(&format!("{name}-1.0"), &dir)
-                })
-                .collect(),
-        );
+        project.otp_apps = otp_apps
+            .iter()
+            .map(|name| {
+                let dir = path(&format!("{lib_dir}/{name}-1.0"));
+                ProjectAppData::otp_app_data(&format!("{name}-1.0"), &dir)
+            })
+            .collect();
         project
     }
 
