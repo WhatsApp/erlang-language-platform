@@ -34,6 +34,7 @@ use fxhash::FxBuildHasher;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use indexmap::IndexMap;
+use indexmap::IndexSet;
 use indexmap::indexset;
 use parking_lot::Mutex;
 use paths::AbsPath;
@@ -863,7 +864,7 @@ impl BuckTargetBare {
             app_name: bare.app_name,
             suite: bare.suite.map(|tgt| cells.make_absolute(&tgt)),
             srcs,
-            includes: includes_directories_only(&cells.make_all_absolute(&bare.includes)),
+            includes: cells.make_all_absolute(&bare.includes),
             labels,
             gen_srcs: vec![],
             deps,
@@ -939,20 +940,18 @@ impl Target {
         }
     }
 
-    fn include_dirs(&self) -> Vec<AbsPathBuf> {
-        let mut include_dirs = FxHashSet::from_iter(
-            self.include_files
-                .iter()
-                .map(|path| include_path_from_file(path)),
-        );
-        if self.private_header {
-            self.src_files.iter().for_each(|path| {
-                if Some("hrl") == path.extension() {
-                    include_dirs.insert(include_path_from_file(path));
-                }
-            });
-        }
-        include_dirs.iter().cloned().collect()
+    /// The directories of the target's public headers, then of its private
+    /// ones, each once, however many of its headers it holds.
+    fn include_dirs(&self) -> IndexSet<AbsPathBuf> {
+        let private_headers = self
+            .src_files
+            .iter()
+            .filter(|path| self.private_header && path.extension() == Some("hrl"));
+        self.include_files
+            .iter()
+            .chain(private_headers)
+            .map(|path| include_path_from_file(path))
+            .collect()
     }
 }
 
@@ -963,20 +962,6 @@ pub enum TargetType {
     //rebar3's deps
     ThirdParty,
     ErlangTestUtils,
-}
-
-fn includes_directories_only(includes: &[String]) -> Vec<String> {
-    let mut set = FxHashSet::default();
-    for inc in includes {
-        let full_path = Path::new(inc);
-        let path = full_path
-            .extension()
-            .and_then(|_| full_path.parent())
-            .and_then(|p| p.to_str())
-            .unwrap_or(inc);
-        set.insert(path);
-    }
-    set.iter().map(|s| s.to_string()).collect()
 }
 
 fn load_buck_targets_bxl(
@@ -1550,23 +1535,10 @@ fn targets_to_project_data_bxl(
     let mut result: Vec<ProjectAppData> = vec![];
 
     for target in targets.values() {
-        target.include_files.iter().for_each(|inc: &AbsPathBuf| {
-            // TODO: make a FXHashSet of include paths, and use that to update the mapping
-            let include_path = include_path_from_file(inc);
+        for dir in target.include_dirs() {
             buck_index
                 .includes
-                .update_mapping_from_path(&target.app_name.0, include_path);
-        });
-
-        if target.private_header {
-            target.src_files.iter().for_each(|path: &AbsPathBuf| {
-                if Some("hrl") == path.extension() {
-                    let include_path = include_path_from_file(path);
-                    buck_index
-                        .includes
-                        .update_mapping_from_path(&target.app_name.0, include_path);
-                }
-            });
+                .update_mapping_from_path(&target.app_name.0, dir);
         }
     }
 
@@ -1639,7 +1611,7 @@ fn targets_to_project_data_bxl(
             dir: target.dir.clone(),
             ebin: None,
             extra_src_dirs: extra_src_dirs.into_iter().collect(),
-            include_dirs: target.include_dirs(),
+            include_dirs: target.include_dirs().into_iter().collect(),
             abs_src_dirs: abs_src_dirs.into_iter().collect(),
             macros,
             parse_transforms: vec![],
@@ -1671,7 +1643,7 @@ fn targets_to_project_data_bxl(
 }
 
 fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {
-    // The bxl query returns directories already, do not parent unless it is a file
+    // A path without an extension is taken to be a directory already.
     let parent = if path.extension().is_some() {
         path.parent()
     } else {
@@ -1746,6 +1718,7 @@ mod tests {
     use parking_lot::Mutex;
     use parking_lot::MutexGuard;
     use paths::AbsPath;
+    use paths::AbsPathBuf;
     use paths::Utf8Path;
     use serde_json::Value;
 
@@ -1757,6 +1730,8 @@ mod tests {
     use crate::buck::BuckTarget;
     use crate::buck::BuckTargetBare;
     use crate::buck::DepKind;
+    use crate::buck::Target;
+    use crate::buck::TargetType;
     use crate::buck::buck_path_to_abs_path;
     use crate::buck::find_app_root_bxl;
     use crate::buck::parse_atom_list;
@@ -2292,6 +2267,94 @@ mod tests {
         assert_eq!(expected, actual)
     }
 
+    /// A target of the quick load, from `buck2 targets`, that declares only
+    /// headers.
+    fn quick_load_header_only_target() -> BuckTarget {
+        let bare: BuckTargetBare = serde_json::from_str(
+            r#"{
+                 "name": "a",
+                 "buck.package": "cell//a",
+                 "buck.type": "prelude//rules.bzl:erlang_app",
+                 "includes": ["cell//a/include/a.hrl", "cell//a/include/b.hrl"]
+               }"#,
+        )
+        .unwrap();
+        let cells = BuckCellInfo {
+            cells: FxHashMap::from_iter([("cell".to_string(), "/cell".to_string())]),
+        };
+        BuckTargetBare::as_buck_target(bare, &cells)
+    }
+
+    #[test]
+    fn the_quick_load_keeps_header_files() {
+        let target = quick_load_header_only_target();
+        assert_eq_expected!(
+            vec!["/cell/a/include/a.hrl", "/cell/a/include/b.hrl"],
+            target.includes
+        );
+    }
+
+    #[test]
+    fn a_header_only_target_has_the_same_directory_on_both_loads() {
+        let _guard = set_test_cell_info(vec![("cell".to_string(), "/cell".to_string())]);
+        let quick = quick_load_header_only_target();
+        // The bxl reports the same headers, as absolute paths.
+        let bxl = BuckTarget {
+            name: "a".to_string(),
+            app_name: None,
+            suite: None,
+            srcs: vec![],
+            includes: vec![
+                "/cell/a/include/a.hrl".to_string(),
+                "/cell/a/include/b.hrl".to_string(),
+            ],
+            gen_srcs: vec![],
+            labels: FxHashSet::default(),
+            deps: vec![],
+            apps: vec![],
+            included_apps: vec![],
+            extra_includes: vec![],
+            extra_properties: None,
+        };
+        let root = AbsPath::assert(Utf8Path::new("/cell"));
+        let label = "cell//a:a".to_string();
+
+        let expected_dir = Some(AbsPathBuf::assert("/cell/a/include".into()));
+        assert_eq_expected!(expected_dir, find_app_root_bxl(root, &label, &bxl));
+        assert_eq_expected!(expected_dir, find_app_root_bxl(root, &label, &quick));
+    }
+
+    #[test]
+    fn a_targets_include_directories_come_once_public_ones_first() {
+        let path = |path: &str| AbsPathBuf::assert(path.into());
+        let target = Target {
+            name: "cell//app:app".to_string(),
+            app_name: AppName("app".to_string()),
+            dir: path("/cell/app"),
+            src_files: vec![
+                path("/cell/app/src/app.erl"),
+                path("/cell/app/src/private.hrl"),
+            ],
+            include_files: ["b.hrl", "a.hrl", "c.hrl"]
+                .map(|header| path(&format!("/cell/app/include/{header}")))
+                .into(),
+            gen_src_files: vec![],
+            deps: vec![],
+            apps: vec![],
+            included_apps: vec![],
+            extra_includes: vec![],
+            distributed_apps: vec![],
+            ebin: None,
+            target_type: TargetType::ErlangApp,
+            private_header: true,
+            buck_generated: true,
+        };
+
+        let expected_dirs = vec![path("/cell/app/include"), path("/cell/app/src")];
+        let dirs: Vec<AbsPathBuf> = target.include_dirs().into_iter().collect();
+        assert_eq_expected!(expected_dirs, dirs);
+    }
+
     fn set_test_cell_info<'a>(cells: Vec<(String, String)>) -> MutexGuard<'a, ()> {
         /// Lock to be taken in a test using the BUCK_CELL_INFO, so it
         /// is not updated by a test running in parallel
@@ -2545,7 +2608,7 @@ mod tests {
                         "cell//linter/app_a/src/spelling.erl",
                     ],
                     includes: [
-                        "cell//linter/app_a/include",
+                        "cell//linter/app_a/include/app_a.hrl",
                     ],
                     gen_srcs: [],
                     labels: {
