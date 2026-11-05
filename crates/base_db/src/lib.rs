@@ -580,20 +580,19 @@ fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
         for file_id in source_root.iter() {
             if db.file_kind(file_id).is_module()
                 && let Some(app) = db.file_app(file_id)
-                && let Some((file_id, file_source, path)) = source_root.file_info(db, file_id, app)
+                && let Some(path) = source_root.path_for_file(&file_id)
+                && app.file_source(db, path).is_some()
                 && let Some((name, Some("erl"))) = path.name_and_extension()
             {
-                builder.insert(file_id, file_source, ModuleName::new(name));
+                builder.insert(file_id, ModuleName::new(name));
             }
         }
     }
 
-    if let Some(otp) = project.otp(db) {
-        if otp == project {
-            builder.is_otp()
-        } else {
-            builder.set_otp(db.module_index(otp))
-        }
+    if let Some(otp) = project.otp(db)
+        && otp != project
+    {
+        builder.set_otp(db.module_index(otp))
     }
 
     builder.build()
@@ -930,6 +929,12 @@ pub fn module_name(db: &dyn RootQueryDb, file_id: FileId) -> Option<ModuleName> 
     let _ = stdx::panic_context::enter(format!("\nmodule_name: {file_id:?}"));
     let module_index = db.module_index(db.file_app(file_id)?.project(db));
     module_index.module_for_file(file_id).cloned()
+}
+
+/// Whether the file is one of its app's sources or extra sources, or neither.
+pub fn file_source(db: &dyn RootQueryDb, file_id: FileId) -> Option<FileSource> {
+    db.file_app(file_id)?
+        .file_source(db, db.file(file_id).path(db))
 }
 
 static IGNORED_SOURCES: LazyLock<Vec<Regex>> = LazyLock::new(|| {

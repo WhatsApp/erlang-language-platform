@@ -535,7 +535,7 @@ pub(crate) fn do_eqwalize(
                 .iter_own()
                 .par_bridge()
                 .progress_with(pb.clone())
-                .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
+                .map_with(analysis.clone(), |analysis, (name, file_id)| {
                     if analysis.should_eqwalize(file_id).unwrap()
                         && !otp_file_to_ignore(analysis, file_id)
                     {
@@ -556,7 +556,7 @@ pub(crate) fn do_eqwalize(
             let module_index = analysis.module_index(loaded.project_input)?;
             module_index
                 .iter_own()
-                .filter_map(|(_name, _source, file_id)| {
+                .filter_map(|(_name, file_id)| {
                     if analysis.file_app_name(file_id).ok()? == Some(AppName(app.clone()))
                         && analysis.should_eqwalize(file_id).unwrap()
                         && !otp_file_to_ignore(analysis, file_id)
@@ -671,12 +671,12 @@ pub fn eqwalize_stats(
     let pb = cli.progress(module_index.len_own() as u64, "Computing stats");
     // Sort biggest modules first to reduce long-tail in parallel processing
     let mut modules: Vec<_> = module_index.iter_own().collect();
-    sort_by_file_size_descending(analysis, &mut modules, |m| m.2);
+    sort_by_file_size_descending(analysis, &mut modules, |m| m.1);
     let stats: FxHashMap<FileId, (ModuleName, Vec<Diagnostic>)> = modules
         .into_iter()
         .par_bridge()
         .progress_with(pb.clone())
-        .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
+        .map_with(analysis.clone(), |analysis, (name, file_id)| {
             if analysis.should_eqwalize(file_id).expect("cancelled")
                 && !otp_file_to_ignore(analysis, file_id)
             {

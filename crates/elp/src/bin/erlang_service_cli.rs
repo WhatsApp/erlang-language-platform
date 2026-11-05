@@ -124,7 +124,7 @@ pub fn do_parse_all(
 
     // Sort biggest modules first to reduce long-tail in parallel processing
     let mut modules: Vec<_> = module_index.iter_own().collect();
-    sort_by_file_size_descending(&analysis, &mut modules, |m| m.2);
+    sort_by_file_size_descending(&analysis, &mut modules, |m| m.1);
 
     let pb = cli.progress(file_cnt as u64, "Parsing modules");
     let mut result = modules
@@ -133,7 +133,7 @@ pub fn do_parse_all(
         .progress_with(pb)
         .map_with(
             loaded.analysis(),
-            move |db, (name, _, file_id)| -> Result<Vec<ParseDiagnostic>> {
+            move |db, (name, file_id)| -> Result<Vec<ParseDiagnostic>> {
                 let empty = Ok(vec![]);
                 match module {
                     Some(module) if module != name.as_str() => {

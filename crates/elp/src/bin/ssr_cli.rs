@@ -392,31 +392,28 @@ fn do_parse_all_streaming(
     // Collect modules into an owned vector
     let mut modules: Vec<_> = module_index
         .iter_own()
-        .map(|(name, source, file_id)| (name.as_str().to_string(), source, file_id))
+        .map(|(name, file_id)| (name.as_str().to_string(), file_id))
         .collect();
 
     // Sort biggest modules first to reduce long-tail in parallel processing
-    sort_by_file_size_descending(analysis, &mut modules, |m| m.2);
+    sort_by_file_size_descending(analysis, &mut modules, |m| m.1);
 
     thread::spawn(move || {
         modules
             .into_iter()
             .par_bridge()
-            .map_with(
-                (analysis_clone, tx),
-                |(db, tx), (module_name, _file_source, file_id)| {
-                    if !otp_file_to_ignore(db, file_id)
-                        && !matches!(db.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep())
-                        && (app_name.is_none()
-                            || db.file_app_name(file_id).ok().as_ref() == Some(&app_name))
-                        && let Ok(Some(result)) =
-                            do_parse_one(db, &config_clone, file_id, &module_name, &args_clone)
-                    {
-                        // Send result through channel
-                        let _ = tx.send(result);
-                    }
-                },
-            )
+            .map_with((analysis_clone, tx), |(db, tx), (module_name, file_id)| {
+                if !otp_file_to_ignore(db, file_id)
+                    && !matches!(db.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep())
+                    && (app_name.is_none()
+                        || db.file_app_name(file_id).ok().as_ref() == Some(&app_name))
+                    && let Ok(Some(result)) =
+                        do_parse_one(db, &config_clone, file_id, &module_name, &args_clone)
+                {
+                    // Send result through channel
+                    let _ = tx.send(result);
+                }
+            })
             .for_each(|_| {}); // Consume the iterator
         // Channel is dropped here, signaling end of results
     });

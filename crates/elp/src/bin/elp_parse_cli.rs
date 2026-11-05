@@ -404,7 +404,7 @@ fn do_parse_all_par(
 
     // Sort biggest modules first to reduce long-tail in parallel processing
     let mut modules: Vec<_> = module_index.iter_own().collect();
-    sort_by_file_size_descending(&analysis, &mut modules, |m| m.2);
+    sort_by_file_size_descending(&analysis, &mut modules, |m| m.1);
 
     let pb = cli.progress(modules.len() as u64, "Parsing modules");
 
@@ -412,9 +412,9 @@ fn do_parse_all_par(
         .into_iter()
         .par_bridge()
         .progress_with(pb)
-        .map_with(analysis, |db, (module_name, file_source, file_id)| {
+        .map_with(analysis, |db, (module_name, file_id)| {
             if !otp_file_to_ignore(db, file_id)
-                && file_source == FileSource::Src
+                && matches!(db.file_source(file_id), Ok(Some(FileSource::Src)))
                 && !matches!(db.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep())
             {
                 do_parse_one(db, config, to, file_id, module_name.as_str()).unwrap()
@@ -443,9 +443,9 @@ fn do_parse_all_seq(
     let db = loaded.analysis();
     Ok(module_iter
         .progress_with(pb)
-        .flat_map(|(module_name, file_source, file_id)| {
+        .flat_map(|(module_name, file_id)| {
             if !otp_file_to_ignore(&db, file_id)
-                && file_source == FileSource::Src
+                && matches!(db.file_source(file_id), Ok(Some(FileSource::Src)))
                 && !matches!(db.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep())
             {
                 do_parse_one(&db, config, to, file_id, module_name.as_str()).unwrap()
@@ -517,7 +517,7 @@ fn dump_includes_resolutions(
 
     // Sort biggest modules first to reduce long-tail in parallel processing
     let mut modules: Vec<_> = module_index.iter_own().collect();
-    sort_by_file_size_descending(&analysis, &mut modules, |m| m.2);
+    sort_by_file_size_descending(&analysis, &mut modules, |m| m.1);
 
     let pb = cli.progress(modules.len() as u64, "Analyzing include resolutions");
 
@@ -525,9 +525,9 @@ fn dump_includes_resolutions(
         .into_iter()
         .par_bridge()
         .progress_with(pb)
-        .map_with(analysis, |db, (_module_name, file_source, file_id)| {
+        .map_with(analysis, |db, (_module_name, file_id)| {
             if !otp_file_to_ignore(db, file_id)
-                && file_source == FileSource::Src
+                && matches!(db.file_source(file_id), Ok(Some(FileSource::Src)))
                 && !matches!(db.file_app_type(file_id), Ok(Some(app_type)) if app_type.is_dep())
             {
                 if is_project_file(db, file_id) {

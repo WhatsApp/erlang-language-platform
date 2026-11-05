@@ -44,6 +44,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
+use elp_ide_db::elp_base_db::FileSource;
 use elp_ide_db::elp_base_db::IncludeFileIndex;
 use elp_ide_db::elp_base_db::LineEndings;
 use elp_ide_db::elp_base_db::ModuleIndex;
@@ -53,6 +54,8 @@ use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::VfsPath;
 use elp_ide_db::elp_base_db::Workspace;
+use elp_ide_db::elp_base_db::file_source;
+use elp_ide_db::elp_base_db::module_name;
 use elp_ide_db::elp_base_db::salsa;
 use elp_ide_db::eqwalizer::type_references;
 use elp_ide_db::erlang_service::ParseResult;
@@ -438,13 +441,7 @@ impl Analysis {
 
     /// Returns module name
     pub fn module_name(&self, file_id: FileId) -> Cancellable<Option<ModuleName>> {
-        self.with_db(|db| {
-            // Context for T171541590
-            let _ = stdx::panic_context::enter(format!("\nmodule_name: {file_id:?}"));
-            db.module_index(db.file_app(file_id)?.project(db))
-                .module_for_file(file_id)
-                .cloned()
-        })
+        self.with_db(|db| module_name(db, file_id))
     }
 
     pub fn module_index(&self, project: Project) -> Cancellable<Arc<ModuleIndex>> {
@@ -503,6 +500,11 @@ impl Analysis {
     /// Returns the app_type for a file
     pub fn file_app_type(&self, file_id: FileId) -> Cancellable<Option<AppType>> {
         self.with_db(|db| db.file_app_type(file_id))
+    }
+
+    /// Whether the file is one of its app's sources or extra sources, or neither.
+    pub fn file_source(&self, file_id: FileId) -> Cancellable<Option<FileSource>> {
+        self.with_db(|db| file_source(db, file_id))
     }
 
     /// Returns the FileKind for a file

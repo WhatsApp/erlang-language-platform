@@ -1997,7 +1997,7 @@ impl Server {
                     }
                 };
 
-                for (_, _, file_id) in module_index.iter_own() {
+                for (_, file_id) in module_index.iter_own() {
                     files.push(file_id);
                 }
             }

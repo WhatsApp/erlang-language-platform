@@ -72,17 +72,6 @@ impl SourceRoot {
     pub fn iter(&self) -> impl Iterator<Item = FileId> + '_ {
         self.file_set.iter()
     }
-
-    pub fn file_info(
-        &self,
-        db: &dyn RootQueryDb,
-        file_id: FileId,
-        app: App,
-    ) -> Option<(FileId, FileSource, &VfsPath)> {
-        let path = self.path_for_file(&file_id)?;
-        let source = app.file_source(db, path)?;
-        Some((file_id, source, path))
-    }
 }
 
 /// The loaded projects.

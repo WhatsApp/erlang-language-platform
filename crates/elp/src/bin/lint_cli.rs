@@ -534,8 +534,8 @@ fn do_diagnostics_all(
     // Collect modules into an owned vector, pre-filtering by path, app, etc.
     let project_modules: Vec<(String, FileId)> = module_index
         .iter_own()
-        .filter(|&(_name, _source, file_id)| should_lint(file_id))
-        .map(|(name, _source, file_id)| (name.as_str().to_string(), file_id))
+        .filter(|&(_name, file_id)| should_lint(file_id))
+        .map(|(name, file_id)| (name.as_str().to_string(), file_id))
         .collect();
 
     // Header files have no module index entry, so enumerate them from the

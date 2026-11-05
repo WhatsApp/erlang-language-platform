@@ -923,7 +923,7 @@ mod tests {
             .unwrap();
         let file_ids: Vec<FileId> = module_index
             .iter_own()
-            .filter_map(|(_name, _source, file_id)| {
+            .filter_map(|(_name, file_id)| {
                 if analysis.file_app_name(file_id).ok()? == Some(AppName(app.into())) {
                     Some(file_id)
                 } else {
