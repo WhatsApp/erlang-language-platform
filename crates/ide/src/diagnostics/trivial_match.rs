@@ -548,6 +548,29 @@ mod tests {
     }
 
     #[test]
+    fn var_bound_in_case_arm_before_nested_case_is_not_trivial() {
+        // Regression test for #122: `Foo` is bound in both arms and used after
+        // the `case`, so neither match is redundant. The nested `case` in the
+        // first arm is what makes this differ from `trivial_var_matches`.
+        check_diagnostics(
+            r#"
+            -module(main).
+
+            main(X) ->
+                case X of
+                    a ->
+                        Foo = foo,
+                        Bar = case undefined of undefined -> undefined end;
+                    b ->
+                        Foo = bar,
+                        Bar = baz
+                end,
+                #{foo => Foo, bar => Bar}.
+            "#,
+        )
+    }
+
+    #[test]
     fn macro_arg_uses_variable_no_expansion() {
         check_diagnostics(
             r#"
