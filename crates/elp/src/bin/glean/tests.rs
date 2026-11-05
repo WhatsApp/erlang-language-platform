@@ -1280,7 +1280,7 @@ fn loaded_files_are_numbered_in_path_order() {
         .iter_mut()
         .find(|app| app.name.0 == "app")
         .unwrap();
-    app.applicable_files = Some(FxHashSet::from_iter(listed.clone()));
+    app.srcs = listed.to_vec();
 
     let loaded = load::load_project(
         &Fake::default(),

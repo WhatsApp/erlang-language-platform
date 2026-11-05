@@ -27,7 +27,6 @@ use elp_log::Logger;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::Project;
 use elp_project_model::buck::BuckQueryConfig;
-use fxhash::FxHashSet;
 use lsp_server::Connection;
 use lsp_server::ErrorCode;
 use lsp_server::Message;
@@ -583,10 +582,10 @@ fn a_listed_file_created_after_loading_gets_its_targets_app() {
         .find(|app| app.name.0 == "app_a")
         .unwrap();
     app_a.abs_src_dirs.push(project.path("app_b/src"));
-    app_a.applicable_files = Some(FxHashSet::from_iter([
+    app_a.srcs = vec![
         project.path("app_a/src/a.erl"),
         project.path("app_b/src/shared.erl"),
-    ]));
+    ];
     let mut loaded = load::load_project(
         &Fake::default(),
         model,

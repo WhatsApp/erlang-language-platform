@@ -41,7 +41,9 @@ pub(crate) fn bundled_app(otp: &Otp) -> ProjectAppData {
         parse_transforms: vec![],
         include_path: vec![otp.lib_dir.clone()],
         gen_src_files: None,
-        applicable_files: None,
+        srcs: vec![],
+        includes: vec![],
+        extra_srcs: vec![],
         is_test_target: None,
         is_buck_generated: None,
     }

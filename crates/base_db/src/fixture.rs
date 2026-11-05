@@ -32,7 +32,6 @@ use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use elp_project_model::test_fixture::RangeOrOffset;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
-use fxhash::FxHashSet;
 use paths::AbsPathBuf;
 use vfs::FileId;
 use vfs::VfsPath;
@@ -295,9 +294,9 @@ impl Fixture {
         let mut apps: Vec<ProjectAppData> = app_map.all_apps().cloned().collect();
         let mut project_buck_index = None;
 
-        // If any app has buck metadata, build a BuckProjectIndex and set
-        // applicable_files so the buck code path in resolve_remote_query
-        // is exercised.
+        // If any app has buck metadata, build a BuckProjectIndex and list the
+        // apps' files, so the buck code path in resolve_remote_query is
+        // exercised.
         if has_buck_metadata {
             let mut buck_index = BuckProjectIndex::default();
 
@@ -308,10 +307,10 @@ impl Fixture {
                         .app_deps
                         .register_app_target(app.name.clone(), target_name.clone());
 
-                    // Set applicable_files from the collected file paths
                     if let Some(paths) = app_file_paths.get(&app.name) {
-                        let file_set: FxHashSet<AbsPathBuf> = paths.iter().cloned().collect();
-                        app.applicable_files = Some(file_set);
+                        app.srcs = paths.clone();
+                        app.srcs.sort();
+                        app.srcs.dedup();
                     }
                 }
 
@@ -365,7 +364,7 @@ impl Fixture {
                 }
             }
 
-            // Update the app_map with modified apps (applicable_files set)
+            // Update the app_map with the apps given their files.
             for app in &apps {
                 app_map.update(app.clone());
             }

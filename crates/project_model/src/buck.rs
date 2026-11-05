@@ -1605,6 +1605,14 @@ fn targets_to_project_data_bxl(
                     .collect(),
             ),
         };
+        let mut src_files = target.src_files.clone();
+        src_files.sort();
+        let mut includes = target.include_files.clone();
+        includes.sort();
+        let (srcs, extra_srcs) = match target.target_type {
+            TargetType::ErlangApp | TargetType::ThirdParty => (src_files, vec![]),
+            TargetType::ErlangTest | TargetType::ErlangTestUtils => (vec![], src_files),
+        };
         let project_app_data = ProjectAppData {
             name: target.app_name.clone(),
             buck_target_name: Some(target.name.clone()),
@@ -1619,13 +1627,9 @@ fn targets_to_project_data_bxl(
             docs_url: None,
             include_path: vec![],
             gen_src_files: Some(FxHashSet::from_iter(target.gen_src_files.clone())),
-            applicable_files: Some(FxHashSet::from_iter(
-                target
-                    .src_files
-                    .iter()
-                    .cloned()
-                    .chain(target.include_files.iter().cloned()),
-            )),
+            srcs,
+            includes,
+            extra_srcs,
             is_test_target: Some(target.target_type == TargetType::ErlangTest),
             is_buck_generated: Some(target.buck_generated),
         };
@@ -1735,6 +1739,7 @@ mod tests {
     use crate::buck::buck_path_to_abs_path;
     use crate::buck::find_app_root_bxl;
     use crate::buck::parse_atom_list;
+    use crate::buck::targets_to_project_data_bxl;
     use crate::temp_dir::TempDir;
     use crate::test_fixture::FixtureWithProjectMeta;
     use crate::to_abs_path_buf;
@@ -2324,20 +2329,22 @@ mod tests {
         assert_eq_expected!(expected_dir, find_app_root_bxl(root, &label, &quick));
     }
 
-    #[test]
-    fn a_targets_include_directories_come_once_public_ones_first() {
-        let path = |path: &str| AbsPathBuf::assert(path.into());
-        let target = Target {
-            name: "cell//app:app".to_string(),
-            app_name: AppName("app".to_string()),
-            dir: path("/cell/app"),
-            src_files: vec![
-                path("/cell/app/src/app.erl"),
-                path("/cell/app/src/private.hrl"),
-            ],
-            include_files: ["b.hrl", "a.hrl", "c.hrl"]
-                .map(|header| path(&format!("/cell/app/include/{header}")))
-                .into(),
+    /// A target of the bxl load named `label`, with the given sources and
+    /// public headers.
+    fn target(
+        label: &str,
+        target_type: TargetType,
+        src_files: &[&str],
+        include_files: &[&str],
+    ) -> Target {
+        let path = |path: &&str| AbsPathBuf::assert((*path).into());
+        let (package, name) = label.split_once(':').unwrap();
+        Target {
+            name: label.to_string(),
+            app_name: AppName(name.to_string()),
+            dir: AbsPathBuf::assert(package.replace("cell//", "/cell/").into()),
+            src_files: src_files.iter().map(path).collect(),
+            include_files: include_files.iter().map(path).collect(),
             gen_src_files: vec![],
             deps: vec![],
             apps: vec![],
@@ -2345,14 +2352,66 @@ mod tests {
             extra_includes: vec![],
             distributed_apps: vec![],
             ebin: None,
-            target_type: TargetType::ErlangApp,
-            private_header: true,
+            target_type,
+            private_header: src_files.iter().any(|file| file.ends_with(".hrl")),
             buck_generated: true,
-        };
+        }
+    }
+
+    #[test]
+    fn a_targets_include_directories_come_once_public_ones_first() {
+        let path = |path: &str| AbsPathBuf::assert(path.into());
+        let target = target(
+            "cell//app:app",
+            TargetType::ErlangApp,
+            &["/cell/app/src/app.erl", "/cell/app/src/private.hrl"],
+            &[
+                "/cell/app/include/b.hrl",
+                "/cell/app/include/a.hrl",
+                "/cell/app/include/c.hrl",
+            ],
+        );
 
         let expected_dirs = vec![path("/cell/app/include"), path("/cell/app/src")];
         let dirs: Vec<AbsPathBuf> = target.include_dirs().into_iter().collect();
         assert_eq_expected!(expected_dirs, dirs);
+    }
+
+    #[test]
+    fn each_target_type_lists_its_files_as_srcs_includes_or_extra_srcs() {
+        let targets = [
+            ("cell//x:app", TargetType::ErlangApp),
+            ("cell//x:tp", TargetType::ThirdParty),
+            ("cell//x:suite", TargetType::ErlangTest),
+            ("cell//x:utils", TargetType::ErlangTestUtils),
+        ]
+        .map(|(label, target_type)| {
+            let target = target(
+                label,
+                target_type,
+                &["/cell/x/src/b.erl", "/cell/x/src/a.erl"],
+                &["/cell/x/include/x.hrl"],
+            );
+            (target.name.clone(), target)
+        });
+        let (apps, _) = targets_to_project_data_bxl(&FxHashMap::from_iter(targets));
+        let lists = |name: &str| {
+            let app = apps
+                .iter()
+                .find(|app| app.name.0 == name)
+                .unwrap_or_else(|| panic!("{name} should be an app"));
+            [&app.srcs, &app.includes, &app.extra_srcs]
+                .map(|list| list.iter().map(|path| path.as_str()).collect::<Vec<_>>())
+        };
+
+        let files = vec!["/cell/x/src/a.erl", "/cell/x/src/b.erl"];
+        let headers = vec!["/cell/x/include/x.hrl"];
+        let expected_app = [files.clone(), headers.clone(), vec![]];
+        assert_eq_expected!(expected_app, lists("app"));
+        assert_eq_expected!(expected_app, lists("tp"), "a third-party app");
+        let expected_test = [vec![], headers, files];
+        assert_eq_expected!(expected_test, lists("suite"), "a test's suite");
+        assert_eq_expected!(expected_test, lists("utils"), "an app with a test label");
     }
 
     fn set_test_cell_info<'a>(cells: Vec<(String, String)>) -> MutexGuard<'a, ()> {

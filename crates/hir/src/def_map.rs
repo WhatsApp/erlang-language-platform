@@ -1515,7 +1515,7 @@ bar() -> ok.
 
     #[test]
     fn cross_app_include_lib_in_def_map_buck() {
-        // In a buck project with include_mapping and applicable_files,
+        // In a buck project with include_mapping and listed files,
         // def_map_query must pass the originating file's app to
         // resolve_include so that the buck dependency check in
         // resolve_remote_query uses the correct app's buck_target_name.
@@ -1548,8 +1548,8 @@ bar() -> ok.
         // the same directory.
         //
         // test_mod.erl uses src_app:app_lib to place it into app_lib's
-        // SourceRoot, while app:app_test controls its app via
-        // applicable_files. The test target has a dep on app_dep
+        // SourceRoot, while app:app_test controls its app via the files
+        // it lists. The test target has a dep on app_dep
         // that the lib target does not.
         check_functions(
             r#"

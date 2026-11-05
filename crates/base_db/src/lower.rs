@@ -414,12 +414,11 @@ fn lower_app(
 /// `file_map`.
 fn app_files(db: &dyn RootQueryDb, file_map: &FileMap, loaded: &ProjectAppData) -> Arc<[File]> {
     let mut paths: Vec<VfsPath> = loaded
-        .applicable_files
-        .iter()
-        .flatten()
+        .files()
         .map(|path| VfsPath::from(path.clone()))
         .collect();
     paths.sort();
+    paths.dedup();
     paths
         .into_iter()
         .map(|path| db.file(file_map.intern(db, path)))
@@ -609,8 +608,33 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn listing(mut app: ProjectAppData, files: &[&str]) -> ProjectAppData {
-        app.applicable_files = Some(FxHashSet::from_iter(files.iter().map(|file| path(file))));
+        app.srcs = files.iter().map(|file| path(file)).collect();
         app
+    }
+
+    #[test]
+    fn an_apps_files_are_its_lists_merged_and_sorted_by_path() {
+        let mut a = listing(app("a", "/p/a"), &["/p/a/src/b.erl", "/p/a/src/a.hrl"]);
+        a.includes = vec![path("/p/a/include/a.hrl"), path("/p/a/src/a.hrl")];
+        a.extra_srcs = vec![path("/p/a/test/a_SUITE.erl")];
+        let mut model = Model::default();
+        model.lower(&[json_project("/p", vec![a])]);
+        let db = &model.db;
+
+        let files: Vec<&VfsPath> = model
+            .app_named(0, "a")
+            .files(db)
+            .iter()
+            .map(|file| file.path(db))
+            .collect();
+        let expected = [
+            "/p/a/include/a.hrl",
+            "/p/a/src/a.hrl",
+            "/p/a/src/b.erl",
+            "/p/a/test/a_SUITE.erl",
+        ]
+        .map(|file| VfsPath::from(path(file)));
+        assert_eq_expected!(expected.iter().collect::<Vec<_>>(), files);
     }
 
     fn with_macro(mut app: ProjectAppData, name: &str) -> ProjectAppData {

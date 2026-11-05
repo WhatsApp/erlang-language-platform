@@ -124,8 +124,8 @@ pub struct Fixture {
     /// When set, places this file into the named app's SourceRoot/FileSet
     /// instead of its own app's. This models the buck scenario where
     /// lib + test targets share the same directory (== source root).
-    /// The file's `app:` annotation still controls its app via
-    /// `applicable_files`.
+    /// The file's `app:` annotation still controls its app via the files
+    /// the app lists.
     pub src_app: Option<String>,
     /// Further apps this file is compiled into, on top of its own `app:`.
     /// Models a source file listed in the `srcs` of more than one Buck target.
@@ -1431,7 +1431,9 @@ bar() -> ok.
                 docs_url: None,
                 include_path: [],
                 gen_src_files: None,
-                applicable_files: None,
+                srcs: [],
+                includes: [],
+                extra_srcs: [],
                 is_test_target: None,
                 is_buck_generated: None,
             }"#]]

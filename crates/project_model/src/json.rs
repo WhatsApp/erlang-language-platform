@@ -103,7 +103,9 @@ impl JsonProjectAppData {
             docs_url: None,
             include_path: vec![],
             gen_src_files: None,
-            applicable_files: None,
+            srcs: vec![],
+            includes: vec![],
+            extra_srcs: vec![],
             is_test_target: None,
             is_buck_generated: None,
         })

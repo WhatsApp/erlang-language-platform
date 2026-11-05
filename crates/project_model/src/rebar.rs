@@ -324,7 +324,9 @@ impl RebarProject {
                 include_path: vec![],
                 abs_src_dirs,
                 gen_src_files: None,
-                applicable_files: None,
+                srcs: vec![],
+                includes: vec![],
+                extra_srcs: vec![],
                 is_test_target: None,
                 is_buck_generated: None,
             })

@@ -41,7 +41,6 @@ mod tests {
     use elp_project_model::buck::BuckQueryConfig;
     use elp_project_model::otp::Otp;
     use elp_project_model::rebar::RebarProject;
-    use fxhash::FxHashSet;
 
     use super::load_result;
     use crate::build::load::LoadConfig;
@@ -139,7 +138,7 @@ mod tests {
         };
         let mut app_b = app("app_b", root.join("app_b"), vec![]);
         app_b.buck_target_name = Some("cell//app_b:app_b".to_string());
-        app_b.applicable_files = Some(FxHashSet::from_iter([paths[3].clone()]));
+        app_b.srcs = vec![paths[3].clone()];
         let apps = vec![
             app("test-fixture", root.clone(), vec![]),
             app(

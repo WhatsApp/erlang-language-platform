@@ -979,9 +979,13 @@ pub struct ProjectAppData {
     // Originating from buck2 model, the set of specific input files
     // this data was generated from.
     pub gen_src_files: Option<FxHashSet<AbsPathBuf>>,
-    // Originating from buck2 model, the set of specific files this
-    // data applies to.
-    pub applicable_files: Option<FxHashSet<AbsPathBuf>>,
+    /// Modules, escripts and private headers, sorted. Only the Buck loaders
+    /// list files.
+    pub srcs: Vec<AbsPathBuf>,
+    /// Public headers, sorted.
+    pub includes: Vec<AbsPathBuf>,
+    /// Test suites and helpers, and their headers, sorted.
+    pub extra_srcs: Vec<AbsPathBuf>,
     pub is_test_target: Option<bool>,
     /// Generated as part of the buck build process, via elp.bxl
     /// Specifically not related to any marker tags in files
@@ -1014,7 +1018,9 @@ impl ProjectAppData {
             include_path: vec![],
             abs_src_dirs: src_dirs,
             gen_src_files: None,
-            applicable_files: None,
+            srcs: vec![],
+            includes: vec![],
+            extra_srcs: vec![],
             is_test_target: None,
             is_buck_generated: None,
         }
@@ -1043,10 +1049,20 @@ impl ProjectAppData {
             include_path: vec![include, src, parent],
             abs_src_dirs: vec![abs_src_dir],
             gen_src_files: None,
-            applicable_files: None,
+            srcs: vec![],
+            includes: vec![],
+            extra_srcs: vec![],
             is_test_target: None,
             is_buck_generated: None,
         }
+    }
+
+    /// The files the loader lists for the app, in its three lists.
+    pub fn files(&self) -> impl Iterator<Item = &AbsPathBuf> {
+        self.srcs
+            .iter()
+            .chain(&self.includes)
+            .chain(&self.extra_srcs)
     }
 
     pub fn include_dirs(&self) -> Vec<AbsPathBuf> {

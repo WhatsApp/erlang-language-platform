@@ -193,9 +193,7 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
     let mut files = FxHashSet::default();
     project_apps.all_apps.iter().for_each(|(_, app)| {
         app_dirs.extend(app.all_source_dirs());
-        if let Some(applicable_files) = app.applicable_files.as_ref() {
-            files.extend(applicable_files.clone());
-        }
+        files.extend(app.files().cloned());
         include_dirs.extend(app.include_dirs.clone());
     });
 
@@ -501,7 +499,7 @@ mod tests {
             vec![AbsPathBuf::assert("/app/src".into())],
             vec![],
         );
-        app.applicable_files = Some(FxHashSet::from_iter([listed.clone()]));
+        app.srcs = vec![listed.clone()];
         let mut project = Project::empty(Otp {
             lib_dir: AbsPathBuf::assert("/otp".into()),
         });
