@@ -320,6 +320,7 @@ impl RebarProject {
                 macros: into_macros(map_pop(&mut term, "macros")?)?,
                 parse_transforms: into_vec(map_pop(&mut term, "parse_transforms")?)?,
                 app_type: is_dep,
+                docs_url: None,
                 include_path: vec![],
                 abs_src_dirs,
                 gen_src_files: None,

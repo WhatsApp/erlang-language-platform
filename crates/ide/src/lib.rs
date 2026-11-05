@@ -124,6 +124,7 @@ pub use codemod_helpers::FunctionMatch;
 pub use codemod_helpers::MFA;
 pub use common_test::GroupName;
 pub use doc_links::DocLink;
+pub use doc_links::module_doc_link;
 pub use document_symbols::DocumentSymbol;
 pub use elp_ide_assists;
 pub use elp_ide_completion;

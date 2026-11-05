@@ -100,6 +100,7 @@ impl JsonProjectAppData {
             macros,
             parse_transforms: vec![],
             app_type,
+            docs_url: None,
             include_path: vec![],
             gen_src_files: None,
             applicable_files: None,

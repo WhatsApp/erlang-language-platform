@@ -20,6 +20,7 @@ use elp_project_model::buck::BuckProjectIndex;
 use elp_project_model::buck::TargetFullName;
 use paths::Utf8Path;
 use salsa::plumbing::AsId;
+use url::Url;
 use vfs::AbsPath;
 use vfs::AbsPathBuf;
 use vfs::FileId;
@@ -150,6 +151,10 @@ pub struct App {
     /// the BEAM files, and hover docs come from their EEP-48 chunks.
     #[returns(ref)]
     pub ebin: Option<AbsPathBuf>,
+    /// The URL the documentation pages of the app's modules, `<module>.html`,
+    /// are under.
+    #[returns(ref)]
+    pub docs_url: Option<Arc<Url>>,
     #[returns(ref)]
     pub buck_target_name: Option<TargetFullName>,
     #[returns(ref)]

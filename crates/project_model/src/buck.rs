@@ -1644,6 +1644,7 @@ fn targets_to_project_data_bxl(
             macros,
             parse_transforms: vec![],
             app_type: target.app_type(),
+            docs_url: None,
             include_path: vec![],
             gen_src_files: Some(FxHashSet::from_iter(target.gen_src_files.clone())),
             applicable_files: Some(FxHashSet::from_iter(

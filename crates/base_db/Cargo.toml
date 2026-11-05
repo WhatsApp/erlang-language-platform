@@ -26,6 +26,7 @@ salsa.workspace = true
 salsa-macros.workspace = true
 smallvec.workspace = true
 stdx.workspace = true
+url.workspace = true
 vfs.workspace = true
 
 [lints]

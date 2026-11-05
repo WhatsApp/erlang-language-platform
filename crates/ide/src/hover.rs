@@ -69,6 +69,7 @@ mod tests {
             r#"
 //- /opt/lib/stdlib-3.17/src/lists.erl otp_app:/opt/lib/stdlib-3.17
 -module(lists).
+-moduledoc "List processing functions.".
 -export([reverse/1]).
 reverse([]) -> [].
 

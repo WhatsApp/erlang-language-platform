@@ -85,6 +85,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::sync::Arc;
 use std::sync::LazyLock;
 
 use paths::AbsPath;
@@ -95,6 +96,7 @@ use regex::Regex;
 pub use stdx::trim_indent;
 use text_size::TextRange;
 use text_size::TextSize;
+use url::Url;
 
 use crate::AppName;
 use crate::AppType;
@@ -331,6 +333,7 @@ impl FixtureWithProjectMeta {
     //- /opt/lib/comp-1.3/include/comp.hrl otp_app:/opt/lib/comp-1.3
     //- /my_app/test/file_SUITE.erl extra:test
     //- /dep/src/dep.erl app:dep app_type:third_party
+    //- /src/m.erl docs_url:https://example.com/docs
     fn parse_meta_line(meta: &str) -> Fixture {
         assert!(meta.starts_with("//-"));
         let meta = meta["//-".len()..].trim();
@@ -354,6 +357,7 @@ impl FixtureWithProjectMeta {
         let mut src_app = None;
         let mut also_apps = Vec::new();
         let mut app_type = None;
+        let mut docs_url = None;
 
         for component in components[1..].iter() {
             let (key, value) = component
@@ -403,6 +407,11 @@ impl FixtureWithProjectMeta {
                         }
                     }
                 }
+                "docs_url" => {
+                    docs_url = Some(Arc::new(
+                        Url::parse(value).expect("docs_url should be a URL"),
+                    ))
+                }
                 "app_type" => match value {
                     "third_party" => app_type = Some(AppType::ThirdParty),
                     _ => panic!("unsupported app_type: {value:?}, use otp_app for OTP apps"),
@@ -438,6 +447,9 @@ impl FixtureWithProjectMeta {
         }
         if let Some(app_type) = app_type {
             app_data.app_type = app_type;
+        }
+        if docs_url.is_some() {
+            app_data.docs_url = docs_url;
         }
 
         Fixture {
@@ -1416,6 +1428,7 @@ bar() -> ok.
                 macros: [],
                 parse_transforms: [],
                 app_type: Project,
+                docs_url: None,
                 include_path: [],
                 gen_src_files: None,
                 applicable_files: None,

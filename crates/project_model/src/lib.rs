@@ -54,6 +54,7 @@ use serde::Serialize;
 use tempfile::NamedTempFile;
 use tempfile::TempPath;
 use thiserror::Error;
+use url::Url;
 
 use crate::buck::BuckProject;
 use crate::json::JsonConfig;
@@ -427,6 +428,8 @@ pub struct ElpConfig {
     pub otp: OtpConfig,
     #[serde(default)]
     pub daemon: DaemonConfig,
+    #[serde(default)]
+    pub docs: DocsConfig,
 }
 
 #[derive(
@@ -571,6 +574,24 @@ pub struct OtpConfig {
     Deserialize,
     Serialize
 )]
+pub struct DocsConfig {
+    /// The URL the documentation pages of the project's modules,
+    /// `<module>.html`, are under.
+    pub base_url: Option<Url>,
+}
+
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Deserialize,
+    Serialize
+)]
 pub struct DaemonConfig {
     /// Seconds of inactivity before the daemon shuts itself down. `0` means
     /// never. When unset, the built-in default applies.
@@ -598,6 +619,7 @@ impl ElpConfig {
             rebar,
             otp: OtpConfig::default(),
             daemon: DaemonConfig::default(),
+            docs: DocsConfig::default(),
         }
     }
     pub fn try_parse(path: &AbsPath) -> Result<ElpConfig> {
@@ -767,6 +789,9 @@ pub struct Project {
     /// app bundled with ELP, which the projects using the installation share.
     /// Empty for an OTP project.
     pub otp_apps: Vec<ProjectAppData>,
+    /// The URL the documentation pages of the project's own modules,
+    /// `<module>.html`, are under. Its apps share it.
+    pub docs_url: Option<Arc<Url>>,
     pub eqwalizer_config: EqwalizerConfig,
     pub buck_index: Option<Arc<BuckProjectIndex>>,
 }
@@ -803,6 +828,7 @@ impl Project {
             project_build_data: ProjectBuildData::Otp,
             project_apps,
             otp_apps: Vec::new(),
+            docs_url: Some(OTP_DOCS_URL.clone()),
             eqwalizer_config: EqwalizerConfig::default(),
             buck_index: None,
         }
@@ -814,6 +840,7 @@ impl Project {
             project_build_data: ProjectBuildData::Rebar(Default::default()),
             project_apps: Vec::default(),
             otp_apps: Vec::default(),
+            docs_url: None,
             eqwalizer_config: EqwalizerConfig::default(),
             buck_index: None,
         }
@@ -943,6 +970,9 @@ pub struct ProjectAppData {
     pub macros: Vec<eetf::Term>,
     pub parse_transforms: Vec<eetf::Term>,
     pub app_type: AppType,
+    /// The URL the documentation pages of the app's modules, `<module>.html`,
+    /// are under.
+    pub docs_url: Option<Arc<Url>>,
     //list of directories required by module to compile
     //usually includes all dependencies include paths and otp
     pub include_path: Vec<AbsPathBuf>,
@@ -957,6 +987,10 @@ pub struct ProjectAppData {
     /// Specifically not related to any marker tags in files
     pub is_buck_generated: Option<bool>,
 }
+
+static OTP_DOCS_URL: LazyLock<Arc<Url>> = LazyLock::new(|| {
+    Arc::new(Url::parse("https://erlang.org/doc/man").expect("the OTP docs URL should parse"))
+});
 
 impl ProjectAppData {
     pub fn fixture_app_data(
@@ -976,6 +1010,7 @@ impl ProjectAppData {
             macros: vec![],
             parse_transforms: vec![],
             app_type: AppType::Project,
+            docs_url: None,
             include_path: vec![],
             abs_src_dirs: src_dirs,
             gen_src_files: None,
@@ -1004,6 +1039,7 @@ impl ProjectAppData {
             macros: vec![],
             parse_transforms: vec![],
             app_type: AppType::Otp,
+            docs_url: Some(OTP_DOCS_URL.clone()),
             include_path: vec![include, src, parent],
             abs_src_dirs: vec![abs_src_dir],
             gen_src_files: None,
@@ -1056,6 +1092,7 @@ impl ProjectAppData {
         self.macros.dedup();
         self.parse_transforms.extend(other.parse_transforms);
         self.parse_transforms.dedup();
+        self.docs_url = self.docs_url.take().or(other.docs_url);
     }
 }
 
@@ -1083,7 +1120,7 @@ impl Project {
         query_config: &BuckQueryConfig,
         report_progress: &impl Fn(&str),
     ) -> Result<Project> {
-        let (project_build_info, project_apps, otp_root, buck_index) = match manifest {
+        let (project_build_info, mut project_apps, otp_root, buck_index) = match manifest {
             ProjectManifest::Rebar(rebar_setting) => {
                 let cache_key = format!(
                     "{}:{}",
@@ -1175,6 +1212,11 @@ impl Project {
             }
         };
 
+        let docs_url = elp_config.docs.base_url.clone().map(Arc::new);
+        project_apps
+            .iter_mut()
+            .filter(|app| app.app_type == AppType::Project)
+            .for_each(|app| app.docs_url = docs_url.clone());
         let (otp, mut otp_apps) = Otp::discover(otp_root, &elp_config.otp);
         otp_apps.push(eqwalizer_support::bundled_app(&otp));
         report_progress("Project info loaded");
@@ -1183,6 +1225,7 @@ impl Project {
             project_build_data: project_build_info,
             project_apps,
             otp_apps,
+            docs_url,
             eqwalizer_config: elp_config.eqwalizer.clone(),
             buck_index,
         })
@@ -1311,6 +1354,9 @@ mod tests {
                             idle_timeout_secs: None,
                             startup_timeout_secs: None,
                         },
+                        docs: DocsConfig {
+                            base_url: None,
+                        },
                     },
                     Rebar(
                         RebarConfig {
@@ -1382,6 +1428,9 @@ mod tests {
                         daemon: DaemonConfig {
                             idle_timeout_secs: None,
                             startup_timeout_secs: None,
+                        },
+                        docs: DocsConfig {
+                            base_url: None,
                         },
                     },
                     Json(
@@ -1499,6 +1548,9 @@ mod tests {
                         daemon: DaemonConfig {
                             idle_timeout_secs: None,
                             startup_timeout_secs: None,
+                        },
+                        docs: DocsConfig {
+                            base_url: None,
                         },
                     },
                     JsonConfig {
@@ -1664,6 +1716,9 @@ mod tests {
                             idle_timeout_secs: None,
                             startup_timeout_secs: None,
                         },
+                        docs: DocsConfig {
+                            base_url: None,
+                        },
                     },
                     NoManifest(
                         NoManifestConfig {
@@ -1736,6 +1791,9 @@ mod tests {
                             idle_timeout_secs: None,
                             startup_timeout_secs: None,
                         },
+                        docs: DocsConfig {
+                            base_url: None,
+                        },
                     },
                     Rebar(
                         RebarConfig {
@@ -1794,6 +1852,9 @@ mod tests {
                         daemon: DaemonConfig {
                             idle_timeout_secs: None,
                             startup_timeout_secs: None,
+                        },
+                        docs: DocsConfig {
+                            base_url: None,
                         },
                     },
                     NoManifest(
@@ -1998,6 +2059,68 @@ mod tests {
     }
 
     #[test]
+    fn the_configured_docs_url_goes_to_the_projects_own_apps() {
+        let spec = r#"
+        //- /.elp.toml
+        [build_info]
+        file = "info.json"
+
+        [docs]
+        base_url = "https://example.com/docs"
+        //- /info.json
+        {
+            "apps": [{"name": "app_a", "dir": "app_a", "src_dirs": ["src"]}],
+            "deps": [{"name": "dep_a", "dir": "dep_a", "src_dirs": ["src"]}]
+        }
+        //- /app_a/src/app.erl
+        -module(app).
+        //- /dep_a/src/dep.erl
+        -module(dep).
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let (elp_config, manifest) = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        )
+        .unwrap();
+        let project = Project::load(
+            &manifest,
+            &elp_config,
+            &BuckQueryConfig::BuildGeneratedCode,
+            &|_| {},
+        )
+        .unwrap();
+        let docs_url = |name: &str| {
+            project
+                .project_apps
+                .iter()
+                .chain(&project.otp_apps)
+                .find(|app| app.name.as_str() == name)
+                .unwrap_or_else(|| panic!("{name} should be loaded"))
+                .docs_url
+                .as_ref()
+                .map(|url| url.to_string())
+        };
+
+        assert_eq_expected!(
+            Some("https://example.com/docs".to_string()),
+            docs_url("app_a")
+        );
+        assert_eq_expected!(None, docs_url("dep_a"), "a third-party app");
+        assert_eq_expected!(
+            Some("https://erlang.org/doc/man".to_string()),
+            docs_url("stdlib"),
+            "an OTP app"
+        );
+        assert_eq_expected!(None, docs_url("eqwalizer_support"), "the bundled app");
+    }
+
+    #[test]
+    fn a_docs_base_url_that_is_not_a_url_fails_the_config() {
+        let config = toml::from_str::<ElpConfig>("[docs]\nbase_url = \"docs\"\n");
+        assert!(config.is_err(), "the config should fail: {config:?}");
+    }
+
+    #[test]
     fn test_toml_rebar_profile() {
         let spec = r#"
         //- /.elp.toml
@@ -2034,6 +2157,9 @@ mod tests {
                     daemon: DaemonConfig {
                         idle_timeout_secs: None,
                         startup_timeout_secs: None,
+                    },
+                    docs: DocsConfig {
+                        base_url: None,
                     },
                 }
             "#]]
@@ -2081,6 +2207,7 @@ mod tests {
             },
             otp: OtpConfig::default(),
             daemon: DaemonConfig::default(),
+            docs: DocsConfig::default(),
         })
         .unwrap();
         expect![[r#"
@@ -2109,6 +2236,8 @@ mod tests {
             exclude_apps = []
 
             [daemon]
+
+            [docs]
         "#]]
         .assert_eq(&result);
     }
@@ -2191,6 +2320,9 @@ mod tests {
                 daemon: DaemonConfig {
                     idle_timeout_secs: None,
                     startup_timeout_secs: None,
+                },
+                docs: DocsConfig {
+                    base_url: None,
                 },
             }
         "#]]
@@ -2372,6 +2504,9 @@ mod tests {
                         idle_timeout_secs: None,
                         startup_timeout_secs: None,
                     },
+                    docs: DocsConfig {
+                        base_url: None,
+                    },
                 }
             "#]]
             .assert_eq(&debug_normalise_temp_dir(dir, &elp_config));
@@ -2392,6 +2527,7 @@ mod tests {
                 exclude_apps: vec!["megaco".to_string(), "eunit".to_string()],
             },
             daemon: DaemonConfig::default(),
+            docs: DocsConfig::default(),
         })
         .unwrap();
         expect![[r#"
@@ -2407,6 +2543,8 @@ mod tests {
             exclude_apps = ["megaco", "eunit"]
 
             [daemon]
+
+            [docs]
         "#]]
         .assert_eq(&result);
     }
@@ -2444,6 +2582,9 @@ mod tests {
                 daemon: DaemonConfig {
                     idle_timeout_secs: None,
                     startup_timeout_secs: None,
+                },
+                docs: DocsConfig {
+                    base_url: None,
                 },
             }
         "#]]

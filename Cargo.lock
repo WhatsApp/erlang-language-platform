@@ -622,6 +622,7 @@ dependencies = [
  "salsa-macros",
  "smallvec",
  "stdx",
+ "url",
  "vfs",
 ]
 
@@ -833,6 +834,7 @@ dependencies = [
  "text-size",
  "thiserror 2.0.21",
  "toml",
+ "url",
 ]
 
 [[package]]

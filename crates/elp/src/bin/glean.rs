@@ -676,8 +676,7 @@ impl GleanIndexer {
             Some(parser::ModuleDocComment { text, span })
         });
 
-        // @fb-only: let exdoc_link = elp_ide::meta_only::exdoc_links::module_exdoc_link(&module, &sema);
-        let exdoc_link: Option<String> = None; // @oss-only
+        let exdoc_link = elp_ide::module_doc_link(&sema, &module);
 
         let def_map = db.def_map(file_id);
         let def_map_local = db.def_map_local(file_id);

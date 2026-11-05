@@ -339,6 +339,7 @@ fn lower_app(
     } else {
         None
     };
+    let docs_url = loaded.docs_url.clone();
     let buck_target_name = loaded.buck_target_name.clone();
     let include_dirs: Arc<[AbsPathBuf]> = loaded.include_dirs.as_slice().into();
     let include_path: Arc<[AbsPathBuf]> = loaded.include_path.as_slice().into();
@@ -355,6 +356,7 @@ fn lower_app(
             macros,
             parse_transforms,
             ebin,
+            docs_url,
             buck_target_name,
             include_dirs,
             include_path,
@@ -383,6 +385,9 @@ fn lower_app(
     }
     if *app.ebin(db) != ebin {
         app.set_ebin(db).to(ebin);
+    }
+    if *app.docs_url(db) != docs_url {
+        app.set_docs_url(db).to(docs_url);
     }
     if *app.buck_target_name(db) != buck_target_name {
         app.set_buck_target_name(db).to(buck_target_name);
@@ -523,6 +528,7 @@ pub(crate) mod tests {
                 app.macros(db);
                 app.parse_transforms(db);
                 app.ebin(db);
+                app.docs_url(db);
                 app.buck_target_name(db);
                 app.include_dirs(db);
                 app.include_path(db);

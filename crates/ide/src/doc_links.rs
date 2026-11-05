@@ -15,11 +15,11 @@ use elp_syntax::AstNode;
 use hir::InFile;
 use hir::Semantic;
 
-// @fb-only: use crate::meta_only::exdoc_links;
-
+mod app_links;
 // @fb-only: mod meta_only;
-mod otp_links;
 mod pragma_links;
+
+pub use app_links::module_doc_link;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocLink {
@@ -40,8 +40,7 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
     let in_file_token = InFile::new(file_id, token);
     if let Some(class) = SymbolClass::classify(&sema, in_file_token.clone()) {
         class.iter().for_each(|def| {
-            otp_links::links(&mut doc_links, &sema, &def);
-            // @fb-only: exdoc_links::links(&mut doc_links, &sema, &def);
+            app_links::links(&mut doc_links, &sema, &def);
         });
     }
     pragma_links::links(&mut doc_links, node, position);

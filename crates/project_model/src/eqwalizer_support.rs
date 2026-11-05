@@ -36,6 +36,7 @@ pub(crate) fn bundled_app(otp: &Otp) -> ProjectAppData {
         ebin: None,
         extra_src_dirs: vec![],
         app_type: AppType::Bundled,
+        docs_url: None,
         macros: vec![],
         parse_transforms: vec![],
         include_path: vec![otp.lib_dir.clone()],

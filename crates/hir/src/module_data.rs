@@ -10,7 +10,6 @@
 
 use std::sync::Arc;
 
-use elp_base_db::AppType;
 use elp_base_db::FileId;
 use elp_base_db::FileKind;
 use elp_base_db::ModuleName;
@@ -87,13 +86,6 @@ impl File {
     pub fn def_map(&self, db: &dyn DefDatabase) -> Arc<DefMap> {
         db.def_map(self.file_id)
     }
-
-    pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
-        let file_id = self.file_id;
-        // Context for T171541590
-        let _ = stdx::panic_context::enter(format!("\nis_in_otp:2: {file_id:?}"));
-        db.file_app_type(file_id) == Some(AppType::Otp)
-    }
 }
 
 /// Represents a module definition
@@ -111,10 +103,6 @@ impl Module {
     pub fn name(&self, db: &dyn DefDatabase) -> Name {
         let attr = self.module_attribute(db);
         attr.map_or_else(|| *crate::MISSING, |attr| attr.name)
-    }
-
-    pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
-        self.file.is_in_otp(db)
     }
 
     pub fn has_moduledoc(&self, db: &dyn DefDatabase) -> bool {
@@ -270,10 +258,6 @@ impl FunctionDef {
     pub fn doc_metadata_range(&self, db: &dyn DefDatabase) -> Option<TextRange> {
         let range = self.doc_metadata(db)?.syntax().text_range();
         Some(range)
-    }
-
-    pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
-        self.file.is_in_otp(db)
     }
 
     pub fn edoc_comments(&self, db: &dyn DefDatabase) -> Option<EdocHeader> {
