@@ -9,7 +9,8 @@
  */
 
 //! `vfs::file_set::FileSetConfig`, whose `partition` takes a `vfs::Vfs`,
-//! ported to partition a [`FileMap`] with the same semantics.
+//! ported to partition a [`FileMap`], with roots matching whole path
+//! components where `vfs` matches byte prefixes.
 
 use fst::IntoStreamer;
 use fst::Streamer;
@@ -19,9 +20,9 @@ use vfs::file_set::FileSet;
 use crate::FileMap;
 use crate::SourceDatabase;
 
-/// Path prefixes that partition the existing files of a [`FileMap`] into
-/// [`FileSet`]s. A file goes to the set with the longest root that is a byte
-/// prefix of its parent directory, so root `/a/b` also claims `/a/bc/x.erl`;
+/// Directories that partition the existing files of a [`FileMap`] into
+/// [`FileSet`]s. A file goes to the set with the longest root that is its
+/// directory or one above it, so root `/a/b` doesn't claim `/a/bc/x.erl`;
 /// files no root claims go to an extra, last set.
 #[derive(Debug)]
 pub struct FileSetConfig {
@@ -59,8 +60,10 @@ impl FileSetConfig {
         let automaton = PrefixOf::new(scratch_space.as_slice());
         let mut longest_prefix = self.n_file_sets - 1;
         let mut stream = self.map.search(automaton).into_stream();
-        while let Some((_, v)) = stream.next() {
-            longest_prefix = v as usize;
+        while let Some((root, v)) = stream.next() {
+            if contains(root, scratch_space) {
+                longest_prefix = v as usize;
+            }
         }
         longest_prefix
     }
@@ -96,6 +99,19 @@ impl FileSetConfigBuilder {
         FileSetConfig { n_file_sets, map }
     }
 }
+
+/// Whether the root encoded as `root`, a byte prefix of the directory encoded
+/// as `dir`, is that directory or one above it, rather than a sibling whose
+/// name starts with the directory's.
+fn contains(root: &[u8], dir: &[u8]) -> bool {
+    root.len() == dir.len() || root.ends_with(SEPARATOR) || dir[root.len()..].starts_with(SEPARATOR)
+}
+
+/// The path separator as [`encode`] writes it.
+#[cfg(windows)]
+const SEPARATOR: &[u8] = &[b'\\', 0];
+#[cfg(not(windows))]
+const SEPARATOR: &[u8] = b"/";
 
 /// Matches if `prefix_of` is a prefix of the given data.
 struct PrefixOf<'a> {
@@ -263,12 +279,14 @@ mod tests {
     use crate::FileMap;
     use crate::LineEndings;
     use crate::SourceDatabase;
+    use crate::assert_eq_expected;
     use crate::test_db::TestDB;
 
-    /// The port must partition exactly as `vfs` does, including the byte prefix
-    /// match of a file's directory against the roots.
+    /// Apart from matching roots by whole path components, the port must
+    /// partition exactly as `vfs` does. None of these files is in a sibling
+    /// of a root whose name starts with the root's.
     #[test]
-    fn partition_agrees_with_vfs() {
+    fn partition_agrees_with_vfs_apart_from_name_prefixes() {
         let roots: &[&[&str]] = &[
             &["/a/b"],
             &["/a/b/c", "/x"],
@@ -278,11 +296,8 @@ mod tests {
         ];
         let files = [
             ("/a/b/f.erl", true),
-            ("/a/bc/g.erl", true),
             ("/a/b/c/h.erl", true),
-            ("/a/b/cd/i.erl", true),
             ("/a/b/c.erl", true),
-            ("/xy/j.erl", true),
             ("/x.erl", true),
             ("/d/k.erl", true),
             ("/v/l.erl", true),
@@ -338,10 +353,69 @@ mod tests {
             "the port and vfs should put the same files, in the same order, into the same sets"
         );
         assert_eq!(vfs_sets, sets, "the port and vfs should agree on file ids");
-        let expected_quirk = VfsPath::new_real_path("/a/bc/g.erl".to_string());
-        assert!(
-            sets[0].file_for_path(&expected_quirk).is_some(),
-            "root /a/b should claim /a/bc/g.erl, which exercises the byte-prefix match"
+    }
+
+    /// The sorted paths of the files in each set when `roots` partition
+    /// `files`.
+    fn partitioned(roots: &[&str], files: &[&str]) -> Vec<Vec<String>> {
+        let mut builder = FileSetConfig::builder();
+        for root in roots {
+            builder.add_file_set(vec![VfsPath::new_real_path(root.to_string())]);
+        }
+        let mut db = TestDB::default();
+        let file_map = FileMap::default();
+        for path in files {
+            let file = db.file(file_map.intern(&db, VfsPath::new_real_path(path.to_string())));
+            file.set_contents(&mut db, Some((Arc::from(""), LineEndings::Unix)));
+        }
+        builder
+            .build()
+            .partition(&file_map, &db)
+            .iter()
+            .map(|set| {
+                let mut paths: Vec<String> = set
+                    .iter()
+                    .map(|file_id| set.path_for_file(&file_id).unwrap().to_string())
+                    .collect();
+                paths.sort();
+                paths
+            })
+            .collect()
+    }
+
+    /// `vfs` gives a file to a root that is a byte prefix of its directory,
+    /// so root `/p/app` would claim `/p/app_extra/x.erl`, and root `/q/app`
+    /// would claim `/q/app_extra/y.erl`, which no root holds.
+    #[test]
+    fn a_root_claims_no_sibling_whose_name_starts_with_its_own() {
+        let sets = partitioned(
+            &["/p", "/p/app", "/q/app"],
+            &[
+                "/p/app/src/a.erl",
+                "/p/app_extra/x.erl",
+                "/q/app_extra/y.erl",
+            ],
         );
+        let expected = vec![
+            vec!["/p/app_extra/x.erl".to_string()],
+            vec!["/p/app/src/a.erl".to_string()],
+            vec![],
+            vec!["/q/app_extra/y.erl".to_string()],
+        ];
+        assert_eq_expected!(expected, sets);
+    }
+
+    #[test]
+    fn the_file_system_root_claims_the_files_below_it() {
+        let sets = partitioned(
+            &["/", "/p/app"],
+            &["/x.erl", "/q/y.erl", "/p/app/src/a.erl"],
+        );
+        let expected = vec![
+            vec!["/q/y.erl".to_string(), "/x.erl".to_string()],
+            vec!["/p/app/src/a.erl".to_string()],
+            vec![],
+        ];
+        assert_eq_expected!(expected, sets);
     }
 }
