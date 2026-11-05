@@ -12,7 +12,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str;
 use std::thread;
-use std::time::SystemTime;
 
 use anyhow::Result;
 use anyhow::bail;
@@ -58,6 +57,7 @@ use rayon::prelude::ParallelIterator;
 use crate::args::Format;
 use crate::args::MacroStrategyArg;
 use crate::args::module_completer;
+use crate::cli_timing::CommandTimer;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
 
@@ -203,7 +203,8 @@ pub fn run_ssr_command(
             "Warning: --include-tests is deprecated, has no effect, and will be removed in a future release."
         )?;
     }
-    let start_time = SystemTime::now();
+    let timer = CommandTimer::new();
+    let start_time = timer.start_time();
     let memory_start = MemoryUsage::now();
 
     // Validate all SSR patterns early
@@ -265,10 +266,13 @@ pub fn run_ssr_command(
     // Load the project
     let mut loaded = load_project(args, cli, query_config)?;
     telemetry::report_elapsed_time("ssr operational", start_time);
+    #[cfg(buck_build)]
+    let operation = timer.start_operation();
 
     let r = run_ssr(cli, &mut loaded, &diagnostics_config, args, use_color);
 
-    telemetry::report_elapsed_time("ssr done", start_time);
+    #[cfg(buck_build)]
+    timer.report_done("ssr done", Default::default(), Some(operation.finish()));
 
     let memory_end = MemoryUsage::now();
     let memory_used = memory_end - memory_start;

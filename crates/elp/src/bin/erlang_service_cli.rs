@@ -12,7 +12,6 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str;
-use std::time::SystemTime;
 
 use anyhow::Context;
 use anyhow::Error;
@@ -39,6 +38,7 @@ use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 
 use crate::args::module_completer;
+use crate::cli_timing::CommandTimer;
 use crate::reporting;
 use crate::reporting::ParseDiagnostic;
 use crate::reporting::add_stat;
@@ -70,7 +70,8 @@ pub struct ParseAll {
 }
 
 pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
-    let start_time = SystemTime::now();
+    let timer = CommandTimer::new();
+    let start_time = timer.start_time();
     let config = DiscoverConfig::new(!args.buck, &args.profile);
     let mut loaded = load::load_project_at(
         cli,
@@ -82,13 +83,20 @@ pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryCon
     fs::create_dir_all(&args.to)?;
 
     telemetry::report_elapsed_time("parse-all operational", start_time);
+    #[cfg(buck_build)]
+    let operation = timer.start_operation();
 
     let parse_diagnostics = do_parse_all(cli, &loaded, &args.to, &args.module, args.buck)?;
     if args.stats {
         dump_stats(cli, args.list_modules);
     }
 
-    telemetry::report_elapsed_time("parse-all done", start_time);
+    #[cfg(buck_build)]
+    timer.report_done(
+        "parse-all done",
+        Default::default(),
+        Some(operation.finish()),
+    );
 
     if !parse_diagnostics.is_empty() {
         writeln!(

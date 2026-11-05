@@ -14,7 +14,6 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str;
-use std::time::SystemTime;
 
 use anyhow::Result;
 use anyhow::bail;
@@ -59,6 +58,7 @@ use vfs::AbsPath;
 use crate::args::Format;
 use crate::args::Severity;
 use crate::args::module_completer;
+use crate::cli_timing::CommandTimer;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
 
@@ -168,7 +168,8 @@ pub fn parse_all(
 ) -> Result<()> {
     log::info!("Loading project at: {:?}", args.project);
 
-    let start_time = SystemTime::now();
+    let timer = CommandTimer::new();
+    let start_time = timer.start_time();
     // Track memory usage at the start
     let memory_start = MemoryUsage::now();
 
@@ -184,6 +185,8 @@ pub fn parse_all(
         fs::create_dir_all(to)?
     };
 
+    #[cfg(buck_build)]
+    let operation = timer.start_operation();
     let analysis = loaded.analysis();
 
     let (file_id, name) = match &args.module {
@@ -253,6 +256,12 @@ pub fn parse_all(
         if args.is_format_normal() {
             writeln!(cli, "No errors reported")?;
         }
+        #[cfg(buck_build)]
+        timer.report_done(
+            "parse-elp done",
+            Default::default(),
+            Some(operation.finish()),
+        );
         if args.is_format_normal() && args.report_system_stats {
             let (analysis_host, file_map) = loaded.into_parts();
             print_memory_usage(analysis_host, file_map, cli)?;
@@ -302,7 +311,12 @@ pub fn parse_all(
             }
         }
 
-        telemetry::report_elapsed_time("parse-elp done", start_time);
+        #[cfg(buck_build)]
+        timer.report_done(
+            "parse-elp done",
+            Default::default(),
+            Some(operation.finish()),
+        );
 
         if args.is_format_normal() && args.report_system_stats {
             let (analysis_host, file_map) = loaded.into_parts();

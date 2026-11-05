@@ -33,6 +33,7 @@ use lsp_server::Connection;
 
 mod args;
 mod build_info_cli;
+mod cli_timing;
 mod config_stanza;
 #[cfg(unix)]
 mod daemon;

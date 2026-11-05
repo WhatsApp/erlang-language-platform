@@ -12,7 +12,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
-use std::time::SystemTime;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -54,6 +53,9 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::args::Format;
+#[cfg(buck_build)]
+use crate::cli_timing::CommandDurations;
+use crate::cli_timing::CommandTimer;
 use crate::reporting;
 use crate::reporting::ParseDiagnostic;
 use crate::reporting::Report;
@@ -309,20 +311,22 @@ struct EqwalizerInternalArgs<'a, 'cli> {
     bail_on_error: bool,
 }
 
-pub(crate) fn report_eqwalize_done(
-    start_time: SystemTime,
+#[cfg(buck_build)]
+fn report_eqwalize_done(
+    timer: &CommandTimer,
     execution_status: &'static str,
     execution_mode: &'static str,
+    durations: Option<CommandDurations>,
 ) {
-    telemetry::report_elapsed_time_with_dimensions(
+    timer.report_done(
         "eqwalize done",
-        start_time,
         telemetry::TelemetryDimensions::from([
             ("event_phase".into(), "done".into()),
             ("execution_status".into(), execution_status.into()),
             ("execution_mode".into(), execution_mode.into()),
             ("subcommand".into(), "eqwalize".into()),
         ]),
+        durations,
     );
 }
 
@@ -332,7 +336,8 @@ pub fn eqwalize_module(
     query_config: &BuckQueryConfig,
     execution_mode: &'static str,
 ) -> Result<()> {
-    let start_time = SystemTime::now();
+    let timer = CommandTimer::new();
+    let start_time = timer.start_time();
     let config = DiscoverConfig::new(args.rebar, &args.profile);
     let mut loaded = load::load_project_at(
         cli,
@@ -342,11 +347,15 @@ pub fn eqwalize_module(
     )?;
     build::compile_deps(&mut loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize operational", start_time);
+    #[cfg(buck_build)]
+    let operation = timer.start_operation();
     let result = do_eqwalize_module(args, &mut loaded, cli);
+    #[cfg(buck_build)]
     report_eqwalize_done(
-        start_time,
+        &timer,
         if result.is_ok() { "success" } else { "error" },
         execution_mode,
+        Some(operation.finish()),
     );
     result
 }
@@ -368,7 +377,8 @@ pub fn eqwalize_all(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
-    let start_time = SystemTime::now();
+    let timer = CommandTimer::new();
+    let start_time = timer.start_time();
     // Hack to avoid hint appearing in tests
     cli.spinner(SHELL_HINT).finish();
     let config = DiscoverConfig::new(args.rebar, &args.profile);
@@ -380,8 +390,15 @@ pub fn eqwalize_all(
     )?;
     build::compile_deps(&mut loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize-all operational", start_time);
+    #[cfg(buck_build)]
+    let operation = timer.start_operation();
     let r = do_eqwalize_all(args, &mut loaded, cli);
-    telemetry::report_elapsed_time("eqwalize-all done", start_time);
+    #[cfg(buck_build)]
+    timer.report_done(
+        "eqwalize-all done",
+        Default::default(),
+        Some(operation.finish()),
+    );
 
     r
 }
@@ -400,7 +417,8 @@ pub fn eqwalize_app(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
-    let start_time = SystemTime::now();
+    let timer = CommandTimer::new();
+    let start_time = timer.start_time();
     let config = DiscoverConfig::new(args.rebar, &args.profile);
     let mut loaded = load::load_project_at(
         cli,
@@ -410,8 +428,15 @@ pub fn eqwalize_app(
     )?;
     build::compile_deps(&mut loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize-app operational", start_time);
+    #[cfg(buck_build)]
+    let operation = timer.start_operation();
     let r = do_eqwalize_app(args, &mut loaded, cli);
-    telemetry::report_elapsed_time("eqwalize-app done", start_time);
+    #[cfg(buck_build)]
+    timer.report_done(
+        "eqwalize-app done",
+        Default::default(),
+        Some(operation.finish()),
+    );
 
     r
 }
@@ -430,7 +455,8 @@ pub fn eqwalize_target(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
-    let start_time = SystemTime::now();
+    let timer = CommandTimer::new();
+    let start_time = timer.start_time();
     let config = DiscoverConfig::buck();
     let mut loaded = load::load_project_at(
         cli,
@@ -440,8 +466,15 @@ pub fn eqwalize_target(
     )?;
 
     telemetry::report_elapsed_time("eqwalize-target operational", start_time);
+    #[cfg(buck_build)]
+    let operation = timer.start_operation();
     let r = do_eqwalize_target(args, &mut loaded, cli);
-    telemetry::report_elapsed_time("eqwalize-target done", start_time);
+    #[cfg(buck_build)]
+    timer.report_done(
+        "eqwalize-target done",
+        Default::default(),
+        Some(operation.finish()),
+    );
 
     r
 }

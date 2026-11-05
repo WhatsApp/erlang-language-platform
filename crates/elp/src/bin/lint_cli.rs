@@ -17,7 +17,6 @@ use std::path::PathBuf;
 use std::str;
 use std::sync::Arc;
 use std::thread;
-use std::time::SystemTime;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -103,6 +102,7 @@ use crate::args::Format;
 use crate::args::Severity;
 use crate::args::diagnostic_code_candidates;
 use crate::args::module_completer;
+use crate::cli_timing::CommandTimer;
 use crate::reporting;
 use crate::reporting::IdeDiagnosticContext;
 use crate::reporting::Report;
@@ -320,7 +320,8 @@ pub fn run_lint_command(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<LintOutcome> {
-    let start_time = SystemTime::now();
+    let timer = CommandTimer::new();
+    let start_time = timer.start_time();
     let memory_start = MemoryUsage::now();
 
     // Discover the project manifest first so the lint config (`.elp_lint.toml`)
@@ -337,11 +338,14 @@ pub fn run_lint_command(
     let mut loaded = load_project(&manifest, &elp_config, cli, query_config, &lint_config)?;
 
     telemetry::report_elapsed_time("lint operational", start_time);
+    #[cfg(buck_build)]
+    let operation = timer.start_operation();
 
     let mut report = Report::for_command(cli, args.format);
     let result = do_lint(args, &lint_config, &mut loaded, &mut report);
 
-    telemetry::report_elapsed_time("lint done", start_time);
+    #[cfg(buck_build)]
+    timer.report_done("lint done", Default::default(), Some(operation.finish()));
 
     let memory_end = MemoryUsage::now();
     let memory_used = memory_end - memory_start;

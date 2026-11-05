@@ -106,6 +106,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::args::Format;
+use crate::cli_timing;
+use crate::cli_timing::CommandDurations;
+use crate::cli_timing::CommandTimer;
 use crate::daemon_protocol::DaemonResponse;
 use crate::daemon_protocol::DoneMessage;
 use crate::daemon_protocol::ProgressKind;
@@ -1134,16 +1137,36 @@ fn execute_daemon_request(
     state: &mut DaemonState,
     cli: &mut dyn Cli,
 ) -> Result<Option<LintOutcome>> {
-    let mut report = Report::for_daemon(cli);
-    match request {
-        DaemonRequest::Eqwalize(args) => {
-            eqwalizer_cli::do_eqwalize(&args, &mut state.loaded, &mut report)?;
-            Ok(None)
+    run_timed_daemon_operation(cli, |cli| {
+        let mut report = Report::for_daemon(cli);
+        match request {
+            DaemonRequest::Eqwalize(args) => {
+                eqwalizer_cli::do_eqwalize(&args, &mut state.loaded, &mut report)?;
+                Ok(None)
+            }
+            DaemonRequest::Lint(args) => {
+                lint_cli::do_lint(&args, &state.lint_config, &mut state.loaded, &mut report)
+                    .map(Some)
+            }
         }
-        DaemonRequest::Lint(args) => {
-            lint_cli::do_lint(&args, &state.lint_config, &mut state.loaded, &mut report).map(Some)
-        }
-    }
+    })
+}
+
+fn run_timed_daemon_operation<T>(
+    cli: &mut dyn Cli,
+    run: impl FnOnce(&mut dyn Cli) -> Result<T>,
+) -> Result<T> {
+    let ready = serde_json::to_string(&DaemonResponse::<()>::OperationStarted)?;
+    writeln!(cli, "{ready}")?;
+    cli.flush()?;
+    let start = Instant::now();
+    let result = run(cli);
+    let finished = serde_json::to_string(&DaemonResponse::<()>::OperationFinished {
+        duration_ms: cli_timing::operation_duration(start),
+    })?;
+    writeln!(cli, "{finished}")?;
+    cli.flush()?;
+    result
 }
 
 // ---------------------------------------------------------------------------
@@ -1171,12 +1194,54 @@ pub(crate) fn is_daemon_unavailable(error: &anyhow::Error) -> bool {
 #[error("Errors found")]
 struct DaemonCommandError {
     execution_mode: DaemonExecutionMode,
+    durations: Option<CommandDurations>,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("Could not finish daemon response")]
+struct DaemonOutputError {
+    #[source]
+    source: anyhow::Error,
+    execution_mode: DaemonExecutionMode,
+    durations: CommandDurations,
+}
+
+fn completed_output_error(
+    source: anyhow::Error,
+    execution_mode: DaemonExecutionMode,
+    timing: &DaemonOperationTiming,
+) -> anyhow::Error {
+    match timing.durations() {
+        Some(durations) => DaemonOutputError {
+            source,
+            execution_mode,
+            durations,
+        }
+        .into(),
+        None => source,
+    }
+}
+
+fn durations_from_error(error: &anyhow::Error) -> Option<CommandDurations> {
+    error
+        .downcast_ref::<DaemonCommandError>()
+        .and_then(|error| error.durations)
+        .or_else(|| {
+            error
+                .downcast_ref::<DaemonOutputError>()
+                .map(|error| error.durations)
+        })
 }
 
 pub(crate) fn execution_mode_from_error(error: &anyhow::Error) -> Option<DaemonExecutionMode> {
     error
         .downcast_ref::<DaemonCommandError>()
         .map(|error| error.execution_mode)
+        .or_else(|| {
+            error
+                .downcast_ref::<DaemonOutputError>()
+                .map(|error| error.execution_mode)
+        })
 }
 
 fn daemon_connection_error(error: anyhow::Error, emitted_diagnostic: bool) -> anyhow::Error {
@@ -1226,6 +1291,43 @@ struct DaemonEndpoint {
 struct DaemonCommandResult<T = ()> {
     execution_mode: DaemonExecutionMode,
     outcome: Option<T>,
+    durations: Option<CommandDurations>,
+}
+
+#[derive(Default)]
+enum DaemonOperationTiming {
+    #[default]
+    Loading,
+    Operating {
+        load_duration_ms: u32,
+    },
+    Complete(CommandDurations),
+}
+
+impl DaemonOperationTiming {
+    fn started(&mut self, timer: &CommandTimer) {
+        *self = Self::Operating {
+            load_duration_ms: timer.load_duration(),
+        };
+    }
+
+    fn finished(&mut self, operation_duration_ms: u32) -> Result<()> {
+        let Self::Operating { load_duration_ms } = *self else {
+            bail!("daemon operation timing finished without a start");
+        };
+        *self = Self::Complete(CommandDurations {
+            load_duration_ms,
+            operation_duration_ms,
+        });
+        Ok(())
+    }
+
+    fn durations(&self) -> Option<CommandDurations> {
+        match self {
+            Self::Complete(durations) => Some(*durations),
+            Self::Loading | Self::Operating { .. } => None,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -1308,6 +1410,8 @@ where
     T: DeserializeOwned,
 {
     let conf = DiscoverConfig::new(connection.rebar, connection.profile);
+    let timer = CommandTimer::new();
+    let mut operation_timing = DaemonOperationTiming::default();
     let (elp_config, manifest) = load::discover_manifest(connection.project, &conf)?;
     let root = load::project_root_dir(&manifest);
     let dir = daemon_dir(&root, connection.profile);
@@ -1376,12 +1480,23 @@ where
         let mut received_done = false;
         let mut restart_requested = false;
         for line in reader.lines() {
-            let line =
-                line.map_err(|error| daemon_connection_error(error.into(), emitted_diagnostic))?;
-            let response: DaemonResponse<T> = serde_json::from_str(&line)?;
+            let line = line.map_err(|error| {
+                completed_output_error(
+                    daemon_connection_error(error.into(), emitted_diagnostic),
+                    execution_mode,
+                    &operation_timing,
+                )
+            })?;
+            let response: DaemonResponse<T> = serde_json::from_str(&line).map_err(|error| {
+                completed_output_error(error.into(), execution_mode, &operation_timing)
+            })?;
             match response {
                 DaemonResponse::Info { message } => report.info(&message)?,
                 DaemonResponse::Progress { progress: update } => progress.update(&report, update),
+                DaemonResponse::OperationStarted => operation_timing.started(&timer),
+                DaemonResponse::OperationFinished { duration_ms } => {
+                    operation_timing.finished(duration_ms)?;
+                }
                 DaemonResponse::Done {
                     message:
                         DoneMessage {
@@ -1395,7 +1510,11 @@ where
                 DaemonResponse::Error { message } => {
                     received_done = true;
                     command_failed = true;
-                    report.terminal_error(&format!("Error: {message}"))?;
+                    report
+                        .terminal_error(&format!("Error: {message}"))
+                        .map_err(|error| {
+                            completed_output_error(error, execution_mode, &operation_timing)
+                        })?;
                     break;
                 }
                 DaemonResponse::Unavailable { message } => {
@@ -1426,12 +1545,20 @@ where
 
         if !restart_requested {
             if !received_done {
-                return Err(daemon_connection_error(
-                    anyhow::anyhow!("Daemon closed the connection before completing the request"),
-                    emitted_diagnostic,
+                return Err(completed_output_error(
+                    daemon_connection_error(
+                        anyhow::anyhow!(
+                            "Daemon closed the connection before completing the request"
+                        ),
+                        emitted_diagnostic,
+                    ),
+                    execution_mode,
+                    &operation_timing,
                 ));
             }
-            report.write_error_summary()?;
+            report.write_error_summary().map_err(|error| {
+                completed_output_error(error, execution_mode, &operation_timing)
+            })?;
         }
         (command_failed, restart_requested)
     };
@@ -1440,14 +1567,16 @@ where
         return connect_and_run(command_line, format, connection, cli);
     }
     if command_failed {
-        // Shared between eqwalize and lint; the daemon's own error message
-        // was already printed to stderr above, so this error only carries the
-        // exit status and execution mode back to the client.
-        return Err(DaemonCommandError { execution_mode }.into());
+        return Err(DaemonCommandError {
+            execution_mode,
+            durations: operation_timing.durations(),
+        }
+        .into());
     }
     Ok(DaemonCommandResult {
         execution_mode,
         outcome,
+        durations: operation_timing.durations(),
     })
 }
 
@@ -1559,6 +1688,39 @@ fn startup_failure(log: &Path, status: ExitStatus) -> String {
     }
 }
 
+#[cfg(buck_build)]
+fn report_connected_result<T>(
+    timer: &CommandTimer,
+    event: &str,
+    subcommand: &'static str,
+    result: &Result<DaemonCommandResult<T>>,
+) {
+    let (status, mode, durations) = match result {
+        Ok(result) => ("success", Some(result.execution_mode), result.durations),
+        Err(error) if is_daemon_unavailable(error) => return,
+        Err(error) => (
+            "error",
+            execution_mode_from_error(error),
+            durations_from_error(error),
+        ),
+    };
+    let mode = match mode {
+        Some(DaemonExecutionMode::Warm) => "daemon_warm",
+        Some(DaemonExecutionMode::Cold) => "daemon_cold",
+        None => "unknown",
+    };
+    timer.report_done(
+        event,
+        telemetry::TelemetryDimensions::from([
+            ("event_phase".into(), "done".into()),
+            ("execution_status".into(), status.into()),
+            ("execution_mode".into(), mode.into()),
+            ("subcommand".into(), subcommand.into()),
+        ]),
+        durations,
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Public connect entry points
 // ---------------------------------------------------------------------------
@@ -1568,27 +1730,15 @@ pub fn connect_eqwalize(
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    let start_time = SystemTime::now();
+    #[cfg(buck_build)]
+    let timer = CommandTimer::new();
     let request = EqwalizeRequest::from(args);
     let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
     let result = connect_and_run::<()>(&cmd, args.format, &connection, cli);
-    match &result {
-        Ok(result) if result.execution_mode == DaemonExecutionMode::Warm => {
-            eqwalizer_cli::report_eqwalize_done(start_time, "success", "daemon_warm")
-        }
-        Ok(_) => eqwalizer_cli::report_eqwalize_done(start_time, "success", "daemon_cold"),
-        Err(error) if is_daemon_unavailable(error) => {}
-        Err(error) => {
-            let execution_mode = match execution_mode_from_error(error) {
-                Some(DaemonExecutionMode::Warm) => "daemon_warm",
-                Some(DaemonExecutionMode::Cold) => "daemon_cold",
-                None => "unknown",
-            };
-            eqwalizer_cli::report_eqwalize_done(start_time, "error", execution_mode);
-        }
-    }
+    #[cfg(buck_build)]
+    report_connected_result(&timer, "eqwalize done", "eqwalize", &result);
     result?;
     Ok(())
 }
@@ -1598,6 +1748,8 @@ pub fn connect_eqwalize_all(
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
 ) -> Result<()> {
+    #[cfg(buck_build)]
+    let timer = CommandTimer::new();
     if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, args.stats) {
         bail!("{reason}");
     }
@@ -1605,7 +1757,10 @@ pub fn connect_eqwalize_all(
     let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
-    connect_and_run::<()>(&cmd, args.format, &connection, cli)?;
+    let result = connect_and_run::<()>(&cmd, args.format, &connection, cli);
+    #[cfg(buck_build)]
+    report_connected_result(&timer, "eqwalize-all done", "eqwalize-all", &result);
+    result?;
     Ok(())
 }
 
@@ -1614,6 +1769,8 @@ pub fn connect_eqwalize_app(
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
 ) -> Result<()> {
+    #[cfg(buck_build)]
+    let timer = CommandTimer::new();
     if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, false) {
         bail!("{reason}");
     }
@@ -1621,7 +1778,10 @@ pub fn connect_eqwalize_app(
     let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
-    connect_and_run::<()>(&cmd, args.format, &connection, cli)?;
+    let result = connect_and_run::<()>(&cmd, args.format, &connection, cli);
+    #[cfg(buck_build)]
+    report_connected_result(&timer, "eqwalize-app done", "eqwalize-app", &result);
+    result?;
     Ok(())
 }
 
@@ -1630,6 +1790,8 @@ pub fn connect_eqwalize_target(
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
 ) -> Result<()> {
+    #[cfg(buck_build)]
+    let timer = CommandTimer::new();
     if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, false) {
         bail!("{reason}");
     }
@@ -1637,7 +1799,10 @@ pub fn connect_eqwalize_target(
     let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
     // eqwalize-target is buck-only, so profile is always "test" and rebar is always false
     let connection = DaemonConnection::new(&args.project, "test", false, startup_options);
-    connect_and_run::<()>(&cmd, args.format, &connection, cli)?;
+    let result = connect_and_run::<()>(&cmd, args.format, &connection, cli);
+    #[cfg(buck_build)]
+    report_connected_result(&timer, "eqwalize-target done", "eqwalize-target", &result);
+    result?;
     Ok(())
 }
 
@@ -1712,6 +1877,8 @@ pub fn connect_lint(
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
 ) -> Result<LintOutcome> {
+    #[cfg(buck_build)]
+    let timer = CommandTimer::new();
     validate_lint_for_daemon(args)?;
     let current_dir =
         env::current_dir().context("failed to resolve the client working directory")?;
@@ -1719,7 +1886,10 @@ pub fn connect_lint(
     let cmd = encode_daemon_request(DaemonRequest::Lint(Box::new(request_args)))?;
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
-    connect_and_run::<LintOutcome>(&cmd, args.format, &connection, cli)?
+    let result = connect_and_run::<LintOutcome>(&cmd, args.format, &connection, cli);
+    #[cfg(buck_build)]
+    report_connected_result(&timer, "lint done", "lint", &result);
+    result?
         .outcome
         .context("daemon protocol invariant violated: lint response is missing typed `outcome`")
 }
@@ -2152,6 +2322,131 @@ mod tests {
             let (stdout, stderr) = cli.to_strings();
             assert_eq_expected!("", stdout.as_str());
             assert_eq_expected!("", stderr.as_str());
+        }
+    }
+
+    #[test]
+    fn completed_transport_failure_does_not_retry_as_unavailable() {
+        let expected = CommandDurations {
+            load_duration_ms: 100,
+            operation_duration_ms: 20,
+        };
+        let error = completed_output_error(
+            daemon_connection_error(anyhow::anyhow!("connection closed"), false),
+            DaemonExecutionMode::Cold,
+            &DaemonOperationTiming::Complete(expected),
+        );
+        assert!(
+            !is_daemon_unavailable(&error),
+            "a completed operation must not be re-executed by fallback"
+        );
+        assert_eq_expected!(Some(expected), durations_from_error(&error));
+    }
+
+    #[test]
+    fn completed_operation_timings_survive_output_failure() {
+        let expected = CommandDurations {
+            load_duration_ms: 150,
+            operation_duration_ms: 10,
+        };
+        let timing = DaemonOperationTiming::Complete(expected);
+        let error = completed_output_error(
+            anyhow::anyhow!("output pipe closed"),
+            DaemonExecutionMode::Warm,
+            &timing,
+        );
+        assert_eq_expected!(
+            "Could not finish daemon response: output pipe closed",
+            format!("{error:#}")
+        );
+        assert_eq_expected!(Some(expected), durations_from_error(&error));
+        assert_eq_expected!(
+            Some(DaemonExecutionMode::Warm),
+            execution_mode_from_error(&error)
+        );
+        assert!(!is_daemon_unavailable(&error));
+    }
+
+    #[test]
+    fn daemon_timing_uses_server_operation_duration() {
+        let timer = CommandTimer::new();
+        let mut timing = DaemonOperationTiming::default();
+        assert!(timing.durations().is_none());
+        timing.started(&timer);
+        assert!(timing.durations().is_none());
+        timing.finished(17).expect("operation should finish");
+        assert_eq_expected!(17, timing.durations().unwrap().operation_duration_ms);
+    }
+
+    #[test]
+    fn daemon_timing_rejects_an_unstarted_operation() {
+        let mut timing = DaemonOperationTiming::default();
+        assert!(timing.finished(0).is_err());
+        assert!(timing.durations().is_none());
+    }
+
+    #[test]
+    fn timed_daemon_operation_reports_phases_even_on_error() {
+        let mut cli = elp::cli::Fake::default();
+        let result: Result<()> = run_timed_daemon_operation(&mut cli, |_| {
+            bail!("operation failed");
+        });
+        assert!(result.is_err());
+        let (stdout, _) = cli.to_strings();
+        let responses: Vec<DaemonResponse<()>> = stdout
+            .lines()
+            .map(|line| serde_json::from_str(line).expect("structured timing response"))
+            .collect();
+        assert_eq_expected!(2, responses.len());
+        assert!(matches!(responses[0], DaemonResponse::OperationStarted));
+        assert!(matches!(
+            responses[1],
+            DaemonResponse::OperationFinished { .. }
+        ));
+    }
+
+    #[test]
+    fn timed_daemon_operation_preserves_progress_on_success_and_error() {
+        for fail in [false, true] {
+            let (server, client) = UnixStream::pair().unwrap();
+            client
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let mut cli = DaemonCli::client(server);
+            let result = run_timed_daemon_operation(&mut cli, |cli| {
+                let pb = cli.progress(2, "EqWAlizing");
+                pb.set_message("foo, bar");
+                pb.set_position(1);
+                pb.force_draw();
+                pb.finish();
+                if fail {
+                    bail!("operation failed");
+                }
+                Ok(())
+            });
+            assert_eq_expected!(fail, result.is_err());
+            drop(cli);
+
+            let responses: Vec<DaemonResponse<()>> = BufReader::new(client)
+                .lines()
+                .map(|line| serde_json::from_str(&line.unwrap()).unwrap())
+                .collect();
+            assert!(matches!(
+                responses.first(),
+                Some(DaemonResponse::OperationStarted)
+            ));
+            assert!(matches!(
+                responses.last(),
+                Some(DaemonResponse::OperationFinished { .. })
+            ));
+            assert!(responses.iter().any(|response| {
+                matches!(response, DaemonResponse::Progress { progress }
+                    if progress.prefix == "EqWAlizing"
+                        && progress.message == "foo, bar"
+                        && progress.len == 2
+                        && progress.pos == 2
+                        && progress.finished)
+            }));
         }
     }
 

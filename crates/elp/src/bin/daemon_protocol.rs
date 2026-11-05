@@ -47,6 +47,10 @@ pub(crate) enum DaemonResponse<T = ()> {
         #[serde(flatten)]
         progress: ProgressMessage,
     },
+    OperationStarted,
+    OperationFinished {
+        duration_ms: u32,
+    },
     Diagnostic {
         diagnostic: arc_types::Diagnostic,
         rendered: Option<RenderedDiagnostic>,
@@ -172,6 +176,21 @@ mod tests {
         );
         let decoded: DaemonResponse<()> = serde_json::from_str(&json).unwrap();
         assert_eq!(response, decoded, "progress updates should round-trip");
+    }
+
+    #[test]
+    fn daemon_phase_messages_round_trip_as_structured_values() {
+        for expected in [
+            DaemonResponse::<()>::OperationStarted,
+            DaemonResponse::<()>::OperationFinished {
+                duration_ms: 180_000,
+            },
+        ] {
+            let encoded = serde_json::to_string(&expected).expect("phase must serialize");
+            let actual = serde_json::from_str::<DaemonResponse<()>>(&encoded)
+                .expect("phase must deserialize");
+            assert_eq_expected!(expected, actual);
+        }
     }
 
     #[test]
