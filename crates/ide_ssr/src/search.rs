@@ -86,6 +86,7 @@ impl MatchFinder<'_> {
                     code_body_origin,
                     code,
                     restrict_range,
+                    ctx.parents,
                     self.sema,
                     &code_body,
                     pattern_body,

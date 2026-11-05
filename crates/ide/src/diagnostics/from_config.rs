@@ -14,6 +14,7 @@ use elp_ide_db::DiagnosticCode;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_ssr::SsrRule;
 use elp_ide_ssr::SsrSearchScope;
 use elp_ide_ssr::match_pattern;
@@ -556,22 +557,26 @@ impl MatchSsr {
 
         for pattern in &self.patterns {
             let scope = SsrSearchScope::WholeFile(file_id);
-            let matches = match_pattern(sema, strategy, &pattern.ssr, scope).in_file(file_id);
+            let matches = match_pattern(sema, strategy, &pattern.ssr, scope);
 
             for matched in matches.matches {
+                let range = matched.call_site_range();
+                if range.file_id != file_id {
+                    continue;
+                }
                 let message = pattern
                     .message
                     .clone()
                     .or_else(|| self.description.clone())
                     .unwrap_or_else(|| format!("SSR pattern matched: {}", pattern.ssr));
 
-                let placeholders = collect_placeholder_bindings(sema, &matched);
+                let placeholders = collect_placeholder_bindings(sema, &matched, file_id);
                 let extra = DiagnosticExtra::Ssr {
                     pattern_label: pattern.label.clone(),
                     placeholders,
                 };
 
-                let diag = Diagnostic::new(code.clone(), message, matched.range.range)
+                let diag = Diagnostic::new(code.clone(), message, range.range)
                     .with_severity(severity)
                     .with_doc_path_override(self.doc.clone())
                     .with_extra(extra);
@@ -582,14 +587,17 @@ impl MatchSsr {
 }
 
 /// One binding per occurrence (repeated `_@A` binds twice). Strips `_@` and
-/// sorts by `(name, start)` for deterministic output.
+/// sorts by `(name, start)` for deterministic output. Bindings to code in
+/// another file (a macro definition in a header) are left out.
 fn collect_placeholder_bindings(
     sema: &Semantic,
     matched: &elp_ide_ssr::Match,
+    file_id: FileId,
 ) -> Vec<PlaceholderBinding> {
     let mut bindings: Vec<PlaceholderBinding> = matched
         .placeholder_bindings(sema)
-        .map(|(name, text, range)| {
+        .filter(|(_, _, range)| range.file_id == file_id)
+        .map(|(name, text, FileRange { range, .. })| {
             let name_str = name.as_str();
             PlaceholderBinding {
                 name: name_str.strip_prefix("_@").unwrap_or(name_str).to_owned(),
@@ -1447,6 +1455,43 @@ patterns = [
             %%     ^^ weak: ad-hoc:ssr-match: SSR pattern matched: ssr: ok.
             %% elp:ignore ad-hoc:ssr-match
             g() -> ok.
+            "#,
+        );
+    }
+
+    /// A match inside a macro expansion is reported at the macro call written
+    /// in the file, even when the macro is defined in a header or reached
+    /// through another macro. The macro definitions match on their own as well.
+    #[test]
+    fn ssr_match_in_macro_body_reported_at_call_site() {
+        let lints = LintsFromConfig {
+            lints: vec![Lint::LintMatchSsr(MatchSsr::from_pattern(
+                "ssr: sink(_@X, 1).",
+            ))],
+        };
+        crate::tests::check_diagnostics_with_config(
+            crate::diagnostics::DiagnosticsConfig::default().set_lints_from_config(&lints),
+            r#"
+            //- /src/main.erl include_path:/include
+            -module(main).
+            -include("wrap.hrl").
+            -define(LOCAL_WRAP(X), {sink(X, 1)}).
+            %%                      ^^^^^^^^^^ weak: ad-hoc:ssr-match: SSR pattern matched: ssr: sink(_@X, 1).
+            -define(RUN(F), F()).
+            -define(WRAP_TWICE(X), [?WRAP(X)]).
+            %%                      ^^^^^^^^ weak: ad-hoc:ssr-match: SSR pattern matched: ssr: sink(_@X, 1).
+            f() -> ?WRAP(a).
+            %%     ^^^^^^^^ weak: ad-hoc:ssr-match: SSR pattern matched: ssr: sink(_@X, 1).
+            g() -> ?LOCAL_WRAP(b).
+            %%     ^^^^^^^^^^^^^^ weak: ad-hoc:ssr-match: SSR pattern matched: ssr: sink(_@X, 1).
+            h() -> ?RUN(fun() -> ?WRAP(c) end).
+            %%                   ^^^^^^^^ weak: ad-hoc:ssr-match: SSR pattern matched: ssr: sink(_@X, 1).
+            i() -> ?WRAP_TWICE(d).
+            %%     ^^^^^^^^^^^^^^ weak: ad-hoc:ssr-match: SSR pattern matched: ssr: sink(_@X, 1).
+            sink(X, _) -> X.
+            //- /include/wrap.hrl
+            -define(WRAP(X), {sink(X, 1)}).
+            %%                ^^^^^^^^^^ weak: ad-hoc:ssr-match: SSR pattern matched: ssr: sink(_@X, 1).
             "#,
         );
     }

@@ -233,6 +233,11 @@ macro_rules! fail_match {
 #[derive(Debug, Clone)]
 pub struct Match {
     pub range: FileRange,
+    /// When the matched node comes from the body of a macro, rather than from
+    /// one of its arguments, the range of the macro call it was expanded from,
+    /// as written in the searched code. `range` then points into the macro
+    /// definition.
+    pub macro_call_range: Option<FileRange>,
     pub matched_node_body: BodyOrigin,
     pub matched_node: SubId,
     // A placeholder originates as a `SubId`, and carries a `hir::Var`.
@@ -250,6 +255,12 @@ pub struct Match {
 impl Match {
     pub fn range(&self) -> TextRange {
         self.range.range
+    }
+
+    /// Where the match appears in the code being searched: the macro call for
+    /// a match inside a macro expansion, the matched node otherwise.
+    pub fn call_site_range(&self) -> FileRange {
+        self.macro_call_range.unwrap_or(self.range)
     }
 
     /// Return any comments on the match
@@ -301,7 +312,7 @@ impl Match {
     pub fn placeholder_bindings<'a>(
         &'a self,
         sema: &'a Semantic,
-    ) -> impl Iterator<Item = (Name, String, TextRange)> + 'a {
+    ) -> impl Iterator<Item = (Name, String, FileRange)> + 'a {
         let body = self.matched_node_body.get_body(sema);
         self.placeholders_by_var
             .iter()
@@ -312,7 +323,7 @@ impl Match {
                     let pm = self.placeholder_values.get(sub_id)?;
                     let body = body.as_ref()?;
                     let text = pm.text(sema, body)?;
-                    Some((name.clone(), text, pm.range()))
+                    Some((name.clone(), text, pm.file_range()))
                 })
             })
     }
@@ -581,6 +592,7 @@ fn subids_structurally_equivalent_with_cache(
         &body.body.origin,
         code,
         &None,
+        &[],
         sema,
         body,
         body,
@@ -642,6 +654,10 @@ fn recording_match_fail_reasons() -> bool {
     RECORDING_MATCH_FAIL_REASONS.with(|c| c.get())
 }
 
+fn contains(outer: &FileRange, inner: &FileRange) -> bool {
+    outer.file_id == inner.file_id && outer.range.contains_range(inner.range)
+}
+
 /// Checks if `code` matches the search pattern found in
 /// `search_scope`, returning information about the match, if it
 /// does. Since we only do matching in this module and searching is
@@ -654,6 +670,7 @@ pub(crate) fn get_match(
     code_body_origin: &BodyOrigin,
     code: &AnyExprId,
     restrict_range: &Option<FileRange>,
+    parents: &[ParentId],
     sema: &Semantic,
     code_body: &FoldBody,
     pattern_body: &FoldBody,
@@ -664,6 +681,7 @@ pub(crate) fn get_match(
             sema,
             rule,
             *restrict_range,
+            parents,
             pattern,
             code_body_origin,
             pattern_body,
@@ -695,6 +713,8 @@ struct Matcher<'a> {
     /// If any placeholders come from anywhere outside of this range,
     /// then the match will be rejected.
     restrict_range: Option<FileRange>,
+    /// The fold's parent chain of the code node, outermost first.
+    parents: &'a [ParentId],
     pattern_body: &'a FoldBody<'a>,
     code_body: &'a FoldBody<'a>,
     code_body_origin: &'a BodyOrigin,
@@ -707,6 +727,7 @@ impl<'a> Matcher<'a> {
         sema: &'a Semantic<'a>,
         rule: &'a SsrPattern,
         restrict_range: Option<FileRange>,
+        parents: &'a [ParentId],
         pattern: &'a SubId,
         code_body_origin: &'a BodyOrigin,
         pattern_body: &'a FoldBody<'a>,
@@ -717,6 +738,7 @@ impl<'a> Matcher<'a> {
             sema,
             rule,
             restrict_range,
+            parents,
             pattern,
             pattern_body,
             code_body,
@@ -740,6 +762,7 @@ impl<'a> Matcher<'a> {
         self.validate_range(&code_range)?;
         let mut the_match = Match {
             range: code_range,
+            macro_call_range: self.macro_call_range(&code_range),
             matched_node_body: *self.code_body_origin,
             matched_node: code.clone(),
             placeholder_values: FxHashMap::default(),
@@ -1647,6 +1670,31 @@ impl<'a> Matcher<'a> {
             }
             _ => true,
         }
+    }
+
+    /// The range of the macro call `code_range` was expanded from, unless
+    /// `code_range` lies within the call itself (a macro argument).
+    ///
+    /// Of the macro calls enclosing the code node, this is the innermost one
+    /// written in the searched code: going inwards from the outermost call,
+    /// each call that sits within the previous one is written in one of its
+    /// arguments, while one that does not comes from a macro definition.
+    fn macro_call_range(&self, code_range: &FileRange) -> Option<FileRange> {
+        let body = self.code_body.body;
+        let mut call_ranges = self.parents.iter().filter_map(|parent| match parent {
+            ParentId::HirIdx(idx) if idx.body_origin == body.origin && body.is_macro(idx.idx) => {
+                body.range_for_any(self.sema, idx.idx)
+            }
+            _ => None,
+        });
+        let mut call_range = call_ranges.next()?;
+        for inner in call_ranges {
+            if !contains(&call_range, &inner) {
+                break;
+            }
+            call_range = inner;
+        }
+        (!contains(&call_range, code_range)).then_some(call_range)
     }
 
     fn get_code_range(&self, code: &SubId) -> Option<FileRange> {

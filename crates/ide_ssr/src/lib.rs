@@ -733,6 +733,7 @@ impl<'a> MatchFinder<'a> {
                             &body_origin,
                             &any_expr_id,
                             restrict_range,
+                            &[],
                             self.sema,
                             &code_body,
                             &pattern_body,
@@ -1032,6 +1033,7 @@ mod test {
                             ),
                             range: 8..16,
                         },
+                        macro_call_range: None,
                         matched_node_body: FormIdx {
                             file_id: FileId(
                                 0,
@@ -1119,6 +1121,7 @@ mod test {
                             ),
                             range: 32..40,
                         },
+                        macro_call_range: None,
                         matched_node_body: FormIdx {
                             file_id: FileId(
                                 0,
