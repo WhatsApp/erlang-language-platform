@@ -77,7 +77,5 @@ stdout |       --log-file <LOG_FILE>
 stdout |       --erl <ERL>            
 stdout |       --escript <ESCRIPT>    
 stdout |       --no-log-buffering     
-stdout |       --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
-stdout |       --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
 stdout |       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
 stdout |                              auto]

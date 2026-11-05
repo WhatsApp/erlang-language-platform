@@ -179,14 +179,6 @@ pub struct Args {
     #[arg(long, global = true, help_heading = "Global options")]
     pub no_log_buffering: bool,
 
-    /// Deprecated (no-op): buck project loading always builds generated code
-    #[arg(long, global = true, help_heading = "Global options")]
-    pub no_buck_generated: bool,
-
-    /// Deprecated (no-op): buck project loading always builds generated code
-    #[arg(long, global = true, help_heading = "Global options")]
-    pub buck_quick_start: bool,
-
     /// Use color in output
     #[arg(
         long = "color",

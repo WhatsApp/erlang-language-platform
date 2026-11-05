@@ -249,17 +249,6 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
     let daemon_startup_options =
         daemon::DaemonStartupOptions::new(args.erl.as_deref(), args.escript.as_deref());
     INIT.call_once(|| setup_static(&args));
-    for flag in [
-        args.buck_quick_start.then_some("--buck-quick-start"),
-        args.no_buck_generated.then_some("--no-buck-generated"),
-    ]
-    .into_iter()
-    .flatten()
-    {
-        cli.info(&format!(
-            "Warning: the {flag} flag is deprecated and will be removed in an upcoming release. Buck project loading always builds generated code."
-        ))?;
-    }
     let query_config = BuckQueryConfig::BuildGeneratedCode;
     let use_color = args.should_use_color();
     let Some(mut command) = args.command else {
@@ -829,29 +818,12 @@ mod tests {
 
     #[test_case("--buck-quick-start" ; "buck_quick_start")]
     #[test_case("--no-buck-generated" ; "no_buck_generated")]
-    fn deprecated_no_op_flag(flag: &str) {
-        let (stdout, stderr, code) = elp(args_vec![flag, "version"]);
-
-        assert_eq_expected!(0, code);
-        assert!(
-            stdout.starts_with("elp "),
-            "the command must still run, got stdout: {stdout}"
-        );
-        assert!(
-            stderr.contains(&format!("{flag} flag is deprecated")),
-            "the flag must warn on stderr, got: {stderr}"
-        );
-    }
-
-    #[test]
-    fn no_deprecation_warning_without_the_flags() {
-        let (_stdout, stderr, code) = elp(args_vec!["version"]);
-
-        assert_eq_expected!(0, code);
-        assert!(
-            stderr.is_empty(),
-            "an invocation without the deprecated flags must be quiet, got: {stderr}"
-        );
+    fn removed_buck_flag_is_rejected(flag: &str) {
+        for args in [["elp", flag, "version"], ["elp", "version", flag]] {
+            let error = args::Args::try_parse_from(args)
+                .expect_err("removed Buck flags must be rejected in either position");
+            assert_eq_expected!(clap::error::ErrorKind::UnknownArgument, error.kind());
+        }
     }
 
     #[test]
