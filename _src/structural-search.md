@@ -256,6 +256,9 @@ the input:
 - `--macros STRATEGY` controls macro expansion before matching: `expand`
   (default), `no-expand`, or `visible-expand`. Use `no-expand` to match the code
   as written, with macros intact.
+  With `expand` or `visible-expand`, a match that comes from the body of a macro,
+  rather than from one of its arguments, is reported at the macro call. A pattern
+  for the call a logging macro expands to therefore finds every use of that macro.
 - `--parens` makes parentheses significant. By default they are ignored, so
   `(X + Y)` and `X + Y` match the same pattern.
 
