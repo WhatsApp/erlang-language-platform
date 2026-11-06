@@ -76,7 +76,7 @@ lsp_types = { package = "gen-lsp-types", version = "0.11.0", features = ["url"] 
 memchr = "2.8.3"
 num-derive = "0.4.2"
 num-traits = { version = "0.2.19", default-features = false }
-parking_lot = { version = "0.12.1", features = ["arc_lock", "send_guard", "serde"] }
+parking_lot = { version = "0.13.0", features = ["arc_lock", "send_guard", "serde"] }
 paths = { git = "https://github.com/rust-lang/rust-analyzer.git", rev = "2026-04-13" }
 petgraph = { version = "0.8", features = ["serde-1"] }
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
