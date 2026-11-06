@@ -17,6 +17,7 @@ use elp_syntax::match_ast;
 use crate::AnyExprId;
 use crate::AnyExprRef;
 use crate::Body;
+use crate::BodySourceMap;
 use crate::CallTarget;
 use crate::CallbackDef;
 use crate::DefineDef;
@@ -150,8 +151,7 @@ impl ToDef for ast::Remote {
         // Remote wraps Call: resolve via body map using Remote as expr
         let (body, body_map) = sema.find_body_and_map(ast.file_id, ast.value.syntax())?;
         let expr = ast.map(|remote| ast::Expr::from(remote.clone()));
-        let any_expr_id = body_map.any_id(expr.as_ref())?;
-        resolve_call_from_body(sema, &body, any_expr_id, ast.file_id)
+        resolve_call(sema, &body, &body_map, expr.as_ref())
     }
 }
 
@@ -162,13 +162,28 @@ impl ToDef for ast::Call {
         let (body, body_map) = sema.find_body_and_map(ast.file_id, ast.value.syntax())?;
         let file_id = ast.file_id;
         let expr = ast.map(|call| ast::Expr::from(call.clone()));
-        let any_expr_id = body_map.any_id(expr.as_ref()).or_else(|| {
+        resolve_call(sema, &body, &body_map, expr.as_ref()).or_else(|| {
             let remote = ast::Remote::cast(ast.value.syntax().parent()?)?;
             let remote_expr = ast::Expr::from(remote);
-            body_map.any_id(InFile::new(file_id, &remote_expr))
-        })?;
-        resolve_call_from_body(sema, &body, any_expr_id, file_id)
+            resolve_call(sema, &body, &body_map, InFile::new(file_id, &remote_expr))
+        })
     }
+}
+
+/// The definition that `expr` calls. Macro arguments and macro definitions are
+/// lowered both as expressions and as types, since only their use decides
+/// which they are, so a call that resolves to no function is tried as a type.
+fn resolve_call(
+    sema: &Semantic<'_>,
+    body: &Body,
+    body_map: &BodySourceMap,
+    expr: InFile<&ast::Expr>,
+) -> Option<CallDef> {
+    let any_expr_id = body_map.any_id(expr)?;
+    resolve_call_from_body(sema, body, any_expr_id, expr.file_id).or_else(|| {
+        let type_expr_id = body_map.type_expr_id(expr)?;
+        resolve_call_from_body(sema, body, AnyExprId::TypeExpr(type_expr_id), expr.file_id)
+    })
 }
 
 fn resolve_call_from_body(

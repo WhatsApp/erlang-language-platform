@@ -476,9 +476,11 @@ impl<'a> Ctx<'a> {
     pub fn lower_define(mut self, define: &ast::PpDefine) -> (DefineBody, BodySourceMap) {
         let replacement = define.replacement();
         match replacement {
-            Some(MacroDefReplacement::Expr(expr)) => {
+            Some(MacroDefReplacement::Expr(replacement)) => {
                 self.in_macro_rhs = true;
-                let expr = self.lower_expr(&expr);
+                let expr = self.lower_expr(&replacement);
+                // A macro can also be used as a type.
+                let _ = self.lower_type_expr(&replacement);
                 self.in_macro_rhs = false;
                 let (body, source_map) = self.finish();
                 (DefineBody { body, expr }, source_map)

@@ -211,6 +211,29 @@ foo() -> another.
     }
 
     #[test]
+    fn test_type_in_macros() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-export_type([foo/0]).
+%%            ^^^
+-type foo~() :: ok.
+%%    ^^^^^def
+-define(CAST(Expr, Type), (Expr :: Type)).
+f(X) -> ?CAST(X, foo()).
+%%               ^^^
+//- /src/other.erl
+-module(other).
+-define(FOO, main:foo()).
+%%                ^^^
+-spec g() -> ?FOO.
+g() -> ok.
+"#,
+        );
+    }
+
+    #[test]
     fn test_type() {
         check(
             r#"

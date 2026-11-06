@@ -927,6 +927,92 @@ bar(X) -> X.
     }
 
     #[test]
+    fn type_in_cast_macro_arg() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-define(CAST(Expr, Type), (Expr :: Type)).
+-type foo() :: ok.
+%%    ^^^^^
+f(X) -> ?CAST(X, f~oo()).
+"#,
+        );
+    }
+
+    #[test]
+    fn remote_type_in_cast_macro_arg() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-define(CAST(Expr, Type), (Expr :: Type)).
+f(X) -> ?CAST(X, other:f~oo()).
+//- /src/other.erl
+-module(other).
+-export_type([foo/0]).
+-type foo() :: ok.
+%%    ^^^^^
+"#,
+        );
+    }
+
+    #[test]
+    fn remote_type_in_macro_definition() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-define(FOO, other:f~oo()).
+-spec f() -> ?FOO.
+f() -> ok.
+//- /src/other.erl
+-module(other).
+-export_type([foo/0]).
+-type foo() :: ok.
+%%    ^^^^^
+"#,
+        );
+    }
+
+    #[test]
+    fn remote_type_in_header_macro_definition() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("main.hrl").
+-spec f() -> ?FOO.
+f() -> ok.
+//- /src/main.hrl
+-define(FOO, other:f~oo()).
+//- /src/other.erl
+-module(other).
+-export_type([foo/0]).
+-type foo() :: ok.
+%%    ^^^^^
+"#,
+        );
+    }
+
+    #[test]
+    fn function_before_type_in_macro_definition() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-export([foo/0, bar/0]).
+-export_type([foo/0]).
+-define(FOO, f~oo()).
+-type foo() :: ok.
+   foo() -> ok.
+%% ^^^
+bar() -> ?FOO.
+"#,
+        );
+    }
+
+    #[test]
     fn local_type_alias_from_callback() {
         check(
             r#"
