@@ -193,6 +193,7 @@ mod unresolved_include;
 mod unresolved_macro;
 mod unspecific_include;
 mod unused_exported_function;
+mod unused_exported_type;
 mod unused_include;
 mod unused_macro;
 mod unused_record_field;
@@ -2335,6 +2336,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &bound_variable::LINTER,
     &unused_record_field::LINTER,
     &unused_exported_function::LINTER,
+    &unused_exported_type::LINTER,
     &unresolved_macro::LINTER,
     &unresolved_include::LINTER,
     &invalid_pp_condition::LINTER,

@@ -95,7 +95,12 @@ pub use line_index::LineIndex;
 pub use search::FindUsages;
 pub use search::ReferenceCategory;
 pub use search::SearchScope;
+pub use search::TypeCall;
 pub use search::UsageSearchResult;
+pub use search::files_naming_module;
+pub use search::type_calls_in_functions;
+pub use search::type_calls_in_type_forms;
+pub use search::type_calls_to_module;
 
 pub type FxIndexMap<K, V> =
     indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;

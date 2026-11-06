@@ -714,7 +714,8 @@ pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
         .disable(DiagnosticCode::UndefinedModule)
         .disable(DiagnosticCode::HirUnresolvedMacro)
         .disable(DiagnosticCode::NoCatch)
-        .disable(DiagnosticCode::UnnecessaryFunctionArg);
+        .disable(DiagnosticCode::UnnecessaryFunctionArg)
+        .disable(DiagnosticCode::UnusedExportedType);
     check_no_parse_errors_with_config(analysis, file_id, &config, &vec![]);
 }
 

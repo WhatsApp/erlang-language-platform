@@ -27,7 +27,9 @@ use elp_syntax::ast;
 use elp_syntax::match_ast;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use hir::Atom;
 use hir::Body;
+use hir::CallTarget;
 use hir::DefineDef;
 use hir::DefineId;
 use hir::Expr;
@@ -35,6 +37,7 @@ use hir::File;
 use hir::InFile;
 use hir::MacroName;
 use hir::Name;
+use hir::NameArity;
 use hir::Pat;
 use hir::Semantic;
 use hir::Term;
@@ -504,6 +507,149 @@ fn body_references_macro(body: &Body, target: InFile<DefineId>) -> bool {
     ) || body.terms.iter().any(
         |(_, term)| matches!(term, Term::MacroCall { macro_def: Some(def), .. } if *def == target),
     )
+}
+
+/// A type call read from a HIR body: the module of a remote call, and
+/// `name/arity`.
+pub type TypeCall = (Option<Atom>, NameArity);
+
+/// The type calls in the forms of `file_id` that hold types: each type
+/// definition, with its name, then specs, callbacks, records and macro
+/// definitions, with `None`.
+pub fn type_calls_in_type_forms(
+    sema: &Semantic,
+    file_id: FileId,
+) -> Vec<(Option<NameArity>, Vec<TypeCall>)> {
+    let db = sema.db;
+    let form_list = sema.form_list(file_id);
+    let type_aliases = form_list.type_aliases().map(|(id, alias)| {
+        let body = db.type_body(InFile::new(file_id, id)).body.clone();
+        (Some(alias.name().clone()), body)
+    });
+    let specs = form_list
+        .specs()
+        .map(|(id, _)| (None, db.spec_body(InFile::new(file_id, id)).body.clone()));
+    let callbacks = form_list.callback_attributes().map(|(id, _)| {
+        (
+            None,
+            db.callback_body(InFile::new(file_id, id)).body.clone(),
+        )
+    });
+    let records = form_list
+        .records()
+        .map(|(id, _)| (None, db.record_body(InFile::new(file_id, id)).body.clone()));
+    let defines = form_list
+        .define_attributes()
+        .map(|(id, _)| (None, db.define_body(InFile::new(file_id, id)).body.clone()));
+    type_aliases
+        .chain(specs)
+        .chain(callbacks)
+        .chain(records)
+        .chain(defines)
+        .map(|(user, body)| (user, type_calls(&body).collect()))
+        .collect()
+}
+
+/// The type calls in the function clauses of `file_id`: those of type casts.
+pub fn type_calls_in_functions(sema: &Semantic, file_id: FileId) -> Vec<TypeCall> {
+    sema.form_list(file_id)
+        .function_clauses()
+        .flat_map(|(id, _)| {
+            let body = sema.db.function_clause_body(InFile::new(file_id, id));
+            type_calls(&body.body).collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+/// The other files of the project of `file_id`, each with the names that follow
+/// `module:` in its text, where `module` is the module of `file_id`. A reference
+/// from another file to a type of the module is written `module:type()`, so a
+/// file whose names do not include `type` cannot hold one. Each file is scanned
+/// only when the iterator reaches it, so a caller can stop early.
+pub fn files_naming_module<'a>(
+    sema: &'a Semantic<'a>,
+    file_id: FileId,
+) -> impl Iterator<Item = (FileId, FxHashSet<String>)> + 'a {
+    let module = sema
+        .form_list(file_id)
+        .module_attribute()
+        .map(|m| m.name.clone());
+    let project = sema.db.file_app(file_id).map(|app| app.project(sema.db));
+    let (Some(module), Some(project)) = (module, project) else {
+        return None.into_iter().flatten();
+    };
+    let prefix = format!("{}:", module.to_quoted_string());
+    // The files of the app of `file_id` first, as most likely to use its types.
+    let own_root = sema.db.file_source_root(file_id).source_root_id(sema.db);
+    let (own_roots, other_roots): (Vec<_>, Vec<_>) = project
+        .source_roots(sema.db)
+        .iter()
+        .partition(|root| **root == own_root);
+    let files = own_roots
+        .into_iter()
+        .chain(other_roots)
+        .flat_map(move |root| {
+            sema.db
+                .source_root(root)
+                .source_root(sema.db)
+                .iter()
+                .filter(|other_file_id| *other_file_id != file_id)
+                .collect::<Vec<_>>()
+        });
+    let iter = files.filter_map(move |other_file_id| {
+        let text = sema.db.file(other_file_id).text(sema.db);
+        let names = names_after(text.as_bytes(), prefix.as_bytes());
+        (!names.is_empty()).then_some((other_file_id, names))
+    });
+    Some(iter).into_iter().flatten()
+}
+
+/// The atoms that follow each occurrence of `prefix` in `text` that does not
+/// continue another atom, quoted ones with their quotes.
+fn names_after(text: &[u8], prefix: &[u8]) -> FxHashSet<String> {
+    Finder::new(prefix)
+        .find_iter(text)
+        .filter(|start| *start == 0 || !is_atom_byte(text[*start - 1]))
+        .filter_map(|start| {
+            let rest = &text[start + prefix.len()..];
+            let len = match rest.first() {
+                Some(b'\'') => rest[1..].iter().position(|b| *b == b'\'')? + 2,
+                _ => rest.iter().take_while(|b| is_atom_byte(**b)).count(),
+            };
+            std::str::from_utf8(&rest[..len]).ok().map(str::to_string)
+        })
+        .collect()
+}
+
+fn is_atom_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'@' || !byte.is_ascii()
+}
+
+/// The types of `module` that `file_id` references: first those in its type
+/// definitions, specs, callbacks and records, then those in its type casts.
+pub fn type_calls_to_module(sema: &Semantic, file_id: FileId, module: Atom) -> Vec<NameArity> {
+    let in_type_forms = type_calls_in_type_forms(sema, file_id)
+        .into_iter()
+        .flat_map(|(_, calls)| calls);
+    in_type_forms
+        .chain(type_calls_in_functions(sema, file_id))
+        .filter(|(target_module, _)| *target_module == Some(module))
+        .map(|(_, name_arity)| name_arity)
+        .collect()
+}
+
+fn type_calls(body: &Body) -> impl Iterator<Item = TypeCall> + '_ {
+    body.type_exprs.iter().filter_map(|(_, type_expr)| {
+        let TypeExpr::Call { target, args } = type_expr else {
+            return None;
+        };
+        let (module, name) = match target {
+            CallTarget::Local { name } => (None, name),
+            CallTarget::Remote { module, name, .. } => (Some(body[*module].as_atom()?), name),
+        };
+        let name = body[*name].as_atom()?.as_name();
+        Some((module, NameArity::new(name, args.len() as u32)))
+    })
 }
 
 /// Represents possible ast reference points -

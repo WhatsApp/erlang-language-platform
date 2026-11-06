@@ -100,7 +100,11 @@ mod tests {
             //- /src/main.erl
             -module(main).
             -type my_type() :: term().
+            %%    ^^^^^^^ warning: W0092: Exported type my_type/0 is not used anywhere in the codebase.
+            %%          | 💡 <suppression>
             -opaque my_opaque() :: term().
+            %%      ^^^^^^^^^ warning: W0092: Exported type my_opaque/0 is not used anywhere in the codebase.
+            %%              | 💡 <suppression>
             -export_type([my_type/0, my_opaque/0]).
             "#,
         )

@@ -183,6 +183,8 @@ mod tests {
     %% ^^^^ warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     %%    | 💡 <suppression>
     -type my_integer() :: integer().
+    %%    ^^^^^^^^^^ warning: W0092: Exported type my_integer/0 is not used anywhere in the codebase.
+    %%             | 💡 <suppression>
 
     -type my_integer2() :: integer().
 
@@ -205,6 +207,8 @@ mod tests {
 
     %% @doc This is an incorrect type doc
     -type my_integer() :: integer().
+    %%    ^^^^^^^^^^ warning: W0092: Exported type my_integer/0 is not used anywhere in the codebase.
+    %%             | 💡 <suppression>
 
     -type my_integer2() :: integer().
 
