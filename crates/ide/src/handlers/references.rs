@@ -687,6 +687,25 @@ should_not_match() -> #foo{a = 1}.
     }
 
     #[test]
+    fn test_functions_supervisor_child_spec_same_module_and_function_name() {
+        check(
+            r#"
+        //- /src/sup.erl
+        -module(sup).
+        init([]) ->
+            {ok, {#{}, [#{id => w, start => {worker, worker, []}}]}}.
+        %%                                           ^^^^^^
+
+        //- /src/worker.erl
+        -module(worker).
+        -export([worker/0]).
+          worker~() -> ok.
+        %%^^^^^^def
+        "#,
+        );
+    }
+
+    #[test]
     fn test_functions_supervisor_child_spec_no_id() {
         // A map with `start => {M, F, A}` but without `id` should not
         // be recognised as a supervisor child spec.
@@ -701,6 +720,25 @@ should_not_match() -> #foo{a = 1}.
             #{
                 start => {main, start_li~nk, [arg]}
             }.
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_supervisor_child_spec_mfa_in_start_args() {
+        // The supervisor calls `proxy:start_link/1`; `{worker, run, []}` is
+        // only its argument, so `run` is not a reference to `worker:run/0`.
+        check(
+            r#"
+        //- /src/sup.erl
+        -module(sup).
+        init([]) ->
+            {ok, {#{}, [#{id => w, start => {proxy, start_link, [{worker, r~un, []}]}}]}}.
+
+        //- /src/worker.erl
+        -module(worker).
+        -export([run/0]).
+        run() -> ok.
         "#,
         );
     }
