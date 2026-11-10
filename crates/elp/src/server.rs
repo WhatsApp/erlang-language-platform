@@ -203,6 +203,11 @@ impl fmt::Debug for Event {
             }
             Event::Lsp(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
+            Event::Task(Task::FetchProject(spinner, projects)) => f
+                .debug_struct("FetchProject")
+                .field("spinner", spinner)
+                .field("project_count", &projects.len())
+                .finish_non_exhaustive(),
             Event::Task(it) => fmt::Debug::fmt(it, f),
             Event::Telemetry(it) => fmt::Debug::fmt(it, f),
         }
@@ -2261,6 +2266,43 @@ fn report_db_write_stall(elapsed: Duration, started_at: SystemTime, num_changed_
         telemetry::duration_ms(elapsed),
         started_at,
     );
+}
+
+#[cfg(test)]
+mod event_debug_tests {
+    use elp_base_db::assert_eq_expected;
+    use elp_project_model::otp::Otp;
+
+    use super::*;
+
+    #[test]
+    fn fetch_project_debug_omits_graph_but_keeps_spinner() {
+        let payload = "project_payload".repeat(1_000);
+        let project = Project::empty(Otp {
+            lib_dir: AbsPathBuf::try_from(format!("/{payload}").as_str()).unwrap(),
+        });
+        let mut progress = ProgressManager::default();
+        let spinner = progress.begin_spinner("Loading projects".to_string());
+        let expected = format!("FetchProject {{ spinner: {spinner:?}, project_count: 1, .. }}");
+        let event = Event::Task(Task::FetchProject(spinner, vec![project]));
+        assert_eq_expected!(expected, format!("{event:?}"));
+    }
+
+    #[test]
+    fn telemetry_debug_keeps_full_message() {
+        let message = telemetry::build_message(
+            "telemetry".to_string(),
+            serde_json::json!({"detail": "keep this telemetry value"}),
+            Some(42),
+            None,
+        );
+        let event = Event::Telemetry(message.clone());
+        assert_eq!(
+            format!("{message:?}"),
+            format!("{event:?}"),
+            "telemetry event Debug should preserve the complete message"
+        );
+    }
 }
 
 #[cfg(test)]
