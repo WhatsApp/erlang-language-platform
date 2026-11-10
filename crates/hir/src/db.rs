@@ -32,6 +32,7 @@ use crate::FormList;
 use crate::FunctionBody;
 use crate::FunctionClauseBody;
 use crate::FunctionClauseId;
+use crate::ImplicitCall;
 use crate::InFile;
 use crate::InFileAstPtr;
 use crate::IncludeAttributeId;
@@ -274,6 +275,19 @@ pub trait DefDatabase:
     // SsrSource is already a #[salsa::interned] struct, so use invoke (not invoke_interned)
     #[salsa::invoke(ssr_body)]
     fn ssr_body(&self, ssr_source: SsrSource) -> Option<Arc<SsrBody>>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(crate::sema::implicit_calls::function_clause_implicit_calls_dispatch)]
+    fn function_clause_implicit_calls(
+        &self,
+        clause: InFile<FunctionClauseId>,
+    ) -> Arc<Vec<ImplicitCall>>;
+
+    #[salsa::invoke(crate::sema::implicit_calls::function_clause_implicit_calls_inner)]
+    fn function_clause_implicit_calls_interned(
+        &self,
+        fid: crate::InternedInFileFunctionClause,
+    ) -> Arc<Vec<ImplicitCall>>;
 
     #[salsa::transparent]
     #[salsa::invoke(FunctionScopes::function_scopes_dispatch)]

@@ -104,6 +104,7 @@ use crate::resolver::Resolver;
 
 pub mod dynamic_calls;
 mod find;
+pub mod implicit_calls;
 // @fb-only: pub mod meta_only;
 pub mod to_def;
 
@@ -313,6 +314,17 @@ impl Semantic<'_> {
         let module_atom: Atom = module_expr.as_atom()?;
         let module_name: Name = module_atom.as_name();
         self.resolve_module_name(file_id, module_name.as_str())
+    }
+
+    /// The module or function that `atom` names in a call that a framework
+    /// makes, such as the `start` MFA of a supervisor child spec. See
+    /// [`implicit_calls`].
+    pub fn implicit_call_reference(
+        &self,
+        file_id: FileId,
+        atom: &ast::Atom,
+    ) -> Option<implicit_calls::ImplicitCallReference> {
+        implicit_calls::reference(self, file_id, atom)
     }
 
     /// Resolve a dynamic call target (apply, rpc:call, spawn, etc.)

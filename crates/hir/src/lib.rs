@@ -184,6 +184,8 @@ pub use sema::MacroDefineIndex;
 pub use sema::RecordDefineIndex;
 pub use sema::ScopeAnalysis;
 pub use sema::Semantic;
+pub use sema::implicit_calls::ImplicitCall;
+pub use sema::implicit_calls::ImplicitCallReference;
 
 /// `InFile<T>` stores a value of `T` inside a particular file.
 ///

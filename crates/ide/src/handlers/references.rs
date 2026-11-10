@@ -687,6 +687,64 @@ should_not_match() -> #foo{a = 1}.
     }
 
     #[test]
+    fn test_functions_supervisor_child_spec_module_macro() {
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -export([start_link/0]).
+          start_link~() -> ok.
+        %%^^^^^^^^^^def
+
+        child_spec() ->
+            #{id => main, start => {?MODULE, start_link, []}}.
+        %%                                   ^^^^^^^^^^
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_supervisor_child_spec_built_by_macro() {
+        check(
+            r#"
+        //- /src/sup.erl
+        -module(sup).
+        -define(CHILD(M, F), #{id => M, start => {M, F, []}}).
+
+        init([]) ->
+            {ok, {#{}, [?CHILD(worker, start_link)]}}.
+        %%                             ^^^^^^^^^^
+
+        //- /src/worker.erl
+        -module(worker).
+        -export([start_link/0]).
+          start_link~() -> ok.
+        %%^^^^^^^^^^def
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_supervisor_child_spec_in_define() {
+        check(
+            r#"
+        //- /src/sup.erl
+        -module(sup).
+        -define(WORKER, #{id => worker, start => {worker, start_link, []}}).
+        %%                                                ^^^^^^^^^^
+        init([]) ->
+            {ok, {#{}, [?WORKER]}}.
+
+        //- /src/worker.erl
+        -module(worker).
+        -export([start_link/0]).
+          start_link~() -> ok.
+        %%^^^^^^^^^^def
+        "#,
+        );
+    }
+
+    #[test]
     fn test_functions_supervisor_child_spec_same_module_and_function_name() {
         check(
             r#"

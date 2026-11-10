@@ -33,12 +33,11 @@ use hir::ExprId;
 use hir::FaDef;
 use hir::File;
 use hir::FunctionDef;
+use hir::ImplicitCallReference;
 use hir::InFile;
 use hir::Literal;
 use hir::MacroCallDef;
 use hir::Module;
-use hir::Name;
-use hir::NameArity;
 use hir::RecordDef;
 use hir::RecordFieldDef;
 use hir::Semantic;
@@ -605,95 +604,18 @@ pub fn from_wrapper(
     wrapper: SyntaxNode,
 ) -> Option<SymbolClass> {
     if let Some(atom) = ast::Atom::cast(wrapper.clone()) {
-        from_supervisor_child_spec(sema, token, &atom)
+        from_implicit_call(sema, token.file_id, &atom)
             .or_else(|| reference_direct(sema.to_def(token.with_value(&atom))))
     } else {
         classify_var(sema, token.file_id, wrapper)
     }
 }
 
-/// Detect MFA tuples in supervisor child specs.
-/// Pattern: `#{id => Id, start => {Module, Function, Args}, ...}`, where every
-/// key is a child spec key.
-/// Returns a reference to the module or to `Function/length(Args)` in it, if the
-/// atom is the module or the function of the tuple and that function exists.
-pub fn from_supervisor_child_spec(
-    sema: &Semantic,
-    token: &InFile<SyntaxToken>,
-    atom: &ast::Atom,
-) -> Option<SymbolClass> {
-    let tuple = parent::<ast::Tuple>(atom)?;
-    let field = parent::<ast::MapField>(&tuple)?;
-    if atom_name(&field.key()?)? != *known::start || !is_child_spec(&parent(&field)?) {
-        return None;
+/// The module or function that `atom` names in a call that a framework makes,
+/// such as the `start` MFA of a supervisor child spec.
+fn from_implicit_call(sema: &Semantic, file_id: FileId, atom: &ast::Atom) -> Option<SymbolClass> {
+    match sema.implicit_call_reference(file_id, atom)? {
+        ImplicitCallReference::Module(module) => reference_direct(Some(module)),
+        ImplicitCallReference::Function(function) => reference_direct(Some(function)),
     }
-    let (module, function, arity) = mfa(&tuple)?;
-    let module_def = sema.resolve_module_name(token.file_id, module.as_name().as_str())?;
-    let function_def = sema
-        .def_map(module_def.file.file_id)
-        .get_function(&NameArity::new(function.as_name(), arity))?
-        .clone();
-    if *atom == module {
-        reference_direct(Some(module_def))
-    } else if *atom == function {
-        reference_direct(Some(function_def))
-    } else {
-        None
-    }
-}
-
-/// Whether `map` has an `id` key and only keys that a child spec can have.
-fn is_child_spec(map: &ast::MapExpr) -> bool {
-    static CHILD_SPEC_KEYS: std::sync::LazyLock<Vec<Name>> = std::sync::LazyLock::new(|| {
-        vec![
-            *known::id,
-            *known::start,
-            *known::restart,
-            *known::significant,
-            *known::shutdown,
-            *known::type_name,
-            *known::modules,
-        ]
-    });
-    let mut has_id = false;
-    for field in map.fields() {
-        match field.key().as_ref().and_then(atom_name) {
-            Some(key) if CHILD_SPEC_KEYS.contains(&key) => has_id |= key == *known::id,
-            _ => return false,
-        }
-    }
-    has_id
-}
-
-/// The module, function and arity of a `{Module, Function, Args}` tuple.
-fn mfa(tuple: &ast::Tuple) -> Option<(ast::Atom, ast::Atom, u32)> {
-    let exprs: Vec<_> = tuple.expr().collect();
-    let [
-        module,
-        function,
-        ast::Expr::ExprMax(ast::ExprMax::List(args)),
-    ] = exprs.as_slice()
-    else {
-        return None;
-    };
-    Some((
-        expr_atom(module)?,
-        expr_atom(function)?,
-        args.exprs().count() as u32,
-    ))
-}
-
-fn atom_name(expr: &ast::Expr) -> Option<Name> {
-    expr_atom(expr).map(|atom| atom.as_name())
-}
-
-fn expr_atom(expr: &ast::Expr) -> Option<ast::Atom> {
-    match expr {
-        ast::Expr::ExprMax(ast::ExprMax::Atom(atom)) => Some(atom.clone()),
-        _ => None,
-    }
-}
-
-fn parent<N: AstNode>(node: &impl AstNode) -> Option<N> {
-    N::cast(node.syntax().parent()?)
 }
