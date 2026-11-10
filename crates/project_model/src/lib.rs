@@ -324,8 +324,10 @@ impl ProjectManifest {
             return Ok((ElpConfig::default(), ProjectManifest::Json(json)));
         }
 
-        if let Some(elp_config) = Self::discover_toml(path)? {
+        if let Some(mut elp_config) = Self::discover_toml(path)? {
             if elp_config.buck_enabled() {
+                let config_path = elp_config.config_path().to_path_buf();
+                BuckConfig::make_config(&config_path, &mut elp_config)?;
                 let buck = elp_config.clone().buck.unwrap(); // Safe from prior line
                 return Ok((elp_config.clone(), ProjectManifest::TomlBuck(buck)));
             } else {
@@ -630,9 +632,8 @@ impl ElpConfig {
             path.to_path_buf()
         };
         let config_content = fs::read_to_string(&path)?;
-        match toml::from_str(config_content.as_str()) {
+        match toml::from_str::<ElpConfig>(config_content.as_str()) {
             Ok(mut config) => {
-                BuckConfig::make_config(&path, &mut config)?;
                 config.config_path = Some(path);
                 config.eqwalizer.compile_patterns();
 

@@ -556,6 +556,7 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
     use elp_project_model::AppName;
     use elp_project_model::DiscoverConfig;
+    use elp_project_model::ProjectManifest;
     use elp_project_model::buck::BuckConfig;
     use elp_project_model::buck::BuckQueryConfig;
     use elp_project_model::buck::get_prelude_cell;
@@ -1616,6 +1617,25 @@ mod tests {
         let mut json: serde_json::Value = serde_json::from_str(content).unwrap();
         json.sort_all_objects();
         serde_json::to_string_pretty(&json).unwrap()
+    }
+
+    #[test]
+    fn rebar_on_request_reads_elp_toml() {
+        // `diagnostics` has a `rebar.config` and an `.elp.toml` with both
+        // `[buck] enabled = true` and `[eqwalizer] enable_all = false`.
+        let (elp_config, manifest) = load::discover_manifest(
+            &project_path("diagnostics/app_a"),
+            &DiscoverConfig::rebar(None),
+        )
+        .unwrap();
+        assert!(
+            matches!(manifest, ProjectManifest::Rebar(_)),
+            "the project should be loaded with rebar3"
+        );
+        assert!(
+            !elp_config.eqwalizer.enable_all,
+            "[eqwalizer] should be read from the .elp.toml next to rebar.config"
+        );
     }
 
     #[test]

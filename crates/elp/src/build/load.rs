@@ -28,6 +28,7 @@ use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::loader::Handle;
 use elp_ide::elp_ide_db::elp_base_db::lower;
 use elp_project_model::DiscoverConfig;
+use elp_project_model::ELP_CONFIG_FILE;
 use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
@@ -64,21 +65,21 @@ pub fn discover_manifest(
     conf: &DiscoverConfig,
 ) -> Result<(ElpConfig, ProjectManifest)> {
     let root = canonicalize_project_root(root)?;
-    let (elp_config, manifest) = match conf.rebar {
-        true => (
-            ElpConfig::default(),
-            ProjectManifest::discover_rebar(
-                &root,
-                Some(conf.rebar_profile.clone()),
-                IncludeParentDirs::Yes,
-            )?,
-        ),
-        false => {
-            let (elp_config, manifest) = ProjectManifest::discover(&root)?;
-            (elp_config, Some(manifest))
-        }
+    if !conf.rebar {
+        return ProjectManifest::discover(&root);
+    }
+    let manifest = ProjectManifest::discover_rebar(
+        &root,
+        Some(conf.rebar_profile.clone()),
+        IncludeParentDirs::Yes,
+    )?
+    .ok_or_else(|| anyhow::anyhow!("no projects"))?;
+    let toml_path = project_root_dir(&manifest).join(ELP_CONFIG_FILE);
+    let elp_config = if toml_path.is_file() {
+        ElpConfig::try_parse(&AbsPathBuf::assert_utf8(toml_path))?
+    } else {
+        ElpConfig::default()
     };
-    let manifest = manifest.ok_or_else(|| anyhow::anyhow!("no projects"))?;
     Ok((elp_config, manifest))
 }
 
