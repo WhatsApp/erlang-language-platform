@@ -448,6 +448,9 @@ pub struct ElpConfig {
 pub struct EqwalizerConfig {
     #[serde(default = "eqwalizer_enable_all_default")]
     pub enable_all: bool,
+    /// Whether `enable_all` also covers test suites and test helpers.
+    #[serde(default = "eqwalizer_include_tests_default")]
+    pub include_tests: bool,
     #[serde(default = "eqwalizer_max_tasks_default")]
     pub max_tasks: usize,
     #[serde(default = "eqwalizer_ignore_modules_default")]
@@ -458,6 +461,10 @@ pub struct EqwalizerConfig {
 }
 
 fn eqwalizer_enable_all_default() -> bool {
+    true
+}
+
+fn eqwalizer_include_tests_default() -> bool {
     true
 }
 
@@ -473,6 +480,7 @@ impl Default for EqwalizerConfig {
     fn default() -> Self {
         Self {
             enable_all: eqwalizer_enable_all_default(),
+            include_tests: eqwalizer_include_tests_default(),
             max_tasks: eqwalizer_max_tasks_default(),
             ignore_modules: eqwalizer_ignore_modules_default(),
             ignore_modules_compiled_patterns: vec![],
@@ -1357,6 +1365,7 @@ mod tests {
                         buck: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                            include_tests: true,
                             max_tasks: 4,
                             ignore_modules: [],
                             ignore_modules_compiled_patterns: [],
@@ -1432,6 +1441,7 @@ mod tests {
                         buck: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                            include_tests: true,
                             max_tasks: 4,
                             ignore_modules: [],
                             ignore_modules_compiled_patterns: [],
@@ -1552,6 +1562,7 @@ mod tests {
                         buck: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                            include_tests: true,
                             max_tasks: 4,
                             ignore_modules: [],
                             ignore_modules_compiled_patterns: [],
@@ -1719,6 +1730,7 @@ mod tests {
                         buck: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                            include_tests: true,
                             max_tasks: 4,
                             ignore_modules: [],
                             ignore_modules_compiled_patterns: [],
@@ -1794,6 +1806,7 @@ mod tests {
                         buck: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                            include_tests: true,
                             max_tasks: 4,
                             ignore_modules: [],
                             ignore_modules_compiled_patterns: [],
@@ -1856,6 +1869,7 @@ mod tests {
                         buck: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                            include_tests: true,
                             max_tasks: 4,
                             ignore_modules: [],
                             ignore_modules_compiled_patterns: [],
@@ -2161,6 +2175,7 @@ mod tests {
                     buck: None,
                     eqwalizer: EqwalizerConfig {
                         enable_all: true,
+                        include_tests: true,
                         max_tasks: 4,
                         ignore_modules: [],
                         ignore_modules_compiled_patterns: [],
@@ -2215,6 +2230,7 @@ mod tests {
             }),
             eqwalizer: EqwalizerConfig {
                 enable_all: true,
+                include_tests: true,
                 max_tasks: 34,
                 ignore_modules: vec!["some_module".to_string()],
                 ignore_modules_compiled_patterns: vec![Pattern::new("some_module").unwrap()],
@@ -2243,6 +2259,7 @@ mod tests {
 
             [eqwalizer]
             enable_all = true
+            include_tests = true
             max_tasks = 34
             ignore_modules = ["some_module"]
 
@@ -2257,6 +2274,33 @@ mod tests {
             [docs]
         "#]]
         .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_deserialize_eqwalizer_include_tests() {
+        let config: ElpConfig = toml::from_str(
+            r#"
+            [eqwalizer]
+            include_tests = false
+             "#,
+        )
+        .unwrap();
+        assert!(
+            !config.eqwalizer.include_tests,
+            "include_tests should be read from the config"
+        );
+
+        let config: ElpConfig = toml::from_str(
+            r#"
+            [eqwalizer]
+            enable_all = true
+             "#,
+        )
+        .unwrap();
+        assert!(
+            config.eqwalizer.include_tests,
+            "include_tests should default to true"
+        );
     }
 
     #[test]
@@ -2324,6 +2368,7 @@ mod tests {
                 ),
                 eqwalizer: EqwalizerConfig {
                     enable_all: true,
+                    include_tests: true,
                     max_tasks: 34,
                     ignore_modules: [],
                     ignore_modules_compiled_patterns: [],
@@ -2504,6 +2549,7 @@ mod tests {
                     buck: None,
                     eqwalizer: EqwalizerConfig {
                         enable_all: true,
+                        include_tests: true,
                         max_tasks: 4,
                         ignore_modules: [],
                         ignore_modules_compiled_patterns: [],
@@ -2550,6 +2596,7 @@ mod tests {
         expect![[r#"
             [eqwalizer]
             enable_all = true
+            include_tests = true
             max_tasks = 4
             ignore_modules = []
 
@@ -2583,6 +2630,7 @@ mod tests {
                 buck: None,
                 eqwalizer: EqwalizerConfig {
                     enable_all: true,
+                    include_tests: true,
                     max_tasks: 4,
                     ignore_modules: [],
                     ignore_modules_compiled_patterns: [],

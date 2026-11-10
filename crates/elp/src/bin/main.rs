@@ -3195,6 +3195,18 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn eqwalize_all_exclude_tests(buck: bool) {
+        simple_snapshot(
+            args_vec!["eqwalize-all"],
+            "eqwalizer_include_tests",
+            resource_file("eqwalizer_include_tests/eqwalize_all_exclude_tests.pretty"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn eqwalize_with_color_vs_no_color(buck: bool) {
         // Test with color (default)
         let (mut args_color, _path) =

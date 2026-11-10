@@ -1,0 +1,17 @@
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |   ┌─ app_a/src/app_a.erl:5:14
+stdout |   │
+stdout | 5 │ checked() -> error.
+stdout |   │              ^^^^^ 'error'.
+stdout | Expression has type:   'error'
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |   ┌─ app_a/test/app_a_opted_in_SUITE.erl:6:14
+stdout |   │
+stdout | 6 │ checked() -> error.
+stdout |   │              ^^^^^ 'error'.
+stdout | Expression has type:   'error'
+stdout | Context expected type: 'ok'
+stdout |
+stdout | 2 ERRORS

@@ -229,7 +229,9 @@ fn is_eqwalizer_enabled_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -
     let project = app.project(db);
     let eqwalizer_config = project.eqwalizer_config(db);
     let module_index = db.module_index(project);
-    let global_opt_in = eqwalizer_config.enable_all;
+    let global_opt_in = eqwalizer_config.enable_all
+        && (eqwalizer_config.include_tests
+            || db.is_test_suite_or_test_helper(file_id) != Some(true));
     let opt_in = global_opt_in || db.has_eqwalizer_module_marker(file_id);
     let ignored_in_config = if let Some(module_name) = module_index.module_for_file(file_id) {
         eqwalizer_config

@@ -1,0 +1,3 @@
+{application, app_a,
+  [{description, "example app A"}, {vsn, "1.0.0"}, {applications, [kernel, stdlib]}]
+}.
