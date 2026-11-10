@@ -107,6 +107,18 @@ For example, the following patterns are recognised:
   `send_request/6`
 - **`peer`**: `call/4,5`, `cast/4`
 
+### Implicit Calls
+
+Some OTP and library behaviours call a function by a name that only appears as
+an atom, so the code has no call site for it, not even a call to a dispatcher as
+for the dynamic calls above. ELP treats these atoms as direct references to the
+called function. Macros are expanded first, so `{?MODULE, start_link, []}` and
+child specs built by a macro are recognised too:
+
+| Pattern | Example | Refers to |
+|---------|---------|-----------|
+| Supervisor child spec | `#{id => w, start => {mod, start_link, [A]}}` | `mod:start_link/1` |
+
 ## Limitations
 
 These limitations apply to every feature that relies on the usage search
