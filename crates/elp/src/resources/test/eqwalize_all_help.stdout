@@ -8,8 +8,7 @@ stdout |       --as <PROFILE>       Rebar3 profile to pickup [default: test]
 stdout |       --format <FORMAT>    Customize the output format (defaults to human-readable) [possible
 stdout |                            values: json]
 stdout |       --rebar              Run with rebar
-stdout |       --connect            Use the persistent daemon for fast turnaround (default when watchman is
-stdout |                            installed; auto-starts if needed). Pass --no-connect to disable
+stdout |       --connect            Use the persistent daemon for fast turnaround (auto-starts if needed)
 stdout |       --no-connect         Disable the persistent daemon and run standalone (no cross-run caching)
 stdout |       --bail-on-error      Exit with a non-zero status code if any errors are found
 stdout |       --stats              Print statistics when done

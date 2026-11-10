@@ -82,8 +82,7 @@ pub struct Eqwalize {
     /// Run with rebar
     #[arg(long)]
     pub rebar: bool,
-    /// Use the persistent daemon for fast turnaround (default when watchman is
-    /// installed; auto-starts if needed). Pass --no-connect to disable.
+    /// Use the persistent daemon for fast turnaround (auto-starts if needed).
     #[arg(long, conflicts_with = "no_connect")]
     pub connect: bool,
     /// Disable the persistent daemon and run standalone (no cross-run caching).
@@ -116,8 +115,7 @@ pub struct EqwalizeAll {
     /// Run with rebar
     #[arg(long)]
     pub rebar: bool,
-    /// Use the persistent daemon for fast turnaround (default when watchman is
-    /// installed; auto-starts if needed). Pass --no-connect to disable.
+    /// Use the persistent daemon for fast turnaround (auto-starts if needed).
     #[arg(long, conflicts_with = "no_connect")]
     pub connect: bool,
     /// Disable the persistent daemon and run standalone (no cross-run caching).
@@ -153,8 +151,7 @@ pub struct EqwalizeTarget {
     /// Also eqwalize opted-in generated modules from application (deprecated)
     #[arg(long, hide = true)]
     pub include_generated: bool,
-    /// Use the persistent daemon for fast turnaround (default when watchman is
-    /// installed; auto-starts if needed). Pass --no-connect to disable.
+    /// Use the persistent daemon for fast turnaround (auto-starts if needed).
     #[arg(long, conflicts_with = "no_connect")]
     pub connect: bool,
     /// Disable the persistent daemon and run standalone (no cross-run caching).
@@ -190,8 +187,7 @@ pub struct EqwalizeApp {
     /// Run with rebar
     #[arg(long)]
     pub rebar: bool,
-    /// Use the persistent daemon for fast turnaround (default when watchman is
-    /// installed; auto-starts if needed). Pass --no-connect to disable.
+    /// Use the persistent daemon for fast turnaround (auto-starts if needed).
     #[arg(long, conflicts_with = "no_connect")]
     pub connect: bool,
     /// Disable the persistent daemon and run standalone (no cross-run caching).

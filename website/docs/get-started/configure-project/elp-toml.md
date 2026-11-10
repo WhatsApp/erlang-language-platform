@@ -172,10 +172,12 @@ exclude_apps = ["diameter", "megaco"]
 
 Configure the ELP daemon lifecycle.
 
-The daemon relies on [watchman](https://facebook.github.io/watchman/), so
-commands use it by default only when `watchman` is on `PATH`. If the daemon
-cannot start, commands report why and run without it. Pass `--no-connect` to
-skip the daemon, or `--connect` to require it.
+Open-source builds of ELP run commands such as `elp lint` and `elp eqwalize`
+without the daemon unless `--connect` is passed. Builds distributed inside Meta
+use it by default when watchman is installed; pass `--no-connect` to skip it.
+The daemon relies on [watchman](https://facebook.github.io/watchman/). If it
+cannot start, `--connect` reports why, and the default falls back to running
+without it.
 
 | Key                  | Type    | Description                                                                                                                               | Default |
 | -------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------- |

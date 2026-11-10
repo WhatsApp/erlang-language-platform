@@ -115,13 +115,23 @@ impl<T> CliRunResult<T> {
     }
 }
 
-/// Whether to route a command through the persistent daemon. It is the default
-/// on Unix when `watchman` is installed, unless `--no-connect` opts out. An
-/// explicit `--connect` always routes here, so the caller receives the error
-/// that keeps the daemon from starting (missing `watchman`, or an unsupported
-/// platform).
-fn use_daemon(connect: bool, no_connect: bool, watchman_installed: impl FnOnce() -> bool) -> bool {
-    connect || (cfg!(unix) && !no_connect && watchman_installed())
+/// Whether this build uses the daemon when neither `--connect` nor
+/// `--no-connect` is given. Open-source builds leave it off for now.
+// @fb-only: const DAEMON_BY_DEFAULT: bool = cfg!(unix);
+const DAEMON_BY_DEFAULT: bool = false; // @oss-only
+
+/// The daemon needs `watchman`, so it is only the default when that is
+/// installed.
+fn daemon_by_default() -> bool {
+    DAEMON_BY_DEFAULT && Watchman::is_installed()
+}
+
+/// Whether to route a command through the persistent daemon. `--connect` and
+/// `--no-connect` win over `daemon_by_default`. An explicit `--connect` always
+/// routes here, so the caller receives the error that keeps the daemon from
+/// starting (missing `watchman`, or an unsupported platform).
+fn use_daemon(connect: bool, no_connect: bool, daemon_by_default: impl FnOnce() -> bool) -> bool {
+    connect || (!no_connect && daemon_by_default())
 }
 
 #[rustfmt::skip]
@@ -271,7 +281,7 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
             if use_daemon(
                 eqwalize_args.connect,
                 eqwalize_args.no_connect,
-                Watchman::is_installed,
+                daemon_by_default,
             ) =>
         {
             #[cfg(unix)]
@@ -295,7 +305,7 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
             if use_daemon(
                 eqwalize_all_args.connect,
                 eqwalize_all_args.no_connect,
-                Watchman::is_installed,
+                daemon_by_default,
             ) =>
         {
             #[cfg(unix)]
@@ -329,7 +339,7 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
             if use_daemon(
                 eqwalize_app_args.connect,
                 eqwalize_app_args.no_connect,
-                Watchman::is_installed,
+                daemon_by_default,
             ) =>
         {
             #[cfg(unix)]
@@ -365,7 +375,7 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
             if use_daemon(
                 eqwalize_target_args.connect,
                 eqwalize_target_args.no_connect,
-                Watchman::is_installed,
+                daemon_by_default,
             ) =>
         {
             #[cfg(unix)]
@@ -403,11 +413,7 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
             build_info_cli::save_project_info(args, cli, &query_config)?
         }
         args::Command::Lint(lint_args)
-            if use_daemon(
-                lint_args.connect,
-                lint_args.no_connect,
-                Watchman::is_installed,
-            ) =>
+            if use_daemon(lint_args.connect, lint_args.no_connect, daemon_by_default) =>
         {
             #[cfg(unix)]
             {
