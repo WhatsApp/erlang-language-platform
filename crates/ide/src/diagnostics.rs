@@ -182,7 +182,6 @@ mod undefined_module;
 mod undefined_record;
 mod undocumented_function;
 mod undocumented_module;
-mod unexpected_separator;
 mod unexported_function;
 mod unnecessary_fold_to_build_map;
 mod unnecessary_function_arg;
@@ -2345,7 +2344,6 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &missing_ms_transform_include::LINTER,
     &redundant_fun_wrapper::LINTER,
     &missing_separator::LINTER,
-    &unexpected_separator::LINTER,
     &eqwalizer_escape_hatches::EQWALIZER_FIXME_LINTER,
     &eqwalizer_escape_hatches::EQWALIZER_IGNORE_LINTER,
     &mutable_variable::LINTER,

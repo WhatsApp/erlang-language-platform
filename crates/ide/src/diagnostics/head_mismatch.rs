@@ -399,7 +399,6 @@ mod tests {
     use expect_test::Expect;
     use expect_test::expect;
 
-    use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::IncludeCodeActionAssists;
     use crate::tests::check_diagnostics_with_config;
@@ -407,13 +406,13 @@ mod tests {
 
     #[track_caller]
     fn check_diagnostics(fixture: &str) {
-        let config = DiagnosticsConfig::default().disable(DiagnosticCode::UnexpectedSeparator);
+        let config = DiagnosticsConfig::default();
         check_diagnostics_with_config(config, fixture)
     }
 
     #[track_caller]
     fn check_fix(fixture_before: &str, fixture_after: Expect) {
-        let config = DiagnosticsConfig::default().disable(DiagnosticCode::UnexpectedSeparator);
+        let config = DiagnosticsConfig::default();
         check_nth_fix(
             0,
             fixture_before,

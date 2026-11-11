@@ -1951,7 +1951,6 @@ mod tests {
                 module specified: lints
                 Diagnostics reported:
                 app_a/src/lints.erl:4:11-4:17::[Warning] [W0002] Unused macro (UNUSED)
-                app_a/src/lints.erl:6:24-6:25::[Warning] [W0018] Unexpected ';'
                 app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
                         6:3-6:16: Mismatched clause name
                 app_a/src/lints.erl:9:3-9:13::[Warning] [L1230] function unused_fun/0 is unused
@@ -2021,7 +2020,6 @@ mod tests {
                 module specified: lints
                 Diagnostics reported:
                 app_a/src/lints.erl:4:11-4:17::[Warning] [W0002] Unused macro (UNUSED)
-                app_a/src/lints.erl:6:24-6:25::[Warning] [W0018] Unexpected ';'
                 app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
                         6:3-6:16: Mismatched clause name
                 app_a/src/lints.erl:9:3-9:13::[Warning] [L1230] function unused_fun/0 is unused
@@ -2048,7 +2046,6 @@ mod tests {
                 module specified: lints
                 Diagnostics reported:
                 app_a/src/lints.erl:4:11-4:17::[Warning] [W0002] Unused macro (UNUSED)
-                app_a/src/lints.erl:6:24-6:25::[Warning] [W0018] Unexpected ';'
                 app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
                         6:3-6:16: Mismatched clause name
                 app_a/src/lints.erl:2:12-2:27::[Error] [L1227] function head_mismatch/1 undefined
@@ -2076,7 +2073,6 @@ mod tests {
             expect![[r#"
                 module specified: lints
                 Diagnostics reported:
-                app_a/src/lints.erl:6:24-6:25::[Warning] [W0018] Unexpected ';'
                 app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
                         6:3-6:16: Mismatched clause name
                 app_a/src/lints.erl:2:12-2:27::[Error] [L1227] function head_mismatch/1 undefined

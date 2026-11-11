@@ -61,7 +61,6 @@ stdout | app_a/src/lint_recursive.erl:23:5-23:14::[Warning] [W0006] this stateme
 stdout | app_a/src/lint_recursive.erl:6:5-6:7::[Warning] [W0006] this statement has no effect
 stdout | app_a/src/lint_recursive.erl:14:5-14:12::[Warning] [L1268] variable 'Config1' is unused
 stdout | app_a/src/lint_recursive.erl:19:5-19:12::[Warning] [L1268] variable 'Config1' is unused
-stdout | app_a/src/lints.erl:4:22-4:23::[Warning] [W0018] Unexpected ';'
 stdout | app_a/src/lints.erl:5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
 stdout |         4:1-4:14: Mismatched clause name
 stdout | app_a/src/lints.erl:2:10-2:25::[Error] [L1227] function head_mismatch/1 undefined

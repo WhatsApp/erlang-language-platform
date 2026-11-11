@@ -83,6 +83,8 @@ pub enum DiagnosticCode {
     DeprecatedFunction,
     #[strum(props(code = "W0017"))]
     UndefinedFunction,
+    // Retired: no linter reports it. Kept so that configurations and
+    // suppressions naming it still parse.
     #[strum(props(code = "W0018"))]
     UnexpectedSeparator,
     #[strum(props(code = "W0019"))]
@@ -456,7 +458,6 @@ impl DiagnosticCode {
         match self {
             DiagnosticCode::SyntaxError => true,
             DiagnosticCode::MissingSeparator => true,
-            DiagnosticCode::UnexpectedSeparator => true,
             DiagnosticCode::ErlangService(s) => s == "P1711",
             _ => false,
         }
