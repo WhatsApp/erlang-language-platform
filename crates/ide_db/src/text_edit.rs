@@ -197,11 +197,6 @@ impl TextEditBuilder {
         indels = coalesce_indels(indels);
         TextEdit { indels }
     }
-    pub fn invalidates_offset(&self, offset: TextSize) -> bool {
-        self.indels
-            .iter()
-            .any(|indel| indel.delete.contains_inclusive(offset))
-    }
     fn indel(&mut self, indel: Indel) {
         self.indels.push(indel);
         if self.indels.len() <= 16 {

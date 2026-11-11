@@ -188,9 +188,6 @@ pub struct SourceChangeBuilder {
     edit: TextEditBuilder,
     edits_count: usize,
 
-    drop_edits_in_changed_ranges: bool,
-    changed_ranges: Vec<TextRange>,
-
     file_id: FileId,
     source_change: SourceChange,
 
@@ -211,8 +208,6 @@ impl SourceChangeBuilder {
         SourceChangeBuilder {
             edit: TextEdit::builder(),
             edits_count: 0,
-            changed_ranges: vec![],
-            drop_edits_in_changed_ranges: false,
             file_id,
             source_change: SourceChange::default(),
             mutated_tree: None,
@@ -235,20 +230,7 @@ impl SourceChangeBuilder {
         }
     }
 
-    pub fn drop_edits_in_changed_ranges(&mut self, value: bool) {
-        self.drop_edits_in_changed_ranges = value;
-    }
-
-    fn is_subsumed_by_existing_ranges(&self, range: TextRange) -> bool {
-        self.changed_ranges
-            .iter()
-            .any(|changed_range| changed_range.cover(range) == *changed_range)
-    }
-
     pub fn insert(&mut self, offset: TextSize, text: impl Into<String>) {
-        if self.drop_edits_in_changed_ranges && self.edit.invalidates_offset(offset) {
-            return;
-        }
         self.edits_count += 1;
         self.edit.insert(offset, text.into())
     }
@@ -265,20 +247,12 @@ impl SourceChangeBuilder {
 
     /// Remove specified `range` of text.
     pub fn delete(&mut self, range: TextRange) {
-        if self.drop_edits_in_changed_ranges && self.is_subsumed_by_existing_ranges(range) {
-            return;
-        }
         self.edits_count += 1;
-        self.changed_ranges.push(range);
         self.edit.delete(range)
     }
     /// Replaces specified `range` of text with a given string.
     pub fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
-        if self.drop_edits_in_changed_ranges && self.is_subsumed_by_existing_ranges(range) {
-            return;
-        }
         self.edits_count += 1;
-        self.changed_ranges.push(range);
         self.edit.replace(range, replace_with.into())
     }
 

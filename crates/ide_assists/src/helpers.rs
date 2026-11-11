@@ -45,7 +45,6 @@ use hir::Expr;
 use hir::ExprId;
 use hir::FormList;
 use hir::FunctionClauseBody;
-use hir::FunctionDef;
 use hir::InFile;
 use hir::InFileAstPtr;
 use hir::InFunctionClauseBody;
@@ -520,140 +519,6 @@ pub fn extend_delete_range(syntax: &SyntaxNode) -> TextRange {
 
 // ---------------------------------------------------------------------
 
-/// Add an option to the `suite/0` function in a test suite.
-pub fn add_suite_0_option<'a>(
-    sema: &'a Semantic<'a>,
-    file_id: FileId,
-    key: &str,
-    value: &str,
-    insert_at: Option<TextSize>,
-    builder: &'a mut SourceChangeBuilder,
-) -> Option<()> {
-    let source = sema.parse(file_id).value;
-    let form_list = sema.form_list(file_id);
-    let def_map = sema.def_map(file_id);
-    let name_arity = NameArity::new(*known::suite, 0);
-    if let Some(fun) = def_map.get_function(&name_arity) {
-        add_to_suite_0(sema, file_id, fun, &source, key, value, builder);
-    } else {
-        new_suite_0(
-            sema, file_id, &form_list, &source, key, value, insert_at, builder,
-        );
-    };
-    Some(())
-}
-
-#[allow(clippy::too_many_arguments)]
-fn new_suite_0(
-    sema: &Semantic,
-    file_id: FileId,
-    form_list: &FormList,
-    source: &SourceFile,
-    key: &str,
-    value: &str,
-    insert_at: Option<TextSize>,
-    builder: &mut SourceChangeBuilder,
-) {
-    export_suite_0(sema, file_id, builder);
-    let insert = first_function_insert_location(insert_at, form_list, source);
-    builder.insert(insert, format!("\nsuite() ->\n    [{{{key}, {value}}}].\n"))
-}
-
-/// Find the first location in a .erl file to be able to insert a
-/// function. This is after all the standard headers, such as module
-/// attributes and exports.
-pub fn first_function_insert_location(
-    insert_at: Option<TextSize>,
-    form_list: &FormList,
-    source: &SourceFile,
-) -> TextSize {
-    let insert = insert_at.unwrap_or_else(|| {
-        if let Some(module_attr) = form_list.module_attribute() {
-            let module_attr_range = module_attr.form_id.get(source).syntax().text_range();
-            module_attr_range.end() + TextSize::from(1)
-        } else {
-            TextSize::from(0)
-        }
-    });
-    if let Some((_, export_attr)) = form_list.exports().last() {
-        let export_attr_range = export_attr.form_id.get(source).syntax().text_range();
-        export_attr_range.end() + TextSize::from(1)
-    } else {
-        insert
-    }
-}
-
-fn add_to_suite_0(
-    sema: &Semantic,
-    file_id: FileId,
-    fun_def: &FunctionDef,
-    source: &SourceFile,
-    key: &str,
-    value: &str,
-    builder: &mut SourceChangeBuilder,
-) -> Option<()> {
-    let fun = fun_def.function_clauses.first()?;
-    let fun_ast = fun.form_id.get(source);
-    let clause = match fun_ast.clause()? {
-        ast::FunctionOrMacroClause::FunctionClause(clause) => clause,
-        ast::FunctionOrMacroClause::MacroCallExpr(_) => return None,
-    };
-    let expr = clause.body()?.exprs().next()?;
-    let option = format!("{{{key}, {value}}}");
-    match expr {
-        ast::Expr::ExprMax(ast::ExprMax::List(list)) => {
-            add_or_update_list(&list, key, value, builder);
-        }
-        ast::Expr::ExprMax(ast::ExprMax::Atom(e)) => {
-            let r = e.syntax().text_range();
-            builder.replace(r, format!("[{}, {option}]", e.syntax().text()));
-        }
-        ast::Expr::ExprMax(ast::ExprMax::Tuple(e)) => {
-            let r = e.syntax().text_range();
-            builder.replace(r, format!("[{}, {option}]", e.syntax().text()));
-        }
-        _ => return None,
-    };
-    if !fun_def.exported {
-        export_suite_0(sema, file_id, builder);
-    }
-    Some(())
-}
-
-fn export_suite_0(sema: &Semantic, file_id: FileId, builder: &mut SourceChangeBuilder) {
-    let name_arity = NameArity::new(*known::suite, 0);
-    ExportBuilder::new(sema, file_id, ExportForm::Functions, &[name_arity], builder)
-        .group_with(NameArity::new(*known::all, 0))
-        .export_list_pos(ExportListPosition::First)
-        .finish();
-}
-
-fn add_or_update_list(list: &ast::List, key: &str, value: &str, builder: &mut SourceChangeBuilder) {
-    let option = format!("{{{key}, {value}}}");
-    let mut done = false;
-    list.exprs().for_each(|e| {
-        if let ast::Expr::ExprMax(ast::ExprMax::Tuple(e)) = e
-            && let Some(ast::Expr::ExprMax(ast::ExprMax::Atom(a))) = e.expr().next()
-            && a.text() == Some(key.to_string())
-        {
-            if e.syntax().text().to_string() != option {
-                // We found an existing key, with different value, replace the tuple with the new one
-                builder.replace(e.syntax().text_range(), option.to_string());
-            };
-            done = true;
-        };
-    });
-    if !done {
-        // No existing key, insert at the end of the list.
-        // Skip the trailing "]"
-        let mut r = list.syntax().text_range().end();
-        r -= TextSize::from(1);
-        builder.insert(r, format!(", {option}"));
-    }
-}
-
-// ---------------------------------------------------------------------
-
 pub fn add_compile_option<'a>(
     sema: &'a Semantic<'a>,
     file_id: FileId,
@@ -825,12 +690,6 @@ pub fn last_significant_attribute(form_list: &FormList) -> Option<&Attribute> {
 // ---------------------------------------------------------------------
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum ExportListPosition {
-    First,
-    Last,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ExportForm {
     Functions,
     #[allow(unused)] // Used in next diff
@@ -845,7 +704,6 @@ pub struct ExportBuilder<'a> {
     // `group_with`: Add `funs` to the same export as this, if found.
     // If it is added to the existing export, the comment is not used.
     group_with: Option<NameArity>,
-    export_list_pos: ExportListPosition,
     insert_at: Option<TextSize>,
     with_comment: Option<String>,
     builder: &'a mut SourceChangeBuilder,
@@ -865,7 +723,6 @@ impl<'a> ExportBuilder<'a> {
             export_form,
             items,
             group_with: None,
-            export_list_pos: ExportListPosition::Last,
             insert_at: None,
             with_comment: None,
             builder,
@@ -874,11 +731,6 @@ impl<'a> ExportBuilder<'a> {
 
     pub fn group_with(mut self, name: NameArity) -> ExportBuilder<'a> {
         self.group_with = Some(name);
-        self
-    }
-
-    pub fn export_list_pos(mut self, pos: ExportListPosition) -> ExportBuilder<'a> {
-        self.export_list_pos = pos;
         self
     }
 
@@ -994,16 +846,10 @@ impl<'a> ExportBuilder<'a> {
     ) -> Option<(TextSize, String)> {
         let export_ast = export.form_id.get(source);
 
-        let maybe_added = match self.export_list_pos {
-            ExportListPosition::First => export_ast
-                .funs()
-                .next()
-                .map(|fa| (fa.syntax().text_range().start(), format!("{export_text}, "))),
-            ExportListPosition::Last => export_ast
-                .funs()
-                .last()
-                .map(|fa| (fa.syntax().text_range().end(), format!(", {export_text}"))),
-        };
+        let maybe_added = export_ast
+            .funs()
+            .last()
+            .map(|fa| (fa.syntax().text_range().end(), format!(", {export_text}")));
         match maybe_added {
             Some(result) => Some(result),
             None => {
@@ -1022,16 +868,10 @@ impl<'a> ExportBuilder<'a> {
     ) -> Option<(TextSize, String)> {
         let export_ast = export.form_id.get(source);
 
-        let maybe_added = match self.export_list_pos {
-            ExportListPosition::First => export_ast
-                .types()
-                .next()
-                .map(|fa| (fa.syntax().text_range().start(), format!("{export_text}, "))),
-            ExportListPosition::Last => export_ast
-                .types()
-                .last()
-                .map(|fa| (fa.syntax().text_range().end(), format!(", {export_text}"))),
-        };
+        let maybe_added = export_ast
+            .types()
+            .last()
+            .map(|fa| (fa.syntax().text_range().end(), format!(", {export_text}")));
         match maybe_added {
             Some(result) => Some(result),
             None => {
