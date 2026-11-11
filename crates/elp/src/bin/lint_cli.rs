@@ -650,10 +650,26 @@ fn resolve_target_files(
         user_selected_targets = true;
         for file_name in &args.file {
             report.human_line(format_args!("file specified: {}", file_name.display()))?;
-            let path_buf = Utf8PathBuf::from_path_buf(dunce::canonicalize(file_name).unwrap())
-                .expect("UTF8 conversion failed");
+            let canonicalized = dunce::canonicalize(file_name).with_context(|| {
+                format!(
+                    "invalid --file path '{}': relative paths are resolved from the current working directory; pass an existing relative path or an absolute path",
+                    file_name.display()
+                )
+            })?;
+            let path_buf = Utf8PathBuf::from_path_buf(canonicalized).map_err(|path| {
+                anyhow::anyhow!(
+                    "invalid --file path '{}': resolved path '{}' is not valid UTF-8",
+                    file_name.display(),
+                    path.display()
+                )
+            })?;
             let path = AbsPath::assert(&path_buf);
-            let path = path.as_os_str().to_str().unwrap();
+            let path = path.as_os_str().to_str().with_context(|| {
+                format!(
+                    "invalid --file path '{}': resolved path is not valid UTF-8",
+                    file_name.display()
+                )
+            })?;
             if let Some(file_id) = loaded.file_id(&VfsPath::new_real_path(path.to_string())) {
                 file_ids.push(file_id);
             } else {
@@ -1447,6 +1463,7 @@ mod tests {
     use super::LintConfig;
     use super::LintOutcome;
     use super::do_codemod;
+    use super::resolve_target_files;
     use crate::args;
     use crate::args::Command;
     use crate::args::Format;
@@ -1707,6 +1724,51 @@ mod tests {
         );
         assert_eq_expected!(LintOutcome::Clean, filtered_out);
         assert_eq_expected!(0, filtered_out.process_exit_code());
+    }
+
+    #[test]
+    fn missing_relative_file_path_returns_actionable_error() {
+        const MISSING_FILE: &str = "__elp_missing_lint_target__/missing.erl";
+
+        let loaded = fixture::load_result(
+            r#"
+            //- /app_a/src/exists.erl app:app_a
+              -module(exists).
+            "#,
+        );
+        let args = args::Args::try_parse_from(["elp", "lint", "--file", MISSING_FILE])
+            .expect("lint arguments should parse");
+        let Some(Command::Lint(mut lint)) = args.command else {
+            panic!("expecting lint command");
+        };
+        lint.normalize();
+        let analysis = loaded.analysis();
+        let mut cli = Fake::default();
+        let mut report = Report::for_command(&mut cli, lint.format);
+
+        let error = resolve_target_files(&analysis, &loaded, &lint, &mut report)
+            .expect_err("a missing --file path should return an error");
+        let message = format!("{error:#}");
+
+        assert!(
+            message.contains(&format!("invalid --file path '{MISSING_FILE}'")),
+            "error should name the rejected path: {message}"
+        );
+        assert!(
+            message.contains("relative paths are resolved from the current working directory"),
+            "error should explain how relative paths are resolved: {message}"
+        );
+        assert!(
+            message.contains("pass an existing relative path or an absolute path"),
+            "error should suggest valid path forms: {message}"
+        );
+        assert!(
+            error
+                .chain()
+                .skip(1)
+                .any(|cause| cause.downcast_ref::<std::io::Error>().is_some()),
+            "error should preserve the operating-system cause: {message}"
+        );
     }
 
     #[test]
