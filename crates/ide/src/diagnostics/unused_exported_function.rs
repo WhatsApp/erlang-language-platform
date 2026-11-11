@@ -13,6 +13,7 @@
 // Return a warning if an exported function in an .erl file has no external usages
 
 use std::borrow::Cow;
+use std::cell::LazyCell;
 
 use elp_ide_assists::Assist;
 use elp_ide_assists::helpers::extend_range;
@@ -88,7 +89,16 @@ impl GenericLinter for UnusedExportedFunctionLinter {
         let callbacks = sema.resolve_callbacks(file_id);
 
         let project = sema.db.file_app(file_id)?.project(sema.db);
-        let scope = SearchScope::project(sema.db, project).exclude_file(file_id);
+        let module_name = sema.module_name(file_id);
+        let scope = LazyCell::new(|| {
+            let scope = SearchScope::project(sema.db, project).exclude_file(file_id);
+            match &module_name {
+                Some(module_name) => {
+                    scope.retain_files_naming_module(sema.db, project, module_name)
+                }
+                None => scope,
+            }
+        });
 
         // Hoist the single-file scope before the loop to avoid allocating
         // a new FxHashMap on every iteration (file_id is loop-invariant).
@@ -125,8 +135,11 @@ impl GenericLinter for UnusedExportedFunctionLinter {
                 continue;
             }
 
+            let fun_scope = scope
+                .clone()
+                .retain_files_containing_atom(sema.db, name_arity.name().as_str());
             let mut usages = SymbolDefinition::Function(fun_def.clone()).usages(sema);
-            usages.set_scope(&scope);
+            usages.set_scope(&fun_scope);
             let has_external_usage = usages.at_least_one();
 
             if !has_external_usage && let Some(name_range) = fun_def.name_range(sema.db) {
@@ -431,6 +444,90 @@ helper(X) -> X + 1.
 -module(mod_b).
 
 main() -> mod_a:helper(42).
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_used_through_macro_from_header() {
+        check_diagnostics(
+            r#"
+//- /include/mods.hrl include_path:/include
+-define(TARGET, mod_a).
+//- /src/mod_a.erl
+-module(mod_a).
+-export([helper/0]).
+
+helper() -> ok.
+
+//- /src/mod_b.erl
+-module(mod_b).
+-include("mods.hrl").
+
+main() -> ?TARGET:helper().
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_used_through_macro_from_nested_header() {
+        check_diagnostics(
+            r#"
+//- /include/mods.hrl include_path:/include
+-define(TARGET, mod_a).
+//- /include/wrapper.hrl include_path:/include
+-include("mods.hrl").
+//- /src/mod_a.erl
+-module(mod_a).
+-export([helper/0]).
+
+helper() -> ok.
+
+//- /src/mod_b.erl
+-module(mod_b).
+-include("wrapper.hrl").
+
+main() -> ?TARGET:helper().
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_used_through_quoted_names() {
+        check_diagnostics(
+            r#"
+//- /src/mod_a.erl
+-module(mod_a).
+-export([helper/0]).
+
+helper() -> ok.
+
+//- /src/mod_b.erl
+-module(mod_b).
+
+main() -> 'mod_a':'helper'().
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_unused_with_module_named_elsewhere() {
+        check_diagnostics(
+            r#"
+//- /src/mod_a.erl
+-module(mod_a).
+-export([helper/0, other/0]).
+
+   helper() -> ok.
+%% ^^^^^^ warning: W0077: Exported function helper/0 is not used anywhere else in the codebase.
+%%      | 💡 Remove unused function helper/0
+%%      | 💡 <suppression>
+other() -> ok.
+
+//- /src/mod_b.erl
+-module(mod_b).
+
+main() -> mod_a:other().
             "#,
         );
     }

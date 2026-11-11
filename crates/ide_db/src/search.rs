@@ -18,7 +18,9 @@ use std::ops::ControlFlow;
 use elp_base_db::FileId;
 use elp_base_db::FileKind;
 use elp_base_db::FileRange;
+use elp_base_db::ModuleName;
 use elp_base_db::Project;
+use elp_base_db::is_atom_char;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
@@ -152,6 +154,70 @@ impl SearchScope {
         let finder = Finder::new(needle);
         self.entries
             .retain(|file_id, _| finder.find(db.file(*file_id).text(db).as_bytes()).is_some());
+        self
+    }
+
+    /// Keep only the files whose text contains `name` as a whole atom, with
+    /// no [`is_atom_char`] character directly before or after it.
+    pub fn retain_files_containing_atom(mut self, db: &dyn DefDatabase, name: &str) -> SearchScope {
+        let finder = Finder::new(name);
+        self.entries
+            .retain(|file_id, _| contains_atom(db.file(*file_id).text(db), &finder));
+        self
+    }
+
+    /// Keep only the files that can reference `module`, a module of
+    /// `project`: those whose text, or the text of a header they include,
+    /// mentions it (see `module_mentions`). A reference from another file to
+    /// a function or type of the module spells out the module name, either
+    /// directly or in a macro defined in an included header, and includes
+    /// resolve within the project and its OTP project. If `module_mentions`
+    /// cannot list the module, every file is kept.
+    pub fn retain_files_naming_module(
+        mut self,
+        db: &dyn DefDatabase,
+        project: Project,
+        module: &ModuleName,
+    ) -> SearchScope {
+        if !module.chars().all(is_atom_char) {
+            return self;
+        }
+        let mentions = db.module_mentions(project);
+        let naming: FxHashSet<FileId> = mentions
+            .get(module)
+            .into_iter()
+            .flatten()
+            .copied()
+            .collect();
+        let headers: FxHashSet<FileId> = naming
+            .iter()
+            .copied()
+            .filter(|file_id| db.file_kind(*file_id) == FileKind::Header)
+            .collect();
+        if headers.is_empty() {
+            self.entries.retain(|file_id, _| naming.contains(file_id));
+            return self;
+        }
+        // Concurrent callers visit the files in different orders, so that
+        // they compute the def maps of different files instead of waiting
+        // for each other.
+        let mut others: Vec<FileId> = self
+            .entries
+            .keys()
+            .copied()
+            .filter(|file_id| !naming.contains(file_id))
+            .collect();
+        others.sort_by_cached_key(|file_id| fxhash::hash64(&(file_id, module)));
+        let including: FxHashSet<FileId> = others
+            .into_iter()
+            .filter(|file_id| {
+                db.def_map(*file_id)
+                    .get_included_files()
+                    .any(|included| headers.contains(&included))
+            })
+            .collect();
+        self.entries
+            .retain(|file_id, _| naming.contains(file_id) || including.contains(file_id));
         self
     }
 
@@ -619,6 +685,19 @@ fn names_after(text: &[u8], prefix: &[u8]) -> FxHashSet<String> {
             std::str::from_utf8(&rest[..len]).ok().map(str::to_string)
         })
         .collect()
+}
+
+/// Whether `text` contains the needle of `finder` as a whole atom.
+fn contains_atom(text: &str, finder: &Finder) -> bool {
+    let text = text.as_bytes();
+    let len = finder.needle().len();
+    let is_atom_byte = |index: usize| {
+        text.get(index)
+            .is_some_and(|byte| is_atom_char(char::from(*byte)))
+    };
+    finder
+        .find_iter(text)
+        .any(|start| (start == 0 || !is_atom_byte(start - 1)) && !is_atom_byte(start + len))
 }
 
 fn is_atom_byte(byte: u8) -> bool {

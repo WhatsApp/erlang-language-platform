@@ -26,6 +26,7 @@ use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use elp_syntax::ast::SourceFile;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use fxhash::FxHasher;
 use regex::Regex;
 use smallvec::SmallVec;
@@ -433,6 +434,12 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     /// Returns a map from module name to FileId of the containing file.
     fn module_index(&self, project: Project) -> Arc<ModuleIndex>;
 
+    /// For each module of the project, the files of the project and of its
+    /// OTP project whose text contains the module name as a maximal run of
+    /// [`is_atom_char`] characters. Modules whose name has other characters
+    /// are not listed.
+    fn module_mentions(&self, project: Project) -> Arc<FxHashMap<ModuleName, Vec<FileId>>>;
+
     fn include_file_index(&self, project: Project) -> Arc<IncludeFileIndex>;
 
     /// Parse the file_id to AST
@@ -596,6 +603,39 @@ fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
     }
 
     builder.build()
+}
+
+fn module_mentions(
+    db: &dyn RootQueryDb,
+    project: Project,
+) -> Arc<FxHashMap<ModuleName, Vec<FileId>>> {
+    let module_index = db.module_index(project);
+    let modules: FxHashMap<&str, &ModuleName> = module_index
+        .iter_own()
+        .map(|(name, _)| (name.as_str(), name))
+        .collect();
+    let otp = project.otp(db).filter(|otp| *otp != project);
+    let mut mentions: FxHashMap<ModuleName, Vec<FileId>> = FxHashMap::default();
+    for project in std::iter::once(project).chain(otp) {
+        for &source_root_id in project.source_roots(db).iter() {
+            for file_id in db.source_root(source_root_id).source_root(db).iter() {
+                let text = db.file(file_id).text(db);
+                let mentioned: FxHashSet<&ModuleName> = text
+                    .split(|c: char| !is_atom_char(c))
+                    .filter_map(|word| modules.get(word).copied())
+                    .collect();
+                for module in mentioned {
+                    mentions.entry(module.clone()).or_default().push(file_id);
+                }
+            }
+        }
+    }
+    Arc::new(mentions)
+}
+
+/// Whether `c` is an ASCII character that can appear in an unquoted atom.
+pub fn is_atom_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_' || c == '@'
 }
 
 /// Whether `defining_app` is reachable from `referencing_app`, following the edges `dep_kind` allows - see
