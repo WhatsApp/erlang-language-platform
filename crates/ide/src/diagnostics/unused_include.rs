@@ -353,7 +353,8 @@ mod tests {
             .disable(DiagnosticCode::AvoidTypeDefsInHeader)
             .disable(DiagnosticCode::UndefinedFunction)
             .disable(DiagnosticCode::UnspecificInclude)
-            .disable(DiagnosticCode::NoDialyzerAttribute);
+            .disable(DiagnosticCode::NoDialyzerAttribute)
+            .disable(DiagnosticCode::UnusedHeader);
         check_diagnostics_with_config(config, fixture)
     }
 

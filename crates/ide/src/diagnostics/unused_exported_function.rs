@@ -250,7 +250,8 @@ mod tests {
     fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default()
             .enable(DiagnosticCode::UnusedExportedFunction)
-            .disable(DiagnosticCode::UndefinedFunction);
+            .disable(DiagnosticCode::UndefinedFunction)
+            .disable(DiagnosticCode::UnusedHeader);
         check_diagnostics_with_config(config, fixture)
     }
 

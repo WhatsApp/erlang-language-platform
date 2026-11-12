@@ -214,7 +214,9 @@ mod tests {
     use crate::tests;
 
     fn config() -> DiagnosticsConfig {
-        DiagnosticsConfig::default().enable(DiagnosticCode::AvoidAnyType)
+        DiagnosticsConfig::default()
+            .enable(DiagnosticCode::AvoidAnyType)
+            .disable(DiagnosticCode::UnusedHeader)
     }
 
     #[track_caller]

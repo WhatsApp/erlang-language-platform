@@ -290,7 +290,8 @@ pub(crate) fn check_diagnostics(fixture: &str) {
         .disable(DiagnosticCode::BinaryStringToSigil)
         .disable(DiagnosticCode::HirUnresolvedMacro)
         .disable(DiagnosticCode::BoundVarInLhs)
-        .disable(DiagnosticCode::HirUnresolvedInclude);
+        .disable(DiagnosticCode::HirUnresolvedInclude)
+        .disable(DiagnosticCode::UnusedHeader);
     check_diagnostics_with_config(config, fixture)
 }
 
@@ -715,7 +716,8 @@ pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
         .disable(DiagnosticCode::HirUnresolvedMacro)
         .disable(DiagnosticCode::NoCatch)
         .disable(DiagnosticCode::UnnecessaryFunctionArg)
-        .disable(DiagnosticCode::UnusedExportedType);
+        .disable(DiagnosticCode::UnusedExportedType)
+        .disable(DiagnosticCode::UnusedHeader);
     check_no_parse_errors_with_config(analysis, file_id, &config, &vec![]);
 }
 

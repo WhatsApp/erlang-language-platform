@@ -805,7 +805,8 @@ test() ->
                 ],
                 &[],
             )
-            .unwrap();
+            .unwrap()
+            .disable(DiagnosticCode::UnusedHeader);
         check_diagnostics_with_config(
             config,
             r#"
@@ -842,7 +843,8 @@ test() ->
                 ],
                 &[],
             )
-            .unwrap();
+            .unwrap()
+            .disable(DiagnosticCode::UnusedHeader);
         check_diagnostics_with_config(
             config,
             r#"
@@ -888,7 +890,8 @@ test() ->
         // filtered code, which would undo the `[linters.<code>]` section above.
         let config = DiagnosticsConfig::default()
             .configure_diagnostics(&lint_config, &[], &[])
-            .unwrap();
+            .unwrap()
+            .disable(DiagnosticCode::UnusedHeader);
         check_diagnostics_with_config(
             config,
             r#"

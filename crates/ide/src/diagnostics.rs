@@ -193,6 +193,7 @@ mod unresolved_macro;
 mod unspecific_include;
 mod unused_exported_function;
 mod unused_exported_type;
+mod unused_header;
 mod unused_include;
 mod unused_macro;
 mod unused_record_field;
@@ -2365,6 +2366,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &avoid_any_type::LINTER,
     &avoid_type_defs_in_header::LINTER,
     &discouraged_type::LINTER,
+    &unused_header::LINTER,
 ];
 
 /// Unified registry for all types of linters, initialized once and reused.

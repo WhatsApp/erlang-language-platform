@@ -133,7 +133,8 @@ mod tests {
     pub(crate) fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default()
             .disable(DiagnosticCode::UndefinedFunction)
-            .disable(DiagnosticCode::HirUnresolvedMacro);
+            .disable(DiagnosticCode::HirUnresolvedMacro)
+            .disable(DiagnosticCode::UnusedHeader);
         check_diagnostics_with_config(config, fixture)
     }
 
