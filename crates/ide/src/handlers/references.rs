@@ -823,6 +823,218 @@ should_not_match() -> #foo{a = 1}.
     }
 
     #[test]
+    fn test_functions_gen_statem_state() {
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -behaviour(gen_statem).
+        -export([init/1, callback_mode/0, idle/3, busy/3]).
+
+        init([]) -> {ok, idle, #{}}.
+        %%               ^^^^
+
+        callback_mode() -> state_functions.
+
+          idle~(cast, go, Data) -> {next_state, busy, Data}.
+        %%^^^^def
+
+        busy(cast, stop, Data) -> {next_state, idle, Data, []}.
+        %%                                     ^^^^
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_gen_statem_handle_event_function() {
+        // With `handle_event_function`, states are not function names.
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -behaviour(gen_statem).
+        -export([init/1, callback_mode/0, handle_event/4, idle/3]).
+
+        init([]) -> {ok, idle, #{}}.
+
+        callback_mode() -> handle_event_function.
+
+        handle_event(cast, go, idle, Data) -> {next_state, idle, Data}.
+
+          idle~(_, _, _) -> ok.
+        %%^^^^def
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_gen_statem_state_functions_not_returned() {
+        // `callback_mode/0` mentions `state_functions` but does not return it.
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -behaviour(gen_statem).
+        -export([init/1, callback_mode/0, handle_event/4, idle/3]).
+
+        init([]) -> {ok, idle, #{}}.
+
+        callback_mode() -> logger:info(#{unused => state_functions}), handle_event_function.
+
+        handle_event(cast, go, idle, Data) -> {next_state, idle, Data}.
+
+          idle~(_, _, _) -> ok.
+        %%^^^^def
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_gen_statem_state_functions_from_case() {
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -behaviour(gen_statem).
+        -export([init/1, callback_mode/0, idle/3]).
+
+        init([]) -> {ok, idle, #{}}.
+        %%               ^^^^
+
+        callback_mode() ->
+            case application:get_env(app, state_enter) of
+                {ok, true} -> [state_functions, state_enter];
+                _ -> state_functions
+            end.
+
+          idle~(_, _, Data) -> {keep_state, Data}.
+        %%^^^^def
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_gen_statem_init_returned() {
+        // Only an `ok` tuple that `init/1` returns names the initial state.
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -behaviour(gen_statem).
+        -export([init/1, callback_mode/0, idle/3, busy/3]).
+
+        init(Args) ->
+            case Args of
+                [] -> {ok, idle, #{}};
+        %%                 ^^^^
+                _ -> {stop, bad_args}
+            end.
+
+        callback_mode() -> state_functions.
+
+          idle~(_, _, Data) -> {keep_state, Data}.
+        %%^^^^def
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_gen_statem_init_not_returned() {
+        // An `ok` tuple that `init/1` builds but does not return names no state.
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -behaviour(gen_statem).
+        -export([init/1, callback_mode/0, busy/3]).
+
+        init(Args) ->
+            log({ok, busy, Args}),
+            {stop, not_started}.
+
+        callback_mode() -> state_functions.
+
+          busy~(_, _, Data) -> {keep_state, Data}.
+        %%^^^^def
+
+        log(_) -> ok.
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_gen_statem_next_state_not_returned() {
+        // A `next_state` tuple that a function builds but does not return names no state.
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -behaviour(gen_statem).
+        -export([init/1, callback_mode/0, idle/3, busy/3]).
+
+        init([]) -> {ok, idle, #{}}.
+
+        callback_mode() -> state_functions.
+
+        idle(cast, go, Data) ->
+            log({next_state, busy, Data}),
+            {keep_state, Data}.
+
+          busy~(_, _, Data) -> {keep_state, Data}.
+        %%^^^^def
+
+        log(_) -> ok.
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_gen_statem_next_state_in_define() {
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -behaviour(gen_statem).
+        -export([init/1, callback_mode/0, idle/3, busy/3]).
+        -define(GO(Data), {next_state, busy, Data}).
+        %%                             ^^^^
+
+        init([]) -> {ok, idle, #{}}.
+
+        callback_mode() -> state_functions.
+
+        idle(cast, go, Data) -> ?GO(Data).
+
+          busy~(_, _, Data) -> {keep_state, Data}.
+        %%^^^^def
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_gen_statem_not_a_transition() {
+        // An `ok` tuple outside `init/1` does not name a state.
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -behaviour(gen_statem).
+        -export([init/1, callback_mode/0, idle/3, status/0]).
+
+        init([]) -> {ok, idle, #{}}.
+        %%               ^^^^
+
+        callback_mode() -> [state_functions, state_enter].
+
+          idle~(_, _, Data) -> {keep_state, Data}.
+        %%^^^^def
+
+        status() -> {ok, idle, now}.
+        "#,
+        );
+    }
+
+    #[test]
     fn test_functions_import_1() {
         check(
             r#"

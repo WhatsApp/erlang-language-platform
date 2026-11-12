@@ -23,6 +23,7 @@
 //! implicit call names its target with a [`CallTarget`], like a dynamic call,
 //! and is resolved the same way.
 
+use std::slice;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
@@ -41,6 +42,7 @@ use crate::InFile;
 use crate::InFileAstPtr;
 use crate::Module;
 use crate::Name;
+use crate::NameArity;
 use crate::PPDirective;
 use crate::Semantic;
 use crate::db::DefDatabase;
@@ -80,19 +82,31 @@ trait ImplicitCallPattern {
         None
     }
 
-    /// Add the implicit calls named by `expr`, an expression of the body of
-    /// `context`.
-    fn find_calls(&self, context: &BodyContext, expr: &Expr, calls: &mut Vec<ImplicitCall>);
+    /// Add the implicit calls named by `expr`, the expression `expr_id` of the
+    /// body of `context`.
+    fn find_calls(
+        &self,
+        context: &BodyContext,
+        expr_id: ExprId,
+        expr: &Expr,
+        calls: &mut Vec<ImplicitCall>,
+    );
 }
 
 /// The body that the patterns run on: a function clause, or the replacement
 /// of a `-define`.
 struct BodyContext<'a> {
+    db: &'a dyn DefDatabase,
+    file_id: FileId,
+    /// The function of the clause; `None` for a `-define`.
+    function: Option<&'a NameArity>,
+    /// The expressions of the clause, or the replacement of a `-define`.
+    exprs: &'a [ExprId],
     body: &'a Body,
 }
 
 /// The patterns, tried in order.
-const PATTERNS: &[&dyn ImplicitCallPattern] = &[&SupervisorChildSpec];
+const PATTERNS: &[&dyn ImplicitCallPattern] = &[&SupervisorChildSpec, &GenStatemState];
 
 pub(crate) fn function_clause_implicit_calls_dispatch(
     db: &dyn DefDatabase,
@@ -109,16 +123,22 @@ pub(crate) fn function_clause_implicit_calls_inner(
 ) -> Arc<Vec<ImplicitCall>> {
     let clause_id = fid.value(db);
     let clause = db.function_clause_body(clause_id);
-    if clause.name.is_none() {
+    let Some(function) = &clause.name else {
         return Arc::default();
-    }
-    let context = BodyContext { body: &clause.body };
-    Arc::new(find_calls(db, clause_id.file_id, &context))
+    };
+    let context = BodyContext {
+        db,
+        file_id: clause_id.file_id,
+        function: Some(function),
+        exprs: &clause.clause.exprs,
+        body: &clause.body,
+    };
+    Arc::new(find_calls(&context))
 }
 
-/// The implicit calls in the body of `context`, in `file_id`.
-fn find_calls(db: &dyn DefDatabase, file_id: FileId, context: &BodyContext) -> Vec<ImplicitCall> {
-    let def_map = db.def_map(file_id);
+/// The implicit calls in the body of `context`.
+fn find_calls(context: &BodyContext) -> Vec<ImplicitCall> {
+    let def_map = context.db.def_map(context.file_id);
     let patterns: Vec<_> = PATTERNS
         .iter()
         .filter(|pattern| {
@@ -128,9 +148,9 @@ fn find_calls(db: &dyn DefDatabase, file_id: FileId, context: &BodyContext) -> V
         })
         .collect();
     let mut calls = Vec::new();
-    for (_, expr) in context.body.exprs.iter() {
+    for (expr_id, expr) in context.body.exprs.iter() {
         for pattern in &patterns {
-            pattern.find_calls(context, expr, &mut calls);
+            pattern.find_calls(context, expr_id, expr, &mut calls);
         }
     }
     calls
@@ -163,8 +183,14 @@ pub(crate) fn reference(
             let (define, source_map) = sema
                 .db
                 .define_body_with_source(InFile::new(file_id, define_id));
-            let context = BodyContext { body: &define.body };
-            let calls = Arc::new(find_calls(sema.db, file_id, &context));
+            let context = BodyContext {
+                db: sema.db,
+                file_id,
+                function: None,
+                exprs: slice::from_ref(&define.expr),
+                body: &define.body,
+            };
+            let calls = Arc::new(find_calls(&context));
             (calls, define.body.clone(), source_map)
         }
         _ => return None,
@@ -198,7 +224,13 @@ pub(crate) fn reference(
 struct SupervisorChildSpec;
 
 impl ImplicitCallPattern for SupervisorChildSpec {
-    fn find_calls(&self, context: &BodyContext, expr: &Expr, calls: &mut Vec<ImplicitCall>) {
+    fn find_calls(
+        &self,
+        context: &BodyContext,
+        _expr_id: ExprId,
+        expr: &Expr,
+        calls: &mut Vec<ImplicitCall>,
+    ) {
         let body = context.body;
         let Expr::Map { fields } = expr else {
             return;
@@ -257,6 +289,79 @@ fn mfa(body: &Body, expr: ExprId) -> Option<(ExprId, ExprId, u32)> {
     };
     let arity = body[unwrap(body, *args)].list_length()?;
     Some((unwrap(body, *module), unwrap(body, *function), arity as u32))
+}
+
+/// State names of a `gen_statem` callback module in the `state_functions`
+/// callback mode, where `gen_statem` calls `State(EventType, Event, Data)` for
+/// the current state.
+/// Pattern: the `State` atom in `{next_state, State, Data}` or
+/// `{next_state, State, Data, Actions}` returned by a function, or in
+/// `{ok, State, Data}` or `{ok, State, Data, Actions}` returned by `init/1`.
+/// The framework calls `State/3` in the same module.
+struct GenStatemState;
+
+impl ImplicitCallPattern for GenStatemState {
+    fn behaviour(&self) -> Option<&'static Name> {
+        Some(&*known::gen_statem)
+    }
+
+    fn find_calls(
+        &self,
+        context: &BodyContext,
+        expr_id: ExprId,
+        expr: &Expr,
+        calls: &mut Vec<ImplicitCall>,
+    ) {
+        let body = context.body;
+        let Expr::Tuple { exprs } = expr else {
+            return;
+        };
+        let ([tag, state, _] | [tag, state, _, _]) = exprs.as_slice() else {
+            return;
+        };
+        let is_transition = match atom_name(body, *tag) {
+            Some(tag) if tag == *known::next_state => true,
+            Some(tag) if tag == *known::ok => {
+                context.function == Some(&NameArity::new(*known::init, 1))
+            }
+            _ => false,
+        };
+        if !is_transition
+            || !body.returned_exprs(context.exprs).contains(&expr_id)
+            || atom_name(body, *state).is_none()
+            || !uses_state_functions(context.db, context.file_id)
+        {
+            return;
+        }
+        calls.push(ImplicitCall {
+            target: CallTarget::Local {
+                name: unwrap(body, *state),
+            },
+            arity: 3,
+        });
+    }
+}
+
+/// Whether `callback_mode/0` in `file_id` returns `state_functions`, alone or
+/// in a list.
+fn uses_state_functions(db: &dyn DefDatabase, file_id: FileId) -> bool {
+    let def_map = db.def_map(file_id);
+    let Some(callback_mode) = def_map.get_function(&NameArity::new(*known::callback_mode, 0))
+    else {
+        return false;
+    };
+    let function = db.function_body(InFile::new(file_id, callback_mode.function_id));
+    function.clauses.iter().any(|(_, clause)| {
+        let body = &clause.body;
+        let is_state_functions =
+            |expr| atom_name(body, expr).is_some_and(|name| name == *known::state_functions);
+        body.returned_exprs(&clause.clause.exprs)
+            .into_iter()
+            .any(|result| match &body[result] {
+                Expr::List { exprs, .. } => exprs.iter().any(|&expr| is_state_functions(expr)),
+                _ => is_state_functions(result),
+            })
+    })
 }
 
 /// The expression that `expr` stands for, through parentheses and macro

@@ -17,6 +17,7 @@ use expect_test::Expect;
 use expect_test::expect;
 
 use crate::AnyAttribute;
+use crate::AnyExprId;
 use crate::CallTarget;
 use crate::Expr;
 use crate::FormIdx;
@@ -6951,4 +6952,44 @@ fn type_cast_type_lowered_as_type() {
         })
         .collect();
     assert_eq_expected!(vec!["foo/0".to_string(), "bar/0".to_string()], type_calls);
+}
+
+#[test]
+fn returned_exprs() {
+    let (db, file_ids, _) = TestDB::with_many_files(
+        r#"
+            -define(C2, c2).
+            f(X) ->
+                ignored,
+                case X of
+                    a -> (a);
+                    b -> begin ignored, b end;
+                    c -> if X -> c1; true -> ?C2 end;
+                    d -> receive M -> d1 after 10 -> d2 end;
+                    e -> try ignored, e1 catch _ -> e2 after ignored end;
+                    f -> try ignored of F -> f1 catch _ -> f2 end
+                end.
+        "#,
+    );
+    let def_map = db.def_map(file_ids[0]);
+    let na = crate::NameArity::new(crate::Name::from_erlang_service("f"), 1);
+    let fun_def = def_map.get_function(&na).expect("f/1 not in def map");
+    let body = db.function_body(InFile::new(file_ids[0], fun_def.function_id));
+    let (_, clause) = body.clauses.iter().next().expect("f/1 has no clause");
+    let returned: Vec<String> = clause
+        .body
+        .returned_exprs(&clause.clause.exprs)
+        .into_iter()
+        .map(|expr| {
+            clause
+                .body
+                .print_any_expr(&db, AnyExprId::Expr(expr))
+                .trim()
+                .to_string()
+        })
+        .collect();
+    assert_eq_expected!(
+        vec!["a", "b", "c1", "c2", "d1", "d2", "e1", "e2", "f1", "f2"],
+        returned
+    );
 }

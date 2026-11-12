@@ -118,6 +118,7 @@ child specs built by a macro are recognised too:
 | Pattern | Example | Refers to |
 |---------|---------|-----------|
 | Supervisor child spec | `#{id => w, start => {mod, start_link, [A]}}` | `mod:start_link/1` |
+| `gen_statem` state, with the `state_functions` callback mode | `{next_state, busy, Data}`, or `{ok, idle, Data}` returned by `init/1` | `busy/3`, `idle/3` in the same module |
 
 ## Limitations
 

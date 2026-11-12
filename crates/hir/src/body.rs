@@ -9,6 +9,7 @@
  */
 
 use std::ops::Index;
+use std::slice;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
@@ -410,6 +411,56 @@ impl Body {
         match self[*name] {
             Expr::Literal(Literal::Atom(atom)) => Some(atom.as_name()),
             _ => None,
+        }
+    }
+
+    /// The expressions whose value can be the value of the expression
+    /// sequence `exprs`, such as the body of a clause: its last expression,
+    /// or, through parentheses, macro calls, `begin`, `case`, `if`, `receive`
+    /// and `try`, the last expressions of their branches.
+    pub fn returned_exprs(&self, exprs: &[ExprId]) -> Vec<ExprId> {
+        let mut returned = Vec::new();
+        self.collect_returned_exprs(exprs, &mut returned);
+        returned
+    }
+
+    fn collect_returned_exprs(&self, exprs: &[ExprId], returned: &mut Vec<ExprId>) {
+        let Some(&expr) = exprs.last() else {
+            return;
+        };
+        match &self[expr] {
+            Expr::Paren { expr: inner }
+            | Expr::MacroCall {
+                expansion: inner, ..
+            } => self.collect_returned_exprs(slice::from_ref(inner), returned),
+            Expr::Block { exprs } => self.collect_returned_exprs(exprs, returned),
+            Expr::If { clauses } => clauses
+                .iter()
+                .for_each(|clause| self.collect_returned_exprs(&clause.exprs, returned)),
+            Expr::Case { clauses, .. } => clauses
+                .iter()
+                .for_each(|clause| self.collect_returned_exprs(&clause.exprs, returned)),
+            Expr::Receive { clauses, after } => clauses
+                .iter()
+                .map(|clause| &clause.exprs)
+                .chain(after.iter().map(|after| &after.exprs))
+                .for_each(|exprs| self.collect_returned_exprs(exprs, returned)),
+            Expr::Try {
+                exprs,
+                of_clauses,
+                catch_clauses,
+                ..
+            } => {
+                if of_clauses.is_empty() {
+                    self.collect_returned_exprs(exprs, returned);
+                }
+                of_clauses
+                    .iter()
+                    .map(|clause| &clause.exprs)
+                    .chain(catch_clauses.iter().map(|clause| &clause.exprs))
+                    .for_each(|exprs| self.collect_returned_exprs(exprs, returned));
+            }
+            _ => returned.push(expr),
         }
     }
 
