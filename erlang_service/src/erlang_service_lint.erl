@@ -137,6 +137,11 @@ transform(ms_transform, Forms) ->
     end;
 transform(qlc, Forms) ->
     Forms;
+%% `lager_transform` in lager 3.9.2, the latest release, emits code that is not
+%% valid abstract code on OTP 24 and later, so eqWAlizer cannot check modules
+%% that log with lager. The logging calls as written are a good enough model.
+transform(lager_transform, Forms) ->
+    Forms;
 transform(vararg, Forms) ->
     vararg_transform(Forms);
 transform(Other, Forms) ->

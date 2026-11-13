@@ -1,0 +1,21 @@
+AST
+{attribute,{0,0},file,{"lager_logging.erl",0}}.
+{attribute,{0,22},module,lager_logging}.
+{attribute,{70,84},export,[{f,0}]}.
+{function,{87,113},
+          f,0,
+          [{clause,{87,113},
+                   [],[],
+                   [{call,{98,113},
+                          {remote,{98,108},
+                                  {atom,{98,103},lager},
+                                  {atom,{104,108},info}},
+                          [{string,{109,112},"x"}]}]}]}.
+{eof,{115,115}}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[]

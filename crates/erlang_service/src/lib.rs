@@ -1062,6 +1062,14 @@ mod tests {
         );
     }
 
+    #[test]
+    fn lager_transform_skipped() {
+        expect_module(
+            "lager_logging.erl".into(),
+            fixture_file!("lager_logging.expected"),
+        );
+    }
+
     fn expect_module_with_opts(path: PathBuf, expected: ExpectFile, options: Vec<CompileOption>) {
         static CONN: LazyLock<Connection> = LazyLock::new(|| Connection::start().unwrap());
 
