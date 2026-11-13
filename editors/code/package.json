@@ -237,6 +237,20 @@
           "description": "The arguments to invoke the language server with",
           "default": "server"
         },
+        "elpClient.erlfmt.path": {
+          "scope": "machine",
+          "type": "string",
+          "markdownDescription": "Path to the [erlfmt](https://github.com/WhatsApp/erlfmt) executable used to format Erlang files. If empty, uses the erlfmt bundled with the extension, falling back to `erlfmt` on the `PATH`.",
+          "default": ""
+        },
+        "elpClient.erlfmt.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Extra arguments passed to erlfmt when formatting, e.g. `[\"--print-width=120\"]`.",
+          "default": []
+        },
         "elp.buck.query.useBxl.enable": {
           "default": false,
           "markdownDescription": "Use BXL to query for buck project model.",

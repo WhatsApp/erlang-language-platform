@@ -12,6 +12,7 @@
 import * as vscode from 'vscode';
 import { activateDebugger } from './debugger';
 import { registerCommands } from './commands';
+import { registerFormatter } from './formatting';
 import { outputChannel } from './logging';
 import * as path from 'path';
 
@@ -76,6 +77,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	log.appendLine('Registering commands');
 	registerCommands(context, client);
+
+	log.appendLine('Registering erlfmt formatter');
+	registerFormatter(context);
 
 	// Activate the DAP Debugger
 	log.appendLine('Activating debugger');
