@@ -13,6 +13,7 @@ permissions:
 
 env:
   EDB_VERSION: 1.0.0
+  ERLFMT_VERSION: 1.8.0
 
 jobs:
   ci:
@@ -254,6 +255,21 @@ jobs:
       - name: Package EDB into VS Code Extension
         shell: bash
         run: cp -R edb/. editors/code/bin/
+      - name: Build erlfmt ${{ env.ERLFMT_VERSION }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --location --silent --show-error --fail --retry 5 \
+            "https://repo.hex.pm/tarballs/erlfmt-${ERLFMT_VERSION}.tar" \
+            -o erlfmt.tar
+          mkdir -p erlfmt
+          tar -xOf erlfmt.tar contents.tar.gz | tar -xz -C erlfmt
+          cd erlfmt
+          if [ "$RUNNER_OS" = "Windows" ]; then rebar3.cmd as release escriptize; else rebar3 as release escriptize; fi
+          escript _build/release/bin/erlfmt --version | grep -q "erlfmt version ${ERLFMT_VERSION}"
+      - name: Package erlfmt into VS Code Extension
+        shell: bash
+        run: cp erlfmt/_build/release/bin/erlfmt editors/code/bin/
       - name: Package eqWAlizer binary into VS Code Extension (No Windows)
         if: matrix.os != 'windows'
         run: cp eqwalizer/eqwalizer/eqwalizer editors/code/bin
@@ -284,6 +300,10 @@ jobs:
         if: matrix.os != 'windows'
         working-directory: editors/code
         run: test "$(unzip -Z1 erlang-language-platform.vsix | grep -cE '^extension/bin/(otp-2[89]/)?edb$')" -eq 3
+      - name: Check erlfmt is bundled in the extension (No Windows)
+        if: matrix.os != 'windows'
+        working-directory: editors/code
+        run: unzip -Z1 erlang-language-platform.vsix | grep -qx 'extension/bin/erlfmt'
       - name: Upload Extension (No Windows)
         if: matrix.os != 'windows'
         uses: "actions/upload-artifact@v4"
