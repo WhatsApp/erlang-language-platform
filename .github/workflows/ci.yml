@@ -6,6 +6,9 @@ on:
   pull_request:
     branches:
       - main
+    # The website is built by build-website.yml.
+    paths-ignore:
+      - 'website/**'
   release:
     types: [published]
   workflow_dispatch: {}
