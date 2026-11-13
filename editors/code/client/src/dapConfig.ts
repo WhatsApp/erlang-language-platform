@@ -12,18 +12,6 @@ import * as vscode from 'vscode';
 
 export const DAP_CONFIG = 'erlangDap';
 
-export function withErlangInstallationPath(): string {
-    const dapConfig = vscode.workspace.getConfiguration(DAP_CONFIG);
-    const erlangInstallationPath = dapConfig.get<string>('erlangInstallationPath') || '';
-    if (erlangInstallationPath != "") {
-        const path = (process.env.PATH || '').split(':');
-        path.unshift(erlangInstallationPath);
-        return path.join(':');
-    } else {
-        return process.env.PATH;
-    }
-}
-
 export function command(): string {
     const dapConfig = vscode.workspace.getConfiguration(DAP_CONFIG);
     return dapConfig.get<string>('command') || '';

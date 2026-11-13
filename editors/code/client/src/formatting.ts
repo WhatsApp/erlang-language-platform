@@ -12,7 +12,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
-import * as dapConfig from './dapConfig';
+import { pathWithErlangInstallation } from './erlang';
 import { outputChannel } from './logging';
 
 const ERLFMT_CONFIG = 'elpClient.erlfmt';
@@ -90,7 +90,7 @@ async function format(
             reportedMissingErlfmt = true;
             void vscode.window.showErrorMessage(
                 `Could not run erlfmt (${command}): ${result.message}. ` +
-                `Check "${ERLFMT_CONFIG}.path" and "erlangDap.erlangInstallationPath".`,
+                `Check "${ERLFMT_CONFIG}.path" and "elpClient.erlangInstallationPath".`,
             );
         }
         return [];
@@ -127,7 +127,7 @@ function run(
     return new Promise(resolve => {
         const child = spawn(command, args, {
             cwd,
-            env: { ...process.env, PATH: dapConfig.withErlangInstallationPath() },
+            env: { ...process.env, PATH: pathWithErlangInstallation() },
         });
         const stdout: Buffer[] = [];
         const stderr: Buffer[] = [];

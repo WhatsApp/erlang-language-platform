@@ -237,6 +237,11 @@
           "description": "The arguments to invoke the language server with",
           "default": "server"
         },
+        "elpClient.erlangInstallationPath": {
+          "type": "string",
+          "markdownDescription": "Directory with the `erl`, `escript` and other standard Erlang executables used by the language server, the debugger, tests and erlfmt. If empty, they are looked up on the `PATH`.",
+          "default": ""
+        },
         "elpClient.erlfmt.path": {
           "scope": "machine",
           "type": "string",
@@ -357,6 +362,7 @@
         "erlangDap.erlangInstallationPath": {
           "type": "string",
           "markdownDescription": "Custom path for Erlang when starting the DAP adapter. It should point to a directory with `erl`, `escript` and other standard erlang executables.",
+          "markdownDeprecationMessage": "Use `#elpClient.erlangInstallationPath#` instead.",
           "default": ""
         }
       }

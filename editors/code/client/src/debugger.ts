@@ -10,6 +10,7 @@
 
 import * as vscode from 'vscode';
 import * as dapConfig from './dapConfig';
+import { pathWithErlangInstallation } from './erlang';
 
 export const DEBUG_TYPE = 'erlang-edb';
 
@@ -50,7 +51,7 @@ class DebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFact
             command = vscode.Uri.joinPath(this.extensionUri, 'bin', 'edb').fsPath;
             args = ['dap'];
         }
-        const options = { env: { "PATH": dapConfig.withErlangInstallationPath() } };
+        const options = { env: { "PATH": pathWithErlangInstallation() } };
         executable = new vscode.DebugAdapterExecutable(command, args, options);
         return executable;
     }

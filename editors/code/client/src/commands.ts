@@ -9,7 +9,7 @@
  */
 
 import * as vscode from 'vscode';
-import * as dapConfig from './dapConfig';
+import { pathWithErlangInstallation } from './erlang';
 import * as edbDebugger from './debugger';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { outputChannel } from './logging';
@@ -132,7 +132,7 @@ export function createTask(runnable: Runnable): vscode.Task {
         command,
         args,
         cwd: runnable.args.workspaceRoot,
-        env: { "PATH": dapConfig.withErlangInstallationPath() },
+        env: { "PATH": pathWithErlangInstallation() },
     };
 
     const task = buildTask(definition, runnable.label, command, args);
@@ -177,7 +177,7 @@ export async function debug(runnable: Runnable, interactive: boolean): Promise<v
             args: ["bash", "-c", "rebar3 as test shell --eval \"$EDB_DAP_NODE_INIT, $REBAR3_SHELL_CT_RUN_CMD\""],
             env: {
                 REBAR3_SHELL_CT_RUN_CMD: cmd,
-                "PATH": dapConfig.withErlangInstallationPath(),
+                "PATH": pathWithErlangInstallation(),
             },
             argsCanBeInterpretedByShell: false,
         },

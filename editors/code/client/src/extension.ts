@@ -12,6 +12,7 @@
 import * as vscode from 'vscode';
 import { activateDebugger } from './debugger';
 import { registerCommands } from './commands';
+import { pathWithErlangInstallation } from './erlang';
 import { registerFormatter } from './formatting';
 import { outputChannel } from './logging';
 import * as path from 'path';
@@ -43,6 +44,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const serverOptions: ServerOptions = {
 		command: serverPath,
 		args: serverArgs.split(" "),
+		options: { env: { ...process.env, PATH: pathWithErlangInstallation() } },
 	};
 
 	// Options to control the language client
