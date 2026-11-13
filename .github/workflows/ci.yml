@@ -1,11 +1,14 @@
 name: ELP CI
 on:
-  push: {}
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
   release:
     types: [published]
+  workflow_dispatch: {}
 
 # Restrict the default GITHUB_TOKEN. Jobs needing more override this below.
 permissions:
