@@ -1,5 +1,4 @@
 ---
-llms-gk: 'devmate_elp_development_md'
 apply_to_regex: '^(.*\.rs|.*\.md)$'
 oncalls: ['vscode_erlang']
 ---
