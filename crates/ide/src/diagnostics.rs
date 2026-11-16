@@ -198,6 +198,7 @@ mod unused_header;
 mod unused_include;
 mod unused_macro;
 mod unused_record_field;
+mod used_ignored_variable;
 
 pub use discouraged_type::DiscouragedTypeConfig;
 pub use dynamic_calls::DynamicCallsConfig;
@@ -2369,6 +2370,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &discouraged_type::LINTER,
     &unused_header::LINTER,
     &redundant_ct_callback::LINTER,
+    &used_ignored_variable::LINTER,
 ];
 
 /// Unified registry for all types of linters, initialized once and reused.

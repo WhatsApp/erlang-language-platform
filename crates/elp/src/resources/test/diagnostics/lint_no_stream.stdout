@@ -48,6 +48,7 @@ stdout |         3:10-3:15: function foo/0 undefined
 stdout |         6:10-6:15: function foo/0 undefined
 stdout |         8:7-8:10: spec for undefined function foo/0
 stdout | app_a/src/diagnostics.erl:12:8-12:12::[Warning] [W0060] Match on a bound variable
+stdout | app_a/src/diagnostics.erl:12:8-12:12::[Warning] [W0095] Variable `_Bar` is used, but its leading `_` marks it as ignored.
 stdout | app_a/src/diagnostics.erl:4:1-4:36::[Error] [L0000] Issue in included file
 stdout |         [app_a/include/broken_diagnostics.hrl] 1:8-1:15: P1702: bad attribute
 stdout |         [app_a/include/broken_diagnostics.hrl] 3:6-3:15: P1702: bad attribute
