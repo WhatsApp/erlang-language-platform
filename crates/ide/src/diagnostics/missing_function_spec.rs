@@ -434,6 +434,42 @@ b(_Config) -> ok.
     }
 
     #[test]
+    fn nested_group_without_properties_testcases_are_known() {
+        check_diagnostics(
+            r#"
+//- /app/test/main_SUITE.erl extra:test
+-module(main_SUITE).
+-export([all/0, groups/0, a/1, b/1, helper/1]).
+all() -> [{group, outer}].
+groups() -> [{outer, [{inner, [a, b]}]}].
+a(_Config) -> ok.
+b(_Config) -> ok.
+helper(Config) -> Config.
+%%<^^^ error: W0091: Missing specification for function helper/1
+%%   | 💡 <suppression>
+"#,
+        );
+    }
+
+    #[test]
+    fn nested_groups_built_by_a_comprehension_are_known() {
+        check_diagnostics(
+            r#"
+//- /app/test/main_SUITE.erl extra:test
+-module(main_SUITE).
+-export([all/0, groups/0, a/1, b/1, helper/1]).
+all() -> [{group, G} || {G, _} <- groups()].
+groups() -> [{outer, [{Inner, [a, b]} || Inner <- [inner_one, inner_two]]}].
+a(_Config) -> ok.
+b(_Config) -> ok.
+helper(Config) -> Config.
+%%<^^^ error: W0091: Missing specification for function helper/1
+%%   | 💡 <suppression>
+"#,
+        );
+    }
+
+    #[test]
     fn cyclic_groups_do_not_exempt_unreachable_functions() {
         check_diagnostics(
             r#"

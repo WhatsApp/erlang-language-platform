@@ -134,6 +134,11 @@ pub fn parse_group_content_entry(term: &Term) -> Result<TestDef, ConversionError
             [Term::Atom(label), Term::Atom(group)] if label.name == "group" => {
                 Ok(TestDef::GroupName(group.name.clone().into()))
             }
+            // `ct_groups:find/7` reads `{Name, Tests}` as `{Name, [], Tests}`.
+            [Term::Atom(group), group_content @ Term::List(_)] => {
+                let content = parse_group_content(group_content)?;
+                Ok(TestDef::GroupDef(group.name.clone().into(), content))
+            }
             [Term::Atom(group), _properties, group_content] => {
                 let content = parse_group_content(group_content)?;
                 Ok(TestDef::GroupDef(group.name.clone().into(), content))
@@ -141,5 +146,100 @@ pub fn parse_group_content_entry(term: &Term) -> Result<TestDef, ConversionError
             _ => Err(ConversionError::InvalidGroupContentEntry),
         },
         _ => Err(ConversionError::InvalidGroupContentEntry),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_base_db::assert_eq_expected;
+
+    use super::*;
+
+    fn atom(name: &str) -> Term {
+        eetf::Atom::from(name).into()
+    }
+
+    fn tuple(elements: Vec<Term>) -> Term {
+        eetf::Tuple::from(elements).into()
+    }
+
+    fn list(elements: Vec<Term>) -> Term {
+        eetf::List::from(elements).into()
+    }
+
+    fn test_name(name: &str) -> TestDef {
+        TestDef::TestName(name.into())
+    }
+
+    #[test]
+    fn nested_group_without_properties_is_a_group_definition() {
+        let expected = Ok(TestDef::GroupDef(
+            "header".into(),
+            vec![test_name("test_oneway"), test_name("test_rsocket")],
+        ));
+        assert_eq_expected!(
+            expected,
+            parse_group_content_entry(&tuple(vec![
+                atom("header"),
+                list(vec![atom("test_oneway"), atom("test_rsocket")]),
+            ]))
+        );
+    }
+
+    #[test]
+    fn nested_group_with_properties_is_a_group_definition() {
+        let expected = Ok(TestDef::GroupDef(
+            "header".into(),
+            vec![test_name("test_oneway")],
+        ));
+        assert_eq_expected!(
+            expected,
+            parse_group_content_entry(&tuple(vec![
+                atom("header"),
+                list(vec![atom("parallel")]),
+                list(vec![atom("test_oneway")]),
+            ]))
+        );
+    }
+
+    #[test]
+    fn group_reference_is_not_a_group_definition() {
+        let expected = Ok(TestDef::GroupName("header".into()));
+        assert_eq_expected!(
+            expected,
+            parse_group_content_entry(&tuple(vec![atom("group"), atom("header")]))
+        );
+    }
+
+    #[test]
+    fn external_testcase_reference_is_not_a_group_definition() {
+        let expected = Err(ConversionError::InvalidGroupContentEntry);
+        assert_eq_expected!(
+            expected,
+            parse_group_content_entry(&tuple(vec![atom("other_SUITE"), atom("a_test")]))
+        );
+    }
+
+    #[test]
+    fn groups_callback_accepts_a_nested_group_without_properties() {
+        // groups() -> [{tracer, [{header, [test_oneway]}]}].
+        let term = list(vec![tuple(vec![
+            atom("tracer"),
+            list(vec![tuple(vec![
+                atom("header"),
+                list(vec![atom("test_oneway")]),
+            ])]),
+        ])]);
+        let expected = Ok(vec![GroupDef {
+            name: "tracer".into(),
+            content: vec![TestDef::GroupDef(
+                "header".into(),
+                vec![test_name("test_oneway")],
+            )],
+        }]);
+        assert_eq_expected!(
+            expected,
+            groups(&term).map(|groups| groups.into_values().collect::<Vec<_>>())
+        );
     }
 }
