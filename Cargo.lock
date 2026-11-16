@@ -531,11 +531,10 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "eetf"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d43f72e8daaf13b2c06c09f706571918239211c6c8a5d61827e2065e93f682b5"
+checksum = "b59d5a438de6099b4fd27f69d61a67c3b7758e3950fa6b1cef7d679d1e74a7d0"
 dependencies = [
- "byteorder",
  "libflate",
  "num-bigint",
  "num-traits",

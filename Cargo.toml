@@ -40,7 +40,7 @@ daemonize = "0.5"
 dashmap = { version = "6.2.1", features = ["rayon", "serde"] }
 dissimilar = "1.0.11"
 dunce = "1.0.5"
-eetf = "0.10.0"
+eetf = "0.11.0"
 either = "1.19.0"
 elp_base_db = { path = "crates/base_db" }
 elp_eqwalizer = { path = "crates/eqwalizer" }
