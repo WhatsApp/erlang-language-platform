@@ -165,6 +165,7 @@ mod nonstandard_integer_formatting;
 mod old_edoc_syntax;
 mod record_tuple_match;
 mod redundant_assignment;
+mod redundant_ct_callback;
 mod redundant_fun_wrapper;
 mod redundant_suppression;
 mod replace_call;
@@ -2367,6 +2368,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &avoid_type_defs_in_header::LINTER,
     &discouraged_type::LINTER,
     &unused_header::LINTER,
+    &redundant_ct_callback::LINTER,
 ];
 
 /// Unified registry for all types of linters, initialized once and reused.

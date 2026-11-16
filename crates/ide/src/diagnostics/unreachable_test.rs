@@ -111,7 +111,8 @@ mod tests {
     fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
-            .disable(DiagnosticCode::CannotEvaluateCTCallbacks);
+            .disable(DiagnosticCode::CannotEvaluateCTCallbacks)
+            .disable(DiagnosticCode::RedundantCtCallback);
         check_diagnostics_with_config(config, fixture)
     }
 
@@ -142,6 +143,7 @@ mod tests {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
             .disable(DiagnosticCode::CannotEvaluateCTCallbacks)
+            .disable(DiagnosticCode::RedundantCtCallback)
             .disable(DiagnosticCode::DuplicateModule);
         check_diagnostics_with_config(
             config,
@@ -284,7 +286,8 @@ mod tests {
         );
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
-            .disable(DiagnosticCode::CannotEvaluateCTCallbacks);
+            .disable(DiagnosticCode::CannotEvaluateCTCallbacks)
+            .disable(DiagnosticCode::RedundantCtCallback);
         check_nth_fix(
             0,
             r#"

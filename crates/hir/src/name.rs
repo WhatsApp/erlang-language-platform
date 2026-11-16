@@ -329,6 +329,7 @@ pub mod known {
         utf8,
         // Common Test framework
         all,
+        ct_suite,
         end_per_group,
         end_per_testcase,
         end_per_suite,

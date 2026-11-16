@@ -167,6 +167,7 @@ mod tests {
         let config = DiagnosticsConfig::default()
             .enable(DiagnosticCode::MissingFunctionSpec)
             .disable(DiagnosticCode::UnreachableTest)
+            .disable(DiagnosticCode::RedundantCtCallback)
             .disable(DiagnosticCode::CannotEvaluateCTCallbacks)
             .disable(DiagnosticCode::UnusedInclude)
             .disable(DiagnosticCode::UnnecessaryFunctionArg);

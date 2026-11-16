@@ -237,6 +237,8 @@ pub enum DiagnosticCode {
     UnusedExportedType,
     #[strum(props(code = "W0093"))]
     UnusedHeader,
+    #[strum(props(code = "W0094"))]
+    RedundantCtCallback,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
