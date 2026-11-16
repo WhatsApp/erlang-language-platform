@@ -164,14 +164,6 @@ pub(crate) fn next_statement_in_slot<T>(
     }
 }
 
-pub(crate) fn var_name_starts_with_underscore(var: &hir::Var) -> bool {
-    var.as_string().starts_with('_')
-}
-
-pub(crate) fn is_wildcard(var: hir::Var) -> bool {
-    var_name_starts_with_underscore(&var)
-}
-
 pub(crate) fn is_only_place_where_var_is_defined(
     sema: &Semantic,
     var: &InFunctionClauseBody<AnyExprId>,

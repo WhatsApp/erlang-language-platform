@@ -319,7 +319,7 @@ fn ignored_positions(
         ignored.retain(|position| {
             let pat_id = pats[*position];
             match &in_clause[pat_id] {
-                Pat::Var(var) if var.as_string() == "_" => true,
+                Pat::Var(var) if var.is_anonymous() => true,
                 Pat::Var(var) => {
                     resolver.resolve_pat_id(var, pat_id).map(Vec::as_slice) == Some(&[pat_id])
                         && occurrences.by_binding.get(&pat_id) == Some(&1)

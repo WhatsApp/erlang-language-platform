@@ -2647,9 +2647,8 @@ fn validate_map_glob_entries(
 ) -> Result<(), crate::SsrError> {
     let body = pattern_body.body;
 
-    let is_bare_underscore_expr = |id: &ExprId| -> bool {
-        matches!(&body.exprs[*id], Expr::Var(var) if var.as_string() == "_")
-    };
+    let is_bare_underscore_expr =
+        |id: &ExprId| -> bool { matches!(&body.exprs[*id], Expr::Var(var) if var.is_anonymous()) };
 
     let check_expr_pair = |key_id: &ExprId, val_id: &ExprId| -> Result<(), crate::SsrError> {
         let key_is_glob = cache.is_glob(&AnyExprId::Expr(*key_id));
@@ -2706,7 +2705,7 @@ fn validate_map_glob_entries(
 
                 if key_is_glob && !val_is_glob {
                     match &body.pats[*val_id] {
-                        Pat::Var(var) if var.as_string() == "_" => {}
+                        Pat::Var(var) if var.is_anonymous() => {}
                         _ => {
                             return Err(crate::SsrError::new(
                                 "in a map glob entry, the non-glob side must be \

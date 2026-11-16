@@ -37,7 +37,6 @@ use hir::fold::ParenStrategy;
 
 use crate::codemod_helpers::is_only_place_where_var_is_defined;
 use crate::codemod_helpers::var_has_no_references;
-use crate::codemod_helpers::var_name_starts_with_underscore;
 use crate::diagnostics::Category;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::GenericLinter;
@@ -171,7 +170,7 @@ fn matches_trivially(
         Pat::Var(l) => {
             let in_clause_var = in_clause.with_value(AnyExprId::Pat(*pat_id));
 
-            if !var_name_starts_with_underscore(l)
+            if !l.is_underscore_prefixed()
                 && is_only_place_where_var_is_defined(sema, &in_clause_var)
                 && var_has_no_references(sema, &in_clause_var)
             {

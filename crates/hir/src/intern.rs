@@ -119,6 +119,24 @@ impl Var {
         Name::from_erlang_service(self.0.as_str())
     }
 
+    /// Returns true if this is the anonymous variable `_`.
+    pub fn is_anonymous(&self) -> bool {
+        self.0.as_str() == "_"
+    }
+
+    /// Returns true if the name starts with `_`, as in `_` and `_Name`,
+    /// which by convention marks the variable as intentionally unused.
+    /// SSR placeholders (`_@Name`) also start with `_`.
+    pub fn is_underscore_prefixed(&self) -> bool {
+        self.0.as_str().starts_with('_')
+    }
+
+    /// Returns true if the name starts with `__`, as in `__Name`, a
+    /// convention for variables introduced by macros and parse transforms.
+    pub fn is_double_underscore_prefixed(&self) -> bool {
+        self.0.as_str().starts_with("__")
+    }
+
     /// Returns true if this variable is an SSR placeholder.
     /// SSR placeholders are variables with names starting with `_@`.
     /// This is true for both single-element placeholders (`_@Name`) and

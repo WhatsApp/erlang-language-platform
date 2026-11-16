@@ -52,7 +52,6 @@ use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 
-use crate::codemod_helpers::is_wildcard;
 use crate::diagnostics::Linter;
 use crate::diagnostics::LinterContext;
 use crate::diagnostics::Severity;
@@ -230,15 +229,15 @@ fn is_wildcard_match(body: &Body, wildcard: &Option<PlaceholderMatch>) -> bool {
     };
     match code_id {
         SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match body.exprs[*expr_id] {
-            Expr::Var(var) => is_wildcard(var),
+            Expr::Var(var) => var.is_underscore_prefixed(),
             _ => false,
         },
         SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match body.pats[*pat_id] {
-            Pat::Var(var) => is_wildcard(var),
+            Pat::Var(var) => var.is_underscore_prefixed(),
             _ => false,
         },
         SubId::AnyExprId(_) => false,
-        SubId::Var(var) => is_wildcard(*var),
+        SubId::Var(var) => var.is_underscore_prefixed(),
         _ => false,
     }
 }
