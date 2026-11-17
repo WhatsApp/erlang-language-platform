@@ -385,14 +385,15 @@ better type-checking with eqWAlizer.
 -spec 'ets:info'
     (ets:table(), compressed | decentralized_counters | fixed | named_table | read_concurrency | write_concurrency) ->
         boolean();
-    (ets:table(), binary) -> list();
+    (ets:table(), binary) -> [{non_neg_integer(), non_neg_integer(), non_neg_integer()}];
     (ets:table(), heir) -> pid() | none;
     (ets:table(), id) -> ets:tid();
     (ets:table(), keypos | memory | size) -> non_neg_integer();
     (ets:table(), name) -> atom();
     (ets:table(), node) -> node();
     (ets:table(), owner) -> pid();
-    (ets:table(), safe_fixed | safe_fixed_monotonic_time) -> tuple() | false;
+    (ets:table(), safe_fixed | safe_fixed_monotonic_time) ->
+        {erlang:timestamp() | integer(), [{pid(), non_neg_integer()}]} | false;
     (ets:table(), stats) -> tuple();
     (ets:table(), protection) -> ets:table_access();
     (ets:table(), type) -> ets:table_type().
@@ -539,7 +540,7 @@ when
     Fun :: fun((F :: file:filename(), Acc) -> Acc).
 'filelib:fold_files'(_, _, _, _, _) -> error(eqwalizer_specs).
 
--spec 'filelib:safe_relative_path'(file:name_all(), file:name_all()) -> dynamic().
+-spec 'filelib:safe_relative_path'(file:name_all(), file:name_all()) -> unsafe | file:filename_all().
 'filelib:safe_relative_path'(_, _) -> error(eqwalizer_specs).
 
 %% -------- filename --------
@@ -1079,8 +1080,7 @@ when
 -spec 'orddict:take'(Key, Orddict) -> {Value, Orddict1} | error when
     Orddict :: orddict:orddict(Key, Value),
     Orddict1 :: orddict:orddict(Key, Value),
-    Key :: term(),
-    Value :: dynamic().
+    Key :: term().
 'orddict:take'(_, _) -> error(eqwalizer_specs).
 
 %% -------- ordsets --------
@@ -1173,7 +1173,10 @@ when
 %% -------- re --------
 
 -spec 're:run'(Subject, RE) ->
-    {match, dynamic()} | match | nomatch | {error, dynamic()}
+    {match, dynamic()}
+    | match
+    | nomatch
+    | {error, match_limit | match_limit_recursion | {compile, {string(), non_neg_integer()}}}
 when
     Subject :: iodata() | unicode:charlist(),
     RE :: re:mp() | iodata() | unicode:charlist().
@@ -1182,7 +1185,10 @@ when
     error(eqwalizer_specs).
 
 -spec 're:run'(Subject, RE, Options) ->
-    {match, dynamic()} | match | nomatch | {error, dynamic()}
+    {match, dynamic()}
+    | match
+    | nomatch
+    | {error, match_limit | match_limit_recursion | {compile, {string(), non_neg_integer()}}}
 when
     Subject :: iodata() | unicode:charlist(),
     RE :: re:mp() | iodata() | unicode:charlist(),
@@ -1222,7 +1228,18 @@ when
 
 %% -------- socket --------
 
--spec 'socket:open'(term(), term()) -> dynamic().
+% https://github.com/erlang/otp/issues/8810
+-type socket_recv_flags_or_timeout() ::
+    [socket:msg_flag() | integer()]
+    | timeout()
+    | nowait
+    | socket:select_handle()
+    | socket:completion_handle().
+
+-spec 'socket:accept'(socket:socket()) -> {ok, socket:socket()} | {error, term()}.
+'socket:accept'(_) -> error(eqwalizer_specs).
+
+-spec 'socket:open'(term(), term()) -> {ok, socket:socket()} | {error, term()}.
 'socket:open'(_, _) -> error(eqwalizer_specs).
 
 -spec 'socket:open'(socket:domain() | integer(), socket:type() | integer(), dynamic()) ->
@@ -1232,10 +1249,14 @@ when
 -spec 'socket:recv'(socket:socket()) -> dynamic().
 'socket:recv'(_) -> error(eqwalizer_specs).
 
--spec 'socket:recv'(socket:socket(), dynamic()) -> dynamic().
+-spec 'socket:recv'(socket:socket(), [socket:msg_flag() | integer()] | non_neg_integer()) -> dynamic().
 'socket:recv'(_, _) -> error(eqwalizer_specs).
 
--spec 'socket:recv'(socket:socket(), dynamic(), dynamic()) -> dynamic().
+-spec 'socket:recv'(
+    socket:socket(),
+    [socket:msg_flag() | integer()] | non_neg_integer(),
+    socket_recv_flags_or_timeout()
+) -> dynamic().
 'socket:recv'(_, _, _) -> error(eqwalizer_specs).
 
 -spec 'socket:send'(socket:socket(), iodata()) -> dynamic().
