@@ -1468,6 +1468,8 @@ mod tests {
     use crate::args::Command;
     use crate::args::Format;
     use crate::reporting::Report;
+    #[cfg(unix)]
+    use crate::test_utils::capture_daemon_output;
 
     macro_rules! args_vec {
         ($($e:expr$(,)?)+) => {
@@ -2202,13 +2204,18 @@ mod tests {
         let lint_config = LintConfig::default();
         let diagnostics_config =
             super::get_diagnostics_config(&lint, &lint_config).expect("config should be valid");
+        #[cfg(unix)]
+        if daemon {
+            return capture_daemon_output(|cli| {
+                let mut report = Report::for_daemon(cli).expect("client should be connected");
+                do_codemod(&mut report, &mut loaded, &diagnostics_config, &lint)
+            });
+        }
+        #[cfg(not(unix))]
+        assert!(!daemon, "daemon mode requires Unix");
         let mut cli = Fake::default();
         let result = {
-            let mut report = if daemon {
-                Report::for_daemon(&mut cli)
-            } else {
-                Report::for_command(&mut cli, format)
-            };
+            let mut report = Report::for_command(&mut cli, format);
             do_codemod(&mut report, &mut loaded, &diagnostics_config, &lint)
         };
         let (stdout, stderr) = cli.to_strings();
@@ -2292,15 +2299,19 @@ mod tests {
         assert_eq_expected!("", json_output.as_str());
         assert_eq_expected!("  lints: 1\n", json_info.as_str());
 
-        let (daemon_result, daemon_output, daemon_info) =
-            run_lint("L1230", Format::Json, true, false);
-        let daemon_outcome = daemon_result.expect("daemon --no-diags should complete");
-        assert_eq_expected!(101, daemon_outcome.process_exit_code());
-        assert_eq_expected!("", daemon_output.as_str());
-        assert_eq_expected!("  lints: 1\n", daemon_info.as_str());
+        #[cfg(unix)]
+        {
+            let (daemon_result, daemon_output, daemon_info) =
+                run_lint("L1230", Format::Json, true, false);
+            let daemon_outcome = daemon_result.expect("daemon --no-diags should complete");
+            assert_eq_expected!(101, daemon_outcome.process_exit_code());
+            assert_eq_expected!("", daemon_output.as_str());
+            assert_eq_expected!("  lints: 1\n", daemon_info.as_str());
+        }
     }
 
     #[test]
+    #[cfg(unix)]
     fn daemon_lint_preserves_explicit_and_implicit_exit_semantics() {
         let run = |format| {
             let mut loaded = fixture::load_result(
@@ -2321,12 +2332,10 @@ mod tests {
             let lint_config = LintConfig::default();
             let diagnostics_config =
                 super::get_diagnostics_config(&lint, &lint_config).expect("config should be valid");
-            let mut cli = Fake::default();
-            let result = {
-                let mut report = Report::for_daemon(&mut cli);
+            let (result, stdout, _) = capture_daemon_output(|cli| {
+                let mut report = Report::for_daemon(cli).expect("client should be connected");
                 do_codemod(&mut report, &mut loaded, &diagnostics_config, &lint)
-            };
-            let (stdout, _) = cli.to_strings();
+            });
             (result, stdout)
         };
 

@@ -19,6 +19,7 @@ use std::sync::LazyLock;
 
 use anyhow::Context;
 use anyhow::Result;
+#[cfg(unix)]
 use anyhow::bail;
 use codespan_reporting::diagnostic::Diagnostic as ReportingDiagnostic;
 use codespan_reporting::diagnostic::Label;
@@ -50,14 +51,59 @@ use itertools::Itertools;
 use parking_lot::Mutex;
 
 use crate::args::Format;
+#[cfg(unix)]
+use crate::daemon::DaemonCli;
+#[cfg(unix)]
 use crate::daemon_protocol::DaemonResponse;
 use crate::daemon_protocol::RenderedDiagnostic;
-
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Destination {
+enum Encoding {
     Human,
     Json,
+    #[cfg(unix)]
     Daemon,
+}
+
+enum Backend<'a> {
+    Command {
+        cli: &'a mut dyn Cli,
+        format: Format,
+    },
+    #[cfg(unix)]
+    Daemon(&'a mut DaemonCli),
+}
+
+impl Backend<'_> {
+    fn encoding(&self) -> Encoding {
+        match self {
+            Self::Command {
+                format: Format::Human,
+                ..
+            } => Encoding::Human,
+            Self::Command {
+                format: Format::Json | Format::ImplicitJson,
+                ..
+            } => Encoding::Json,
+            #[cfg(unix)]
+            Self::Daemon(_) => Encoding::Daemon,
+        }
+    }
+
+    fn cli(&self) -> &dyn Cli {
+        match self {
+            Self::Command { cli, .. } => &**cli,
+            #[cfg(unix)]
+            Self::Daemon(cli) => &**cli,
+        }
+    }
+
+    fn cli_mut(&mut self) -> &mut dyn Cli {
+        match self {
+            Self::Command { cli, .. } => &mut **cli,
+            #[cfg(unix)]
+            Self::Daemon(cli) => &mut **cli,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -69,8 +115,7 @@ pub struct ParseDiagnostic {
 }
 
 pub(crate) struct Report<'a> {
-    cli: &'a mut dyn Cli,
-    destination: Destination,
+    backend: Backend<'a>,
     error_count: usize,
     lint_header_written: bool,
 }
@@ -88,21 +133,18 @@ type ReportingData = (SimpleFiles<String, Arc<str>>, usize);
 
 impl<'a> Report<'a> {
     pub(crate) fn for_command(cli: &'a mut dyn Cli, format: Format) -> Self {
-        let destination = match format {
-            Format::Human => Destination::Human,
-            Format::Json | Format::ImplicitJson => Destination::Json,
-        };
-        Self::new(cli, destination)
+        Self::new(Backend::Command { cli, format })
     }
 
-    pub(crate) fn for_daemon(cli: &'a mut dyn Cli) -> Self {
-        Self::new(cli, Destination::Daemon)
+    #[cfg(unix)]
+    pub(crate) fn for_daemon(cli: &'a mut DaemonCli) -> Result<Self> {
+        cli.require_client()?;
+        Ok(Self::new(Backend::Daemon(cli)))
     }
 
-    fn new(cli: &'a mut dyn Cli, destination: Destination) -> Self {
+    fn new(backend: Backend<'a>) -> Self {
         Self {
-            cli,
-            destination,
+            backend,
             error_count: 0,
             lint_header_written: false,
         }
@@ -111,19 +153,19 @@ impl<'a> Report<'a> {
     /// Status is out-of-band: it must not enter structured stdout or affect
     /// diagnostic counts.
     pub(crate) fn info(&mut self, message: &str) -> io::Result<()> {
-        self.cli.info(message)
+        self.backend.cli_mut().info(message)
     }
 
     pub(crate) fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
-        self.cli.progress(len, prefix)
+        self.backend.cli().progress(len, prefix)
     }
 
     pub(crate) fn simple_progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
-        self.cli.simple_progress(len, prefix)
+        self.backend.cli().simple_progress(len, prefix)
     }
 
     pub(crate) fn spinner(&self, prefix: &'static str) -> ProgressBar {
-        self.cli.spinner(prefix)
+        self.backend.cli().spinner(prefix)
     }
 
     pub(crate) fn write_system_stats(
@@ -141,31 +183,31 @@ impl<'a> Report<'a> {
     }
 
     pub(crate) fn human_line(&mut self, args: fmt::Arguments<'_>) -> Result<()> {
-        if self.destination == Destination::Human {
-            writeln!(self.cli, "{args}")?;
+        if matches!(self.backend.encoding(), Encoding::Human) {
+            writeln!(self.backend.cli_mut(), "{args}")?;
         }
         Ok(())
     }
 
     pub(crate) fn human_info(&mut self, message: &str) -> Result<()> {
-        if self.destination == Destination::Human {
+        if matches!(self.backend.encoding(), Encoding::Human) {
             self.info(message)?;
         }
         Ok(())
     }
 
     pub(crate) fn terminal_error(&mut self, message: &str) -> Result<()> {
-        writeln!(self.cli.err(), "{message}")?;
+        writeln!(self.backend.cli_mut().err(), "{message}")?;
         Ok(())
     }
 
     pub(crate) fn write_lint_count(&mut self, name: &str, count: usize) -> Result<()> {
-        match self.destination {
-            Destination::Human => {
+        match self.backend.encoding() {
+            Encoding::Human => {
                 self.write_lint_header()?;
-                writeln!(self.cli, "  {name}: {count}")?;
+                writeln!(self.backend.cli_mut(), "  {name}: {count}")?;
             }
-            Destination::Json | Destination::Daemon => {
+            _ => {
                 self.info(&format!("  {name}: {count}"))?;
             }
         }
@@ -181,16 +223,17 @@ impl<'a> Report<'a> {
             return Ok(());
         }
 
-        let derived_path = if context.path.is_none() && self.destination != Destination::Human {
-            let file_path = context.analysis.file_path(context.file_id);
-            let project_root = context
-                .analysis
-                .project_root(context.file_id)?
-                .context("could not find the project root")?;
-            Some(get_relative_path(&project_root, &file_path).to_path_buf())
-        } else {
-            None
-        };
+        let derived_path =
+            if context.path.is_none() && !matches!(self.backend.encoding(), Encoding::Human) {
+                let file_path = context.analysis.file_path(context.file_id);
+                let project_root = context
+                    .analysis
+                    .project_root(context.file_id)?
+                    .context("could not find the project root")?;
+                Some(get_relative_path(&project_root, &file_path).to_path_buf())
+            } else {
+                None
+            };
         let context = IdeDiagnosticContext {
             path: context.path.or(derived_path.as_deref()),
             ..context
@@ -237,8 +280,8 @@ impl<'a> Report<'a> {
         context: IdeDiagnosticContext<'_>,
         diagnostic: &diagnostics::Diagnostic,
     ) -> Result<()> {
-        if self.destination == Destination::Human {
-            write_ide_diagnostic(self.cli, context, diagnostic)?;
+        if matches!(self.backend.encoding(), Encoding::Human) {
+            write_ide_diagnostic(self.backend.cli_mut(), context, diagnostic)?;
         }
         Ok(())
     }
@@ -255,11 +298,9 @@ impl<'a> Report<'a> {
         }
 
         let relative_path = get_relative_file_path(analysis, loaded, file_id)?;
-        let structured_data = match self.destination {
-            Destination::Human => None,
-            Destination::Json | Destination::Daemon => {
-                Some((analysis.line_index(file_id)?, relative_path.as_path()))
-            }
+        let structured_data = match self.backend.encoding() {
+            Encoding::Human => None,
+            _ => Some((analysis.line_index(file_id)?, relative_path.as_path())),
         };
         let reporting_data = self.reporting_data(analysis, file_id, &relative_path)?;
         for diagnostic in diagnostics {
@@ -344,16 +385,21 @@ impl<'a> Report<'a> {
         rendered: Option<RenderedDiagnostic>,
     ) -> Result<()> {
         let is_error = diagnostic.severity() == &arc_types::Severity::Error;
-        match self.destination {
-            Destination::Human => match rendered {
+        match self.backend.encoding() {
+            Encoding::Human => match rendered {
                 Some(rendered) => {
-                    let use_color = self.cli.supports_color();
-                    write!(self.cli, "{}", rendered.output(use_color))?;
+                    let use_color = self.backend.cli_mut().supports_color();
+                    write!(self.backend.cli_mut(), "{}", rendered.output(use_color))?;
                 }
-                None => write!(self.cli, "{diagnostic}")?,
+                None => write!(self.backend.cli_mut(), "{diagnostic}")?,
             },
-            Destination::Json => writeln!(self.cli, "{}", serde_json::to_string(&diagnostic)?)?,
-            Destination::Daemon => {
+            Encoding::Json => writeln!(
+                self.backend.cli_mut(),
+                "{}",
+                serde_json::to_string(&diagnostic)?
+            )?,
+            #[cfg(unix)]
+            Encoding::Daemon => {
                 bail!("forwarded diagnostic cannot be written to daemon transport")
             }
         }
@@ -362,15 +408,15 @@ impl<'a> Report<'a> {
     }
 
     pub(crate) fn write_error_summary(&mut self) -> Result<()> {
-        if self.destination == Destination::Human {
-            write_error_count_summary(self.cli, self.error_count)?;
+        if matches!(self.backend.encoding(), Encoding::Human) {
+            write_error_count_summary(self.backend.cli_mut(), self.error_count)?;
         }
         Ok(())
     }
 
     fn write_lint_header(&mut self) -> Result<()> {
-        if self.destination == Destination::Human && !self.lint_header_written {
-            writeln!(self.cli, "Diagnostics reported:")?;
+        if matches!(self.backend.encoding(), Encoding::Human) && !self.lint_header_written {
+            writeln!(self.backend.cli_mut(), "Diagnostics reported:")?;
             self.lint_header_written = true;
         }
         Ok(())
@@ -382,10 +428,11 @@ impl<'a> Report<'a> {
         file_id: FileId,
         relative_path: &Path,
     ) -> Result<Option<ReportingData>> {
-        match self.destination {
-            Destination::Human => Ok(Some(get_reporting_data(analysis, file_id, relative_path)?)),
-            Destination::Json => Ok(None),
-            Destination::Daemon => Ok(get_reporting_data(analysis, file_id, relative_path)
+        match self.backend.encoding() {
+            Encoding::Human => Ok(Some(get_reporting_data(analysis, file_id, relative_path)?)),
+            Encoding::Json => Ok(None),
+            #[cfg(unix)]
+            Encoding::Daemon => Ok(get_reporting_data(analysis, file_id, relative_path)
                 .inspect_err(|error| {
                     log::warn!("Failed to prepare daemon diagnostic rendering: {error:#}");
                 })
@@ -400,17 +447,23 @@ impl<'a> Report<'a> {
         human: impl FnOnce(&mut dyn Cli) -> Result<()>,
         daemon_render: impl FnOnce(&arc_types::Diagnostic) -> Result<Option<RenderedDiagnostic>>,
     ) -> Result<()> {
-        match self.destination {
-            Destination::Human => human(self.cli)?,
-            Destination::Json => {
+        match &mut self.backend {
+            Backend::Command {
+                cli,
+                format: Format::Human,
+            } => human(*cli)?,
+            Backend::Command {
+                cli,
+                format: Format::Json | Format::ImplicitJson,
+            } => {
                 let diagnostic = diagnostic()?;
-                writeln!(self.cli, "{}", serde_json::to_string(&diagnostic)?)?;
+                writeln!(cli, "{}", serde_json::to_string(&diagnostic)?)?;
             }
-            Destination::Daemon => {
+            #[cfg(unix)]
+            Backend::Daemon(cli) => {
                 let diagnostic = diagnostic()?;
                 let rendered = daemon_render(&diagnostic)?;
-                let response = DaemonResponse::<()>::diagnostic(diagnostic, rendered);
-                writeln!(self.cli, "{}", serde_json::to_string(&response)?)?;
+                cli.send(&DaemonResponse::<()>::diagnostic(diagnostic, rendered))?;
             }
         }
         self.error_count += usize::from(is_error);
@@ -759,6 +812,8 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 
     use super::*;
+    #[cfg(unix)]
+    use crate::test_utils::capture_daemon_output;
 
     #[test]
     fn rendered_diagnostic_preserves_plain_and_ansi_output() {
@@ -817,28 +872,32 @@ mod tests {
     }
 
     #[test]
-    fn report_constructors_select_the_destination() {
+    fn report_constructors_select_the_encoding() {
         let mut cli = elp::cli::Fake::default();
         {
             let report = Report::for_command(&mut cli, Format::Human);
-            assert!(matches!(report.destination, Destination::Human));
+            assert!(matches!(report.backend.encoding(), Encoding::Human));
         }
 
         {
             let report = Report::for_command(&mut cli, Format::Json);
-            assert!(matches!(report.destination, Destination::Json));
+            assert!(matches!(report.backend.encoding(), Encoding::Json));
         }
 
         {
             let report = Report::for_command(&mut cli, Format::ImplicitJson);
-            assert!(matches!(report.destination, Destination::Json));
+            assert!(matches!(report.backend.encoding(), Encoding::Json));
         }
 
-        let report = Report::for_daemon(&mut cli);
-        assert!(matches!(report.destination, Destination::Daemon));
+        #[cfg(unix)]
+        capture_daemon_output(|cli| {
+            let report = Report::for_daemon(cli).expect("client should be connected");
+            assert!(matches!(report.backend.encoding(), Encoding::Daemon));
+        });
     }
 
     #[test]
+    #[cfg(unix)]
     fn daemon_lint_diagnostic_derives_missing_result_path() {
         let loaded = fixture::load_result(
             r#"
@@ -856,10 +915,8 @@ mod tests {
             message: "problem".to_string(),
             ..Default::default()
         };
-        let mut cli = elp::cli::Fake::default();
-
-        {
-            let mut report = Report::for_daemon(&mut cli);
+        let (_, stdout, stderr) = capture_daemon_output(|cli| {
+            let mut report = Report::for_daemon(cli).expect("client should be connected");
             report
                 .write_lint_diagnostics(
                     IdeDiagnosticContext {
@@ -872,9 +929,7 @@ mod tests {
                     &[diagnostic],
                 )
                 .expect("daemon diagnostic should derive its path");
-        }
-
-        let (stdout, stderr) = cli.to_strings();
+        });
         let response: serde_json::Value =
             serde_json::from_str(stdout.trim()).expect("daemon output should be JSON");
         assert_eq_expected!(Some("diagnostic"), response["type"].as_str());

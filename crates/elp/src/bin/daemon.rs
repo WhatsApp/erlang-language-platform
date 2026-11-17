@@ -77,6 +77,7 @@ fn daemonize() -> Result<()> {
 
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::anyhow;
 use anyhow::bail;
 use clap::ValueHint;
 use codespan_reporting::term::termcolor::ColorSpec;
@@ -356,98 +357,94 @@ impl Drop for DaemonRequestTelemetry {
 // DaemonCli — Cli implementation for the daemon
 // ---------------------------------------------------------------------------
 
-#[derive(Clone, Debug)]
-struct DaemonWriter(Arc<Mutex<DaemonSink>>);
-
+/// CLI for daemon requests and project loads.
 #[derive(Debug)]
-enum DaemonSink {
-    Client(UnixStream),
-    Startup(fs::File),
-}
-
-impl DaemonWriter {
-    fn new(sink: DaemonSink) -> Self {
-        Self(Arc::new(Mutex::new(sink)))
-    }
-}
-
-impl Write for DaemonWriter {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut sink = self.0.lock().expect("DaemonWriter poisoned");
-        match &mut *sink {
-            DaemonSink::Client(writer) => writer.write_all(buf),
-            DaemonSink::Startup(writer) => writer.write_all(buf),
-        }?;
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        let mut sink = self.0.lock().expect("DaemonWriter poisoned");
-        match &mut *sink {
-            DaemonSink::Client(writer) => writer.flush(),
-            DaemonSink::Startup(writer) => writer.flush(),
-        }
-    }
-}
-
-/// Where a [`DaemonCli`]'s command results (stdout) go.
-enum DaemonOut {
-    /// Running a client's command: results stream to the connected client.
-    Client(BufWriter<DaemonWriter>),
-    /// Clientless startup: results are logged, progress is replayed to waiting clients.
-    Startup(DaemonWriter),
-    /// Clientless project load (daemon startup): results go to the daemon log.
-    Log,
-}
-
-/// The one `Cli` the daemon uses, for both project loads and client commands.
-/// Progress narrates into `daemon.log` and streams its state to the
-/// connected client; `info()` surfaces user-facing status — to the connected client
-/// when there is one, always echoed to the log; `err()` and any stray output go
-/// to the log. The `out` sink is the only thing that varies: a client's socket
-/// for a command, or the log for a clientless load.
-struct DaemonCli {
-    out: DaemonOut,
+pub(crate) struct DaemonCli {
+    sink: Option<Arc<DaemonSink>>,
     /// The daemon's own stderr, which `start_daemon` redirects to `daemon.log`.
     stderr: io::Stderr,
 }
 
+#[derive(Debug)]
+enum DaemonSink {
+    Client(Mutex<UnixStream>),
+    Startup(Mutex<fs::File>),
+}
+
+impl Clone for DaemonCli {
+    fn clone(&self) -> Self {
+        Self {
+            sink: self.sink.clone(),
+            stderr: io::stderr(),
+        }
+    }
+}
+
 impl DaemonCli {
     /// For running a client's command: results stream back over the socket.
-    fn client(stream: UnixStream) -> Self {
+    pub(crate) fn client(stream: UnixStream) -> Self {
         Self {
-            out: DaemonOut::Client(BufWriter::new(DaemonWriter::new(DaemonSink::Client(
-                stream,
-            )))),
+            sink: Some(Arc::new(DaemonSink::Client(Mutex::new(stream)))),
             stderr: io::stderr(),
         }
     }
 
+    fn is_client(&self) -> bool {
+        matches!(self.sink.as_deref(), Some(DaemonSink::Client(_)))
+    }
+
+    pub(crate) fn require_client(&self) -> Result<()> {
+        if self.is_client() {
+            Ok(())
+        } else {
+            bail!("no daemon client connected")
+        }
+    }
+
+    pub(crate) fn send<T: Serialize>(&self, response: &DaemonResponse<T>) -> Result<()> {
+        let sink = self.sink.as_deref().context("no daemon client connected")?;
+        if matches!(sink, DaemonSink::Startup(_))
+            && !matches!(response, DaemonResponse::Progress { .. })
+        {
+            bail!("startup transport only accepts progress");
+        }
+        let mut record = serde_json::to_vec(response)?;
+        record.push(b'\n');
+
+        match sink {
+            DaemonSink::Client(stream) => stream
+                .lock()
+                .map_err(|_| anyhow!("Daemon output poisoned"))?
+                .write_all(&record),
+            DaemonSink::Startup(file) => file
+                .lock()
+                .map_err(|_| anyhow!("Daemon output poisoned"))?
+                .write_all(&record),
+        }?;
+        Ok(())
+    }
+
     fn startup(progress_file: fs::File) -> Self {
         Self {
-            out: DaemonOut::Startup(DaemonWriter::new(DaemonSink::Startup(progress_file))),
+            sink: Some(Arc::new(DaemonSink::Startup(Mutex::new(progress_file)))),
             stderr: io::stderr(),
         }
     }
 
     fn progress_bar(&self, len: u64, prefix: &'static str, kind: ProgressKind) -> ProgressBar {
-        let writer = match &self.out {
-            DaemonOut::Client(writer) => writer.get_ref(),
-            DaemonOut::Startup(writer) => writer,
-            DaemonOut::Log => {
-                return match kind {
-                    ProgressKind::Spinner => log_spinner(prefix),
-                    ProgressKind::Bar | ProgressKind::Simple => log_progress_bar(len, prefix),
-                };
-            }
-        };
+        if self.sink.is_none() {
+            return match kind {
+                ProgressKind::Spinner => log_spinner(prefix),
+                ProgressKind::Bar | ProgressKind::Simple => log_progress_bar(len, prefix),
+            };
+        }
         let pb = match kind {
             ProgressKind::Spinner => ProgressBar::new_spinner(),
             ProgressKind::Bar | ProgressKind::Simple => ProgressBar::new(len),
         };
         pb.set_prefix(prefix);
         let forward = Arc::new(ForwardProgress {
-            writer: writer.clone(),
+            cli: self.clone(),
             progress: Mutex::new(ProgressMessage {
                 id: NEXT_PROGRESS_ID.fetch_add(1, Ordering::Relaxed),
                 kind,
@@ -488,7 +485,7 @@ impl DaemonCli {
     /// For a clientless project load: everything goes to `daemon.log`.
     fn log() -> Self {
         Self {
-            out: DaemonOut::Log,
+            sink: None,
             stderr: io::stderr(),
         }
     }
@@ -496,17 +493,11 @@ impl DaemonCli {
 
 impl Write for DaemonCli {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match &mut self.out {
-            DaemonOut::Client(writer) => writer.write(buf),
-            DaemonOut::Startup(_) | DaemonOut::Log => self.stderr.write(buf),
-        }
+        self.stderr.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        match &mut self.out {
-            DaemonOut::Client(writer) => writer.flush(),
-            DaemonOut::Startup(_) | DaemonOut::Log => self.stderr.flush(),
-        }
+        self.stderr.flush()
     }
 }
 
@@ -547,12 +538,8 @@ impl Cli for DaemonCli {
     /// must not abort the in-flight command, so socket errors are ignored.
     fn info(&mut self, message: &str) -> io::Result<()> {
         let _ = writeln!(self.stderr, "[elp-daemon] {message}");
-        if let DaemonOut::Client(writer) = &mut self.out {
-            let response = DaemonResponse::<()>::info(message);
-            if let Ok(json) = serde_json::to_string(&response) {
-                let _ = writeln!(writer, "{json}");
-                let _ = writer.flush();
-            }
+        if self.is_client() {
+            let _ = self.send(&DaemonResponse::<()>::info(message));
         }
         Ok(())
     }
@@ -573,7 +560,7 @@ static NEXT_PROGRESS_ID: AtomicU64 = AtomicU64::new(0);
 /// The draw target supplies the untruncated `{msg}`; the tracker supplies its state.
 #[derive(Debug)]
 struct ForwardProgress {
-    writer: DaemonWriter,
+    cli: DaemonCli,
     progress: Mutex<ProgressMessage>,
 }
 
@@ -590,12 +577,7 @@ impl ForwardProgress {
         let response = DaemonResponse::<()>::Progress {
             progress: progress.clone(),
         };
-        if let Ok(mut json) = serde_json::to_string(&response) {
-            json.push('\n');
-            let mut writer = self.writer.clone();
-            let _ = writer.write_all(json.as_bytes());
-            let _ = writer.flush();
-        }
+        let _ = self.cli.send(&response);
         log
     }
 }
@@ -960,9 +942,7 @@ fn handle_connection(
 
     // Handle stop command
     if line == "__stop__" {
-        let done = serde_json::to_string(&DaemonResponse::<()>::success(None))?;
-        writeln!(cli, "{done}")?;
-        cli.flush()?;
+        cli.send(&DaemonResponse::<()>::success(None))?;
         request_telemetry.complete("success");
         return Ok(true);
     }
@@ -975,9 +955,7 @@ fn handle_connection(
     match update {
         UpdateResult::NeedsRestart { reason } => {
             let _ = writeln!(cli.err(), "[elp-daemon] {reason}");
-            let done = serde_json::to_string(&DaemonResponse::<()>::restart(reason))?;
-            writeln!(cli, "{done}")?;
-            cli.flush()?;
+            cli.send(&DaemonResponse::<()>::restart(reason))?;
             request_telemetry.complete("restart");
             return Ok(true);
         }
@@ -1017,11 +995,9 @@ fn handle_connection(
                         cli.err(),
                         "[elp-daemon] Failed to reload .elp_lint.toml, restarting: {e}"
                     );
-                    let done = serde_json::to_string(&DaemonResponse::<()>::restart(format!(
+                    cli.send(&DaemonResponse::<()>::restart(format!(
                         "Lint config reload failed: {e}"
                     )))?;
-                    writeln!(cli, "{done}")?;
-                    cli.flush()?;
                     request_telemetry.complete("restart");
                     return Ok(true);
                 }
@@ -1043,9 +1019,7 @@ fn handle_connection(
             Err(e) => DaemonResponse::error(format!("invalid daemon request: {e}")),
         };
         request_telemetry.complete_from_response(&response);
-        let done = serde_json::to_string(&response)?;
-        writeln!(cli, "{done}")?;
-        cli.flush()?;
+        cli.send(&response)?;
         return Ok(false);
     }
 
@@ -1065,9 +1039,7 @@ fn handle_connection(
             Err(e) => DaemonResponse::error(format!("invalid lint payload: {e}")),
         };
         request_telemetry.complete_from_response(&response);
-        let done = serde_json::to_string(&response)?;
-        writeln!(cli, "{done}")?;
-        cli.flush()?;
+        cli.send(&response)?;
         return Ok(false);
     }
 
@@ -1119,26 +1091,22 @@ fn handle_connection(
     };
 
     request_telemetry.complete_from_response(&done);
-    let done = serde_json::to_string(&done)?;
-    writeln!(cli, "{done}")?;
-    cli.flush()?;
+    cli.send(&done)?;
     Ok(should_quit)
 }
 
-fn write_connection_unavailable(cli: &mut dyn Cli, error: &anyhow::Error) -> Result<bool> {
-    let done = serde_json::to_string(&DaemonResponse::<()>::unavailable(format!("{error:#}")))?;
-    writeln!(cli, "{done}")?;
-    cli.flush()?;
+fn write_connection_unavailable(cli: &mut DaemonCli, error: &anyhow::Error) -> Result<bool> {
+    cli.send(&DaemonResponse::<()>::unavailable(format!("{error:#}")))?;
     Ok(true)
 }
 
 fn execute_daemon_request(
     request: DaemonRequest,
     state: &mut DaemonState,
-    cli: &mut dyn Cli,
+    cli: &mut DaemonCli,
 ) -> Result<Option<LintOutcome>> {
     run_timed_daemon_operation(cli, |cli| {
-        let mut report = Report::for_daemon(cli);
+        let mut report = Report::for_daemon(cli)?;
         match request {
             DaemonRequest::Eqwalize(args) => {
                 eqwalizer_cli::do_eqwalize(&args, &mut state.loaded, &mut report)?;
@@ -1153,19 +1121,15 @@ fn execute_daemon_request(
 }
 
 fn run_timed_daemon_operation<T>(
-    cli: &mut dyn Cli,
-    run: impl FnOnce(&mut dyn Cli) -> Result<T>,
+    cli: &mut DaemonCli,
+    run: impl FnOnce(&mut DaemonCli) -> Result<T>,
 ) -> Result<T> {
-    let ready = serde_json::to_string(&DaemonResponse::<()>::OperationStarted)?;
-    writeln!(cli, "{ready}")?;
-    cli.flush()?;
+    cli.send(&DaemonResponse::<()>::OperationStarted)?;
     let start = Instant::now();
     let result = run(cli);
-    let finished = serde_json::to_string(&DaemonResponse::<()>::OperationFinished {
+    cli.send(&DaemonResponse::<()>::OperationFinished {
         duration_ms: cli_timing::operation_duration(start),
     })?;
-    writeln!(cli, "{finished}")?;
-    cli.flush()?;
     result
 }
 
@@ -2039,6 +2003,39 @@ mod tests {
     use super::*;
     use crate::args::Severity;
     use crate::daemon_protocol::RenderedDiagnostic;
+    use crate::test_utils::capture_daemon_output;
+
+    #[test]
+    fn daemon_byte_output_does_not_enter_response_stream() {
+        let (server, client) = UnixStream::pair().unwrap();
+        client
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let mut cli = DaemonCli::client(server);
+        cli.write_all(b"unstructured daemon output\n").unwrap();
+        cli.flush().unwrap();
+        cli.info("status").unwrap();
+        cli.send(&DaemonResponse::<()>::success(None)).unwrap();
+        drop(cli);
+
+        let responses: Vec<DaemonResponse<()>> = BufReader::new(client)
+            .lines()
+            .map(|line| serde_json::from_str(&line.unwrap()).unwrap())
+            .collect();
+        let expected = vec![
+            DaemonResponse::info("status"),
+            DaemonResponse::success(None),
+        ];
+        assert_eq_expected!(expected, responses);
+    }
+
+    #[test]
+    fn daemon_report_requires_a_connected_client() {
+        let mut cli = DaemonCli::log();
+        assert!(Report::for_daemon(&mut cli).is_err());
+        let mut cli = DaemonCli::startup(tempfile::tempfile().unwrap());
+        assert!(Report::for_daemon(&mut cli).is_err());
+    }
 
     #[test]
     fn daemon_progress_streams_updates_and_completion() {
@@ -2054,13 +2051,7 @@ mod tests {
         pb.force_draw();
         cli.info("status").unwrap();
         pb.finish();
-        writeln!(
-            cli,
-            "{}",
-            serde_json::to_string(&DaemonResponse::<()>::success(None)).unwrap()
-        )
-        .unwrap();
-        cli.flush().unwrap();
+        cli.send(&DaemonResponse::<()>::success(None)).unwrap();
         drop(pb);
         drop(cli);
 
@@ -2164,6 +2155,18 @@ mod tests {
         let (stdout, stderr) = cli.to_strings();
         assert_eq_expected!("", stdout.as_str());
         assert_eq_expected!("", stderr.as_str());
+    }
+
+    #[test]
+    fn startup_info_stays_out_of_progress_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(STARTUP_PROGRESS_FILE);
+        let mut cli = DaemonCli::startup(fs::File::create(&path).unwrap());
+        cli.info("status").unwrap();
+        drop(cli);
+
+        let actual = fs::read_to_string(path).unwrap();
+        assert_eq_expected!("", actual.as_str());
     }
 
     #[test]
@@ -2387,12 +2390,13 @@ mod tests {
 
     #[test]
     fn timed_daemon_operation_reports_phases_even_on_error() {
-        let mut cli = elp::cli::Fake::default();
-        let result: Result<()> = run_timed_daemon_operation(&mut cli, |_| {
-            bail!("operation failed");
+        let (result, stdout, _) = capture_daemon_output(|cli| {
+            let result: Result<()> = run_timed_daemon_operation(cli, |_| {
+                bail!("operation failed");
+            });
+            result
         });
         assert!(result.is_err());
-        let (stdout, _) = cli.to_strings();
         let responses: Vec<DaemonResponse<()>> = stdout
             .lines()
             .map(|line| serde_json::from_str(line).expect("structured timing response"))
@@ -2635,13 +2639,12 @@ mod tests {
 
     #[test]
     fn connection_unavailability_is_sent_and_stops_daemon() {
-        use elp::cli::Fake;
         use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 
-        let mut cli = Fake::default();
-        let should_stop = write_connection_unavailable(&mut cli, &anyhow::anyhow!("reload failed"))
-            .expect("error response should be written");
-        let (stdout, _) = cli.to_strings();
+        let (should_stop, stdout, _) = capture_daemon_output(|cli| {
+            write_connection_unavailable(cli, &anyhow::anyhow!("reload failed"))
+                .expect("error response should be written")
+        });
         let response: DaemonResponse =
             serde_json::from_str(stdout.trim()).expect("response should be JSON");
 
@@ -3385,5 +3388,273 @@ mod tests {
         // Daemon thread should exit cleanly
         let result = handle.join().expect("Daemon thread panicked");
         assert!(result.is_ok(), "Daemon returned error: {result:?}");
+    }
+}
+
+#[cfg(test)]
+mod transport_tests {
+    use std::io::ErrorKind;
+    use std::io::Seek;
+    use std::sync::Barrier;
+    use std::sync::mpsc;
+
+    use elp::arc_types;
+    use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+    use serde::Serializer;
+    use serde::ser::SerializeStruct;
+
+    use super::*;
+    use crate::daemon_protocol::RenderedDiagnostic;
+
+    const TIMEOUT: Duration = Duration::from_secs(5);
+
+    fn socket_pair() -> (DaemonCli, BufReader<UnixStream>) {
+        let (stream, peer) = UnixStream::pair().expect("socket pair should open");
+        stream
+            .set_write_timeout(Some(TIMEOUT))
+            .expect("write timeout should be set");
+        peer.set_read_timeout(Some(TIMEOUT))
+            .expect("read timeout should be set");
+        (DaemonCli::client(stream), BufReader::new(peer))
+    }
+
+    fn read_response<T: DeserializeOwned>(reader: &mut impl BufRead) -> Option<DaemonResponse<T>> {
+        let mut line = String::new();
+        if reader.read_line(&mut line).expect("response should arrive") == 0 {
+            return None;
+        }
+        assert!(
+            line.ends_with('\n'),
+            "each response must end with a newline"
+        );
+        assert!(line != "\n", "responses must not include blank records");
+        Some(serde_json::from_str(&line).expect("each record should decode as a response"))
+    }
+
+    fn read_responses<T: DeserializeOwned>(mut reader: impl BufRead) -> Vec<DaemonResponse<T>> {
+        std::iter::from_fn(|| read_response(&mut reader)).collect()
+    }
+
+    fn diagnostic(message: String) -> DaemonResponse {
+        DaemonResponse::diagnostic(
+            arc_types::Diagnostic::new(
+                Path::new("src/example.erl"),
+                3,
+                Some(7),
+                arc_types::Severity::Error,
+                "incompatible_types".to_owned(),
+                message.clone(),
+                None,
+                None,
+            ),
+            Some(RenderedDiagnostic::new(
+                format!("{message}\n"),
+                format!("\u{1b}[31m{message}\u{1b}[0m\n"),
+            )),
+        )
+    }
+
+    fn progress(pos: u64, len: u64, message: String) -> DaemonResponse {
+        DaemonResponse::Progress {
+            progress: ProgressMessage {
+                id: 7,
+                kind: ProgressKind::Bar,
+                prefix: "Checking".to_owned(),
+                message,
+                len,
+                pos,
+                elapsed_millis: pos * 10,
+                finished: pos == len,
+            },
+        }
+    }
+
+    #[test]
+    fn consecutive_responses_round_trip_small_and_large_payloads() {
+        let (sender, reader) = socket_pair();
+        let expected = vec![
+            DaemonResponse::<()>::info("雪🙂\nnext line\\n\"quoted\""),
+            diagnostic("λ雪🙂\nnext line\\n\"quoted\"".repeat(2048)),
+            DaemonResponse::success(None),
+        ];
+        let reader = thread::spawn(move || read_responses::<()>(reader));
+
+        for response in &expected {
+            sender.send(response).expect("response should send");
+        }
+        drop(sender);
+
+        let actual = reader.join().expect("reader should finish");
+        assert_eq_expected!(expected, actual);
+    }
+
+    #[test]
+    fn cloned_producers_preserve_complete_records_and_their_own_order() {
+        const COUNT: u64 = 32;
+        let (command_sender, reader) = socket_pair();
+        let progress_sender = command_sender.clone();
+        let payload = "λ雪🙂\nlarge payload\\n".repeat(2048);
+        let expected_command: Vec<_> = (1..=COUNT)
+            .flat_map(|index| {
+                [
+                    diagnostic(format!("diagnostic {index}: {payload}")),
+                    DaemonResponse::info(format!("info {index}: {payload}")),
+                ]
+            })
+            .collect();
+        let expected_progress: Vec<_> = (1..=COUNT)
+            .map(|pos| progress(pos, COUNT, format!("progress {pos}: {payload}")))
+            .collect();
+        let start = Barrier::new(2);
+
+        let actual = thread::scope(|scope| {
+            let reader = scope.spawn(move || read_responses::<()>(reader));
+            let command = scope.spawn(|| {
+                start.wait();
+                for response in &expected_command {
+                    command_sender
+                        .send(response)
+                        .expect("command response should send");
+                }
+                drop(command_sender);
+            });
+            let progress = scope.spawn(|| {
+                start.wait();
+                for response in &expected_progress {
+                    progress_sender
+                        .send(response)
+                        .expect("progress response should send");
+                }
+                drop(progress_sender);
+            });
+
+            command.join().expect("command producer should finish");
+            progress.join().expect("progress producer should finish");
+            reader.join().expect("reader should finish")
+        });
+
+        let (actual_progress, actual_command): (Vec<_>, Vec<_>) = actual
+            .into_iter()
+            .partition(|response| matches!(response, DaemonResponse::Progress { .. }));
+        assert_eq_expected!(expected_command, actual_command);
+        assert_eq_expected!(expected_progress, actual_progress);
+    }
+
+    #[test]
+    fn command_completion_arrives_while_progress_producer_is_alive() {
+        let (command_sender, mut reader) = socket_pair();
+        let progress_sender = command_sender.clone();
+        let expected_done = DaemonResponse::<()>::success(None);
+        let expected_progress = progress(1, 1, "finished".to_owned());
+
+        let (actual_done, actual_progress) = thread::scope(|scope| {
+            let (release, wait_for_completion) = mpsc::channel();
+            let progress_response = &expected_progress;
+            let progress = scope.spawn(move || {
+                wait_for_completion
+                    .recv_timeout(TIMEOUT)
+                    .expect("command completion should release progress");
+                progress_sender
+                    .send(progress_response)
+                    .expect("progress should send");
+                drop(progress_sender);
+            });
+            let command = scope.spawn(|| {
+                command_sender
+                    .send(&expected_done)
+                    .expect("completion should send");
+                drop(command_sender);
+            });
+
+            command.join().expect("command producer should finish");
+            let actual_done = read_response::<()>(&mut reader).expect("completion should arrive");
+            release
+                .send(())
+                .expect("progress producer should still be alive");
+            progress.join().expect("progress producer should finish");
+            (actual_done, read_responses::<()>(reader))
+        });
+
+        assert_eq_expected!(expected_done, actual_done);
+        assert_eq_expected!(vec![expected_progress], actual_progress);
+    }
+
+    #[test]
+    fn disconnected_socket_returns_an_error() {
+        let (sender, peer) = socket_pair();
+        drop(peer);
+
+        assert!(
+            sender.send(&DaemonResponse::<()>::success(None)).is_err(),
+            "sending to a disconnected client should fail"
+        );
+    }
+
+    #[test]
+    fn serialization_failure_emits_nothing_and_does_not_prevent_later_send() {
+        struct FailingPayload;
+
+        impl Serialize for FailingPayload {
+            fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                let mut fields = serializer.serialize_struct("FailingPayload", 2)?;
+                fields.serialize_field("partial", &"must not reach the socket".repeat(1024))?;
+                Err(serde::ser::Error::custom(
+                    "deliberate serialization failure",
+                ))
+            }
+        }
+
+        let (sender, mut reader) = socket_pair();
+        let failed_response = DaemonResponse::success(Some(FailingPayload));
+        assert!(
+            sender.send(&failed_response).is_err(),
+            "serialization should fail"
+        );
+
+        reader
+            .get_mut()
+            .set_nonblocking(true)
+            .expect("peer should become nonblocking");
+        let error = reader
+            .read(&mut [0])
+            .expect_err("failed serialization must emit no bytes");
+        assert_eq_expected!(ErrorKind::WouldBlock, error.kind());
+        reader
+            .get_mut()
+            .set_nonblocking(false)
+            .expect("peer should become blocking");
+
+        let expected = DaemonResponse::success(Some("ready 雪\n".to_owned()));
+        sender.send(&expected).expect("later response should send");
+        drop(sender);
+        let actual = read_responses::<String>(reader);
+        assert_eq_expected!(vec![expected], actual);
+    }
+
+    #[test]
+    fn startup_file_receives_complete_records_without_flush_or_drop() {
+        let file = tempfile::tempfile().expect("startup file should open");
+        let mut reader = file.try_clone().expect("startup file should be readable");
+        let sender = DaemonCli::startup(file);
+        let expected = vec![
+            progress(0, 1, "loading 雪\n".to_owned()),
+            progress(1, 1, "ready".to_owned()),
+        ];
+
+        for response in &expected {
+            sender.send(response).expect("startup progress should send");
+        }
+        reader.rewind().expect("startup file should rewind");
+        let actual = read_responses::<()>(BufReader::new(reader));
+        assert_eq_expected!(expected, actual);
+        drop(sender);
+    }
+
+    #[test]
+    fn log_and_startup_contexts_reject_command_responses() {
+        let done = DaemonResponse::<()>::success(None);
+        assert!(DaemonCli::log().send(&done).is_err());
+        let cli = DaemonCli::startup(tempfile::tempfile().unwrap());
+        assert!(cli.send(&done).is_err());
     }
 }

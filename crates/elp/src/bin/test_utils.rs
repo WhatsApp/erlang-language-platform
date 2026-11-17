@@ -13,6 +13,9 @@ use std::path::PathBuf;
 use expect_test::ExpectFile;
 use expect_test::expect_file;
 
+#[cfg(unix)]
+use crate::daemon::DaemonCli;
+
 // Snapshot dir from `ELP_RESOURCE_DIR`, set by both the Buck and cargo pipelines.
 // The `expect[update]` value is repo-relative, so absolutize it against CWD.
 pub fn resource_dir() -> PathBuf {
@@ -44,4 +47,44 @@ pub fn project_path(project: &str) -> PathBuf {
             project_path.display()
         )
     })
+}
+
+#[cfg(unix)]
+pub fn capture_daemon_output<T>(run: impl FnOnce(&mut DaemonCli) -> T) -> (T, String, String) {
+    use std::io::Read;
+    use std::os::unix::net::UnixStream;
+    use std::thread;
+
+    use crate::daemon_protocol::DaemonResponse;
+
+    let (server, mut client) = UnixStream::pair().unwrap();
+    let reader = thread::spawn(move || {
+        let mut wire = String::new();
+        client
+            .read_to_string(&mut wire)
+            .expect("daemon output should be readable");
+        wire
+    });
+    let mut cli = DaemonCli::client(server);
+    let result = run(&mut cli);
+    drop(cli);
+    let wire = reader.join().expect("daemon output reader should finish");
+    let mut stdout = String::new();
+    let mut info = String::new();
+    for line in wire.lines() {
+        let response: DaemonResponse<serde_json::Value> =
+            serde_json::from_str(line).expect("daemon response should be a complete record");
+        match response {
+            DaemonResponse::Info { message } => {
+                info.push_str(&message);
+                info.push('\n');
+            }
+            DaemonResponse::Progress { .. } => {}
+            response => {
+                stdout.push_str(&serde_json::to_string(&response).unwrap());
+                stdout.push('\n');
+            }
+        }
+    }
+    (result, stdout, info)
 }
