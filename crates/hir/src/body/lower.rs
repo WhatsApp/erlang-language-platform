@@ -862,6 +862,7 @@ impl<'a> Ctx<'a> {
                 let value = lower_char(char).map_or(Pat::Missing, Pat::Literal);
                 self.alloc_pat(value, Some(expr))
             }
+            ast::ExprMax::DynPatternMarker(_) => self.alloc_pat(Pat::Missing, Some(expr)),
             ast::ExprMax::Concatables(concat) => {
                 let value = self
                     .lower_concat_with_macros(concat)
@@ -1675,6 +1676,7 @@ impl<'a> Ctx<'a> {
                 let value = lower_char(char).map_or(Expr::Missing, Expr::Literal);
                 self.alloc_expr(value, Some(expr))
             }
+            ast::ExprMax::DynPatternMarker(_) => self.alloc_expr(Expr::Missing, Some(expr)),
             ast::ExprMax::Concatables(concat) => {
                 let value = self
                     .lower_concat_with_macros(concat)
@@ -2868,6 +2870,9 @@ impl<'a> Ctx<'a> {
                 let value = lower_char(char).map_or(TypeExpr::Missing, TypeExpr::Literal);
                 self.alloc_type_expr(value, Some(expr))
             }
+            ast::ExprMax::DynPatternMarker(_) => {
+                self.alloc_type_expr(TypeExpr::Missing, Some(expr))
+            }
             ast::ExprMax::Concatables(_concat) => {
                 self.alloc_type_expr(TypeExpr::Missing, Some(expr))
             }
@@ -3254,6 +3259,7 @@ impl<'a> Ctx<'a> {
                 let value = lower_char(char).map_or(Term::Missing, Term::Literal);
                 self.alloc_term(value, Some(expr))
             }
+            ast::ExprMax::DynPatternMarker(_) => self.alloc_term(Term::Missing, Some(expr)),
             ast::ExprMax::Concatables(concat) => {
                 let value = self
                     .lower_concat_with_macros(concat)

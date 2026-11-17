@@ -594,10 +594,10 @@ impl AstNode for BitExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ANONYMOUS_FUN | ATOM | BINARY | BINARY_COMPREHENSION | BLOCK_EXPR | CASE_EXPR
-            | CHAR | CONCATABLES | EXTERNAL_FUN | FLOAT | FUN_TYPE | IF_EXPR | INTEGER
-            | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR | MACRO_STRING
-            | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR | STRING | TRY_EXPR
-            | TUPLE | VAR | BINARY_OP_EXPR | UNARY_OP_EXPR => true,
+            | CHAR | CONCATABLES | DYN_PATTERN_MARKER | EXTERNAL_FUN | FLOAT | FUN_TYPE
+            | IF_EXPR | INTEGER | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR
+            | MACRO_STRING | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR
+            | STRING | TRY_EXPR | TUPLE | VAR | BINARY_OP_EXPR | UNARY_OP_EXPR => true,
             _ => false,
         }
     }
@@ -605,10 +605,12 @@ impl AstNode for BitExpr {
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             ANONYMOUS_FUN | ATOM | BINARY | BINARY_COMPREHENSION | BLOCK_EXPR | CASE_EXPR
-            | CHAR | CONCATABLES | EXTERNAL_FUN | FLOAT | FUN_TYPE | IF_EXPR | INTEGER
-            | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR | MACRO_STRING
-            | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR | STRING | TRY_EXPR
-            | TUPLE | VAR => Some(BitExpr::ExprMax(ExprMax::cast(syntax).unwrap())),
+            | CHAR | CONCATABLES | DYN_PATTERN_MARKER | EXTERNAL_FUN | FLOAT | FUN_TYPE
+            | IF_EXPR | INTEGER | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR
+            | MACRO_STRING | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR
+            | STRING | TRY_EXPR | TUPLE | VAR => {
+                Some(BitExpr::ExprMax(ExprMax::cast(syntax).unwrap()))
+            }
             BINARY_OP_EXPR => Some(BitExpr::BinaryOpExpr(BinaryOpExpr { syntax })),
             UNARY_OP_EXPR => Some(BitExpr::UnaryOpExpr(UnaryOpExpr { syntax })),
             _ => None,
@@ -1033,6 +1035,7 @@ impl AstNode for CatchPat {
             | CASE_EXPR
             | CHAR
             | CONCATABLES
+            | DYN_PATTERN_MARKER
             | EXTERNAL_FUN
             | FLOAT
             | FUN_TYPE
@@ -1066,10 +1069,12 @@ impl AstNode for CatchPat {
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             ANONYMOUS_FUN | ATOM | BINARY | BINARY_COMPREHENSION | BLOCK_EXPR | CASE_EXPR
-            | CHAR | CONCATABLES | EXTERNAL_FUN | FLOAT | FUN_TYPE | IF_EXPR | INTEGER
-            | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR | MACRO_STRING
-            | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR | STRING | TRY_EXPR
-            | TUPLE | VAR => Some(CatchPat::ExprMax(ExprMax::cast(syntax).unwrap())),
+            | CHAR | CONCATABLES | DYN_PATTERN_MARKER | EXTERNAL_FUN | FLOAT | FUN_TYPE
+            | IF_EXPR | INTEGER | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR
+            | MACRO_STRING | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR
+            | STRING | TRY_EXPR | TUPLE | VAR => {
+                Some(CatchPat::ExprMax(ExprMax::cast(syntax).unwrap()))
+            }
             ANON_RECORD_EXPR => Some(CatchPat::AnonRecordExpr(AnonRecordExpr { syntax })),
             BINARY_OP_EXPR => Some(CatchPat::BinaryOpExpr(BinaryOpExpr { syntax })),
             MAP_EXPR => Some(CatchPat::MapExpr(MapExpr { syntax })),
@@ -1864,6 +1869,35 @@ impl AstNode for Dotdotdot {
 }
 #[doc = r" Via NodeType::Node 2 struct inner"]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DynPatternMarker {
+    pub(crate) syntax: SyntaxNode,
+}
+impl DynPatternMarker {}
+#[doc = r" Via NodeType::Node 2 struct"]
+impl AstNode for DynPatternMarker {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == DYN_PATTERN_MARKER
+    }
+    #[doc = r" Via field_casts"]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+#[doc = r" Via NodeType::Node 2 display"]
+impl std::fmt::Display for DynPatternMarker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct inner"]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExportAttribute {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2001,6 +2035,7 @@ impl AstNode for Expr {
             | CASE_EXPR
             | CHAR
             | CONCATABLES
+            | DYN_PATTERN_MARKER
             | EXTERNAL_FUN
             | FLOAT
             | FUN_TYPE
@@ -2049,10 +2084,12 @@ impl AstNode for Expr {
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             ANONYMOUS_FUN | ATOM | BINARY | BINARY_COMPREHENSION | BLOCK_EXPR | CASE_EXPR
-            | CHAR | CONCATABLES | EXTERNAL_FUN | FLOAT | FUN_TYPE | IF_EXPR | INTEGER
-            | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR | MACRO_STRING
-            | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR | STRING | TRY_EXPR
-            | TUPLE | VAR => Some(Expr::ExprMax(ExprMax::cast(syntax).unwrap())),
+            | CHAR | CONCATABLES | DYN_PATTERN_MARKER | EXTERNAL_FUN | FLOAT | FUN_TYPE
+            | IF_EXPR | INTEGER | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR
+            | MACRO_STRING | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR
+            | STRING | TRY_EXPR | TUPLE | VAR => {
+                Some(Expr::ExprMax(ExprMax::cast(syntax).unwrap()))
+            }
             ANN_TYPE => Some(Expr::AnnType(AnnType { syntax })),
             ANON_RECORD_EXPR => Some(Expr::AnonRecordExpr(AnonRecordExpr { syntax })),
             ANON_RECORD_FIELD_EXPR => {
@@ -2293,6 +2330,7 @@ pub enum ExprMax {
     CaseExpr(CaseExpr),
     Char(Char),
     Concatables(Concatables),
+    DynPatternMarker(DynPatternMarker),
     ExternalFun(ExternalFun),
     Float(Float),
     FunType(FunType),
@@ -2317,10 +2355,10 @@ impl AstNode for ExprMax {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ANONYMOUS_FUN | ATOM | BINARY | BINARY_COMPREHENSION | BLOCK_EXPR | CASE_EXPR
-            | CHAR | CONCATABLES | EXTERNAL_FUN | FLOAT | FUN_TYPE | IF_EXPR | INTEGER
-            | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR | MACRO_STRING
-            | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR | STRING | TRY_EXPR
-            | TUPLE | VAR => true,
+            | CHAR | CONCATABLES | DYN_PATTERN_MARKER | EXTERNAL_FUN | FLOAT | FUN_TYPE
+            | IF_EXPR | INTEGER | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR
+            | MACRO_STRING | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR
+            | STRING | TRY_EXPR | TUPLE | VAR => true,
             _ => false,
         }
     }
@@ -2337,6 +2375,7 @@ impl AstNode for ExprMax {
             CASE_EXPR => Some(ExprMax::CaseExpr(CaseExpr { syntax })),
             CHAR => Some(ExprMax::Char(Char { syntax })),
             CONCATABLES => Some(ExprMax::Concatables(Concatables { syntax })),
+            DYN_PATTERN_MARKER => Some(ExprMax::DynPatternMarker(DynPatternMarker { syntax })),
             EXTERNAL_FUN => Some(ExprMax::ExternalFun(ExternalFun { syntax })),
             FLOAT => Some(ExprMax::Float(Float { syntax })),
             FUN_TYPE => Some(ExprMax::FunType(FunType { syntax })),
@@ -2368,6 +2407,7 @@ impl AstNode for ExprMax {
             ExprMax::CaseExpr(it) => it.syntax(),
             ExprMax::Char(it) => it.syntax(),
             ExprMax::Concatables(it) => it.syntax(),
+            ExprMax::DynPatternMarker(it) => it.syntax(),
             ExprMax::ExternalFun(it) => it.syntax(),
             ExprMax::Float(it) => it.syntax(),
             ExprMax::FunType(it) => it.syntax(),
@@ -2428,6 +2468,11 @@ impl From<Char> for ExprMax {
 impl From<Concatables> for ExprMax {
     fn from(node: Concatables) -> ExprMax {
         ExprMax::Concatables(node)
+    }
+}
+impl From<DynPatternMarker> for ExprMax {
+    fn from(node: DynPatternMarker) -> ExprMax {
+        ExprMax::DynPatternMarker(node)
     }
 }
 impl From<ExternalFun> for ExprMax {
@@ -3667,6 +3712,7 @@ impl AstNode for LcExpr {
             | CASE_EXPR
             | CHAR
             | CONCATABLES
+            | DYN_PATTERN_MARKER
             | EXTERNAL_FUN
             | FLOAT
             | FUN_TYPE
@@ -3725,6 +3771,7 @@ impl AstNode for LcExpr {
             | CASE_EXPR
             | CHAR
             | CONCATABLES
+            | DYN_PATTERN_MARKER
             | EXTERNAL_FUN
             | FLOAT
             | FUN_TYPE
@@ -4035,6 +4082,7 @@ impl AstNode for MacroDefReplacement {
             | CASE_EXPR
             | CHAR
             | CONCATABLES
+            | DYN_PATTERN_MARKER
             | EXTERNAL_FUN
             | FLOAT
             | FUN_TYPE
@@ -4096,6 +4144,7 @@ impl AstNode for MacroDefReplacement {
             | CASE_EXPR
             | CHAR
             | CONCATABLES
+            | DYN_PATTERN_MARKER
             | EXTERNAL_FUN
             | FLOAT
             | FUN_TYPE
@@ -4444,10 +4493,10 @@ impl AstNode for MapExprBase {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ANONYMOUS_FUN | ATOM | BINARY | BINARY_COMPREHENSION | BLOCK_EXPR | CASE_EXPR
-            | CHAR | CONCATABLES | EXTERNAL_FUN | FLOAT | FUN_TYPE | IF_EXPR | INTEGER
-            | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR | MACRO_STRING
-            | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR | STRING | TRY_EXPR
-            | TUPLE | VAR | MAP_EXPR | MAP_EXPR_UPDATE => true,
+            | CHAR | CONCATABLES | DYN_PATTERN_MARKER | EXTERNAL_FUN | FLOAT | FUN_TYPE
+            | IF_EXPR | INTEGER | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR
+            | MACRO_STRING | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR
+            | STRING | TRY_EXPR | TUPLE | VAR | MAP_EXPR | MAP_EXPR_UPDATE => true,
             _ => false,
         }
     }
@@ -4455,10 +4504,12 @@ impl AstNode for MapExprBase {
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             ANONYMOUS_FUN | ATOM | BINARY | BINARY_COMPREHENSION | BLOCK_EXPR | CASE_EXPR
-            | CHAR | CONCATABLES | EXTERNAL_FUN | FLOAT | FUN_TYPE | IF_EXPR | INTEGER
-            | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR | MACRO_STRING
-            | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR | STRING | TRY_EXPR
-            | TUPLE | VAR => Some(MapExprBase::ExprMax(ExprMax::cast(syntax).unwrap())),
+            | CHAR | CONCATABLES | DYN_PATTERN_MARKER | EXTERNAL_FUN | FLOAT | FUN_TYPE
+            | IF_EXPR | INTEGER | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR
+            | MACRO_STRING | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR
+            | STRING | TRY_EXPR | TUPLE | VAR => {
+                Some(MapExprBase::ExprMax(ExprMax::cast(syntax).unwrap()))
+            }
             MAP_EXPR => Some(MapExprBase::MapExpr(MapExpr { syntax })),
             MAP_EXPR_UPDATE => Some(MapExprBase::MapExprUpdate(MapExprUpdate { syntax })),
             _ => None,
@@ -5787,6 +5838,7 @@ impl AstNode for RecordExprBase {
             | CASE_EXPR
             | CHAR
             | CONCATABLES
+            | DYN_PATTERN_MARKER
             | EXTERNAL_FUN
             | FLOAT
             | FUN_TYPE
@@ -5822,10 +5874,12 @@ impl AstNode for RecordExprBase {
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         match syntax.kind() {
             ANONYMOUS_FUN | ATOM | BINARY | BINARY_COMPREHENSION | BLOCK_EXPR | CASE_EXPR
-            | CHAR | CONCATABLES | EXTERNAL_FUN | FLOAT | FUN_TYPE | IF_EXPR | INTEGER
-            | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR | MACRO_STRING
-            | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR | STRING | TRY_EXPR
-            | TUPLE | VAR => Some(RecordExprBase::ExprMax(ExprMax::cast(syntax).unwrap())),
+            | CHAR | CONCATABLES | DYN_PATTERN_MARKER | EXTERNAL_FUN | FLOAT | FUN_TYPE
+            | IF_EXPR | INTEGER | INTERNAL_FUN | LIST | LIST_COMPREHENSION | MACRO_CALL_EXPR
+            | MACRO_STRING | MAP_COMPREHENSION | MAYBE_EXPR | PAREN_EXPR | RECEIVE_EXPR
+            | STRING | TRY_EXPR | TUPLE | VAR => {
+                Some(RecordExprBase::ExprMax(ExprMax::cast(syntax).unwrap()))
+            }
             ANON_RECORD_EXPR => Some(RecordExprBase::AnonRecordExpr(AnonRecordExpr { syntax })),
             ANON_RECORD_FIELD_EXPR => {
                 Some(RecordExprBase::AnonRecordFieldExpr(AnonRecordFieldExpr {
