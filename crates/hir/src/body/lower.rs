@@ -27,6 +27,7 @@ use elp_syntax::ast::is_erlang_fun;
 use elp_syntax::ast::is_erlang_type;
 use elp_syntax::unescape;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 
 use super::BodyOrigin;
 use super::FunctionClauseBody;
@@ -150,6 +151,8 @@ pub struct Ctx<'a> {
     // their guards into pending_macro_guards. Only set during lower_cr_clause
     // pattern lowering to prevent guards leaking from other pattern contexts.
     in_cr_clause_pattern: bool,
+    // Patterns lowered from `:?` (possibly via a macro), so that `Pat = :?` lowers to `Pat`.
+    dyn_pattern_markers: FxHashSet<PatId>,
 }
 
 #[derive(Debug)]
@@ -194,6 +197,7 @@ impl<'a> Ctx<'a> {
             skip_import_resolution: false,
             pending_macro_guards: Vec::new(),
             in_cr_clause_pattern: false,
+            dyn_pattern_markers: FxHashSet::default(),
         }
     }
 
@@ -670,6 +674,9 @@ impl<'a> Ctx<'a> {
             ast::Expr::MatchExpr(mat) => {
                 let lhs = self.lower_optional_pat(mat.lhs());
                 let rhs = self.lower_optional_pat(mat.rhs());
+                if self.is_dyn_pattern_marker(rhs) {
+                    return lhs;
+                }
                 self.alloc_pat(Pat::Match { lhs, rhs }, Some(expr))
             }
             ast::Expr::Pipe(pipe) => {
@@ -862,7 +869,11 @@ impl<'a> Ctx<'a> {
                 let value = lower_char(char).map_or(Pat::Missing, Pat::Literal);
                 self.alloc_pat(value, Some(expr))
             }
-            ast::ExprMax::DynPatternMarker(_) => self.alloc_pat(Pat::Missing, Some(expr)),
+            ast::ExprMax::DynPatternMarker(_) => {
+                let pat_id = self.alloc_pat(Pat::Missing, Some(expr));
+                self.dyn_pattern_markers.insert(pat_id);
+                pat_id
+            }
             ast::ExprMax::Concatables(concat) => {
                 let value = self
                     .lower_concat_with_macros(concat)
@@ -4136,6 +4147,13 @@ impl<'a> Ctx<'a> {
     fn record_expr_source(&mut self, expr_id: ExprId, source: ExprSource) {
         self.source_map.expr_map.insert(source, expr_id);
         self.source_map.expr_map_back.insert(expr_id, source);
+    }
+
+    fn is_dyn_pattern_marker(&self, pat_id: PatId) -> bool {
+        match &self.body.pats[pat_id] {
+            Pat::MacroCall { expansion, .. } => self.is_dyn_pattern_marker(*expansion),
+            _ => self.dyn_pattern_markers.contains(&pat_id),
+        }
     }
 
     fn alloc_pat(&mut self, expr: Pat, source: Option<&ast::Expr>) -> PatId {

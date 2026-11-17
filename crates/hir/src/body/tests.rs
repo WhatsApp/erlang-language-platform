@@ -1801,6 +1801,51 @@ foo() -> ?STR(1 + 2).
 }
 
 #[test]
+fn dyn_pattern_marker() {
+    check(
+        r#"
+-define(dyn_pattern, :?).
+f(X = :?, {A, B} = ?dyn_pattern) ->
+    case X of
+        Y = :? -> {Y, A, B}
+    end,
+    fun(Z = :?) -> Z end.
+"#,
+        expect![[r#"
+            f(X, {
+                A,
+                B
+            }) ->
+                case X of
+                    Y ->
+                        {
+                            Y,
+                            A,
+                            B
+                        }
+                end,
+                fun
+                    (Z) ->
+                        Z
+                end.
+        "#]],
+    );
+}
+
+#[test]
+fn dyn_pattern_marker_in_expr() {
+    check(
+        r#"
+foo() -> :?.
+"#,
+        expect![[r#"
+            foo() ->
+                [missing].
+        "#]],
+    );
+}
+
+#[test]
 fn macro_string_in_pattern() {
     // `??X` resolves at pattern positions as well.
     check(
