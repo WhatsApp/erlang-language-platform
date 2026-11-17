@@ -5093,7 +5093,7 @@ deprecated_type(Anno, M, N, As, St) ->
 
 obsolete_guard({call,Anno,{atom,Ar,F},As}, St0) ->
     Arity = length(As),
-    case erl_internal:old_type_test(F, Arity) of
+    case old_type_test(F, Arity) of
 	false ->
 	    deprecated_function(Anno, erlang, F, As, St0);
 	true ->
@@ -5102,6 +5102,21 @@ obsolete_guard({call,Anno,{atom,Ar,F},As}, St0) ->
     end;
 obsolete_guard(_G, St) ->
     St.
+
+%% erl_internal:old_type_test/2 was removed in OTP 30.
+old_type_test(integer, 1) -> true;
+old_type_test(float, 1) -> true;
+old_type_test(number, 1) -> true;
+old_type_test(atom, 1) -> true;
+old_type_test(list, 1) -> true;
+old_type_test(tuple, 1) -> true;
+old_type_test(pid, 1) -> true;
+old_type_test(reference, 1) -> true;
+old_type_test(port, 1) -> true;
+old_type_test(binary, 1) -> true;
+old_type_test(record, 2) -> true;
+old_type_test(function, 1) -> true;
+old_type_test(Name, A) when is_atom(Name), is_integer(A) -> false.
 
 test_overriden_by_local(Anno, OldTest, Arity, St) ->
     ModernTest = list_to_atom("is_"++atom_to_list(OldTest)),
