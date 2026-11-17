@@ -1,0 +1,15 @@
+stdout | error: invalid_abstract_code (See https://fb.me/eqwalizer_errors#invalid_abstract_code)
+stdout |   ┌─ app_a/src/invalid_code.erl:7:5
+stdout |   │
+stdout | 7 │     fake_lager:info("x"),
+stdout |   │     ^^^^^^^^^^^^^^^^^^^^ eqWAlizer cannot check module `invalid_code`: this code is not valid abstract code, usually because a parse transform produced it
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |   ┌─ app_a/src/type_error.erl:5:8
+stdout |   │
+stdout | 5 │ g() -> not_an_integer.
+stdout |   │        ^^^^^^^^^^^^^^ 'not_an_integer'.
+stdout | Expression has type:   'not_an_integer'
+stdout | Context expected type: integer()
+stdout |
+stdout | 2 ERRORS

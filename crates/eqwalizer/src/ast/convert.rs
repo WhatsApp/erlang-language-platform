@@ -1316,7 +1316,20 @@ impl Converter {
                 _ => (),
             }
         }
-        Err(ConversionError::InvalidExpr)
+        Err(self.invalid_code(expr))
+    }
+
+    /// Reports a node that is not valid abstract code, with its position when
+    /// it has a valid one.
+    fn invalid_code(&self, term: &eetf::Term) -> ConversionError {
+        let pos = match term {
+            Term::Tuple(tuple) => tuple
+                .elements
+                .get(1)
+                .and_then(|pos| self.convert_pos(pos).ok()),
+            _ => None,
+        };
+        ConversionError::InvalidCode { pos }
     }
 
     fn convert_create_kv(&self, kv: &eetf::Term) -> Result<(Expr, Expr), ConversionError> {
@@ -1569,7 +1582,7 @@ impl Converter {
                 _ => (),
             }
         }
-        Err(ConversionError::InvalidPattern)
+        Err(self.invalid_code(pat))
     }
 
     fn convert_pat_binary_elem(&self, pat: &eetf::Term) -> Result<PatBinaryElem, ConversionError> {

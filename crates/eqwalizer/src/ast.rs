@@ -121,6 +121,11 @@ pub enum ConversionError {
     InvalidNativeRecordField,
     InvalidNativeRecordFieldExpr,
     UnknownBuiltin(String, usize),
+    /// An expression or pattern that is not valid abstract code. ELP's own
+    /// parser never produces one: it comes from a parse transform.
+    InvalidCode {
+        pos: Option<Pos>,
+    },
 }
 
 impl fmt::Display for ConversionError {
@@ -129,6 +134,7 @@ impl fmt::Display for ConversionError {
             ConversionError::UnknownBuiltin(name, arity) => {
                 format!("unknown builtin {name}/{arity}")
             }
+            ConversionError::InvalidCode { .. } => "invalid abstract code".to_string(),
             // All other cases are variants without parameters,
             // printing their name is enough info to debug
             err => format!("{err:?}"),

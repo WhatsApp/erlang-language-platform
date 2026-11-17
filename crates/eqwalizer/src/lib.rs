@@ -22,6 +22,7 @@ use std::sync::LazyLock;
 
 use anyhow::Context;
 use anyhow::Result;
+use ast::ConversionError;
 use ast::Error;
 use ast::Pos;
 use elp_base_db::ModuleName;
@@ -274,14 +275,28 @@ impl Eqwalizer {
         project: Project,
         modules: Vec<&str>,
     ) -> EqwalizerDiagnostics {
+        // eqWAlizer exits when it cannot get a module's forms, so modules
+        // whose forms cannot be converted are reported here and not sent.
+        let mut diagnostics = EqwalizerDiagnostics::default();
+        let mut valid_modules = vec![];
+        for module in modules {
+            match invalid_code_diagnostics(db, project, module) {
+                Some(invalid) => diagnostics = diagnostics.combine(invalid),
+                None => valid_modules.push(module),
+            }
+        }
+        if valid_modules.is_empty() {
+            return diagnostics;
+        }
+
         let mut cmd = self.cmd();
         db.eqwalizer_config().set_cmd_env(&mut cmd);
         cmd.arg("ipc");
-        cmd.args(modules);
+        cmd.args(valid_modules);
         cmd.env("EQWALIZER_MODE", self.mode.to_env_var());
 
         match do_typecheck(cmd, db, project) {
-            Ok(diags) => diags,
+            Ok(diags) => diagnostics.combine(diags),
             Err(err) => EqwalizerDiagnostics::Error(format!("{err:?}")),
         }
     }
@@ -342,6 +357,39 @@ fn do_typecheck(
             }
         }
     }
+}
+
+/// Reports that `module` cannot be checked when its forms, as left by its
+/// parse transforms, contain code that is not valid abstract code.
+fn invalid_code_diagnostics(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project: Project,
+    module: &str,
+) -> Option<EqwalizerDiagnostics> {
+    let Err(Error::ConversionError(ConversionError::InvalidCode { pos })) =
+        db.eqwalizer_ast(project, ModuleName::new(module))
+    else {
+        return None;
+    };
+    let range = match pos {
+        Some(Pos::TextRange(range)) => range.into(),
+        _ => elp_syntax::TextRange::default(),
+    };
+    let diagnostic = EqwalizerDiagnostic {
+        range,
+        message: format!(
+            "eqWAlizer cannot check module `{module}`: this code is not valid abstract code, usually because a parse transform produced it"
+        ),
+        uri: "https://fb.me/eqwalizer_errors#invalid_abstract_code".into(),
+        code: "invalid_abstract_code".into(),
+        expression: None,
+        explanation: None,
+        diagnostic: None,
+    };
+    Some(EqwalizerDiagnostics::Diagnostics {
+        errors: FxHashMap::from_iter([(module.to_string(), vec![diagnostic])]),
+        type_info: FxHashMap::default(),
+    })
 }
 
 fn do_typecheck_functions(

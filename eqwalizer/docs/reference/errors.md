@@ -468,3 +468,14 @@ To fix it, add the `err` case to the spec as follows:
 ```Erlang
 -spec do_something({ok, atom()} | err) -> atom().
 ```
+
+### invalid_abstract_code
+
+This error indicates that eqWAlizer cannot check a module because part of its
+code, after the module's parse transforms have run, is not valid abstract code.
+The compiler may still accept such code, but eqWAlizer cannot type-check it, so
+it skips the module and reports this error where the invalid code is.
+
+The cause is usually a parse transform rather than the module itself: fix the
+transform or use a version of it that produces valid abstract code. Other
+modules are still checked.

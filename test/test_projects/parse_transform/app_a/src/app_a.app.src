@@ -1,0 +1,5 @@
+{application, app_a, [
+    {description, "Calls a function rewritten by a parse transform"},
+    {vsn, "inplace"},
+    {applications, [kernel, stdlib, fake_lager]}
+]}.

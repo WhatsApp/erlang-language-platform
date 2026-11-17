@@ -1101,6 +1101,22 @@ mod tests {
         eqwalize_snapshot("parse_error", "parse_error_a", false, buck);
     }
 
+    #[test]
+    fn eqwalize_reports_invalid_abstract_code() {
+        eqwalize_snapshot("parse_transform", "invalid_code", false, false);
+    }
+
+    #[test]
+    fn eqwalize_continues_after_invalid_abstract_code() {
+        simple_snapshot(
+            args_vec!["eqwalize", "invalid_code", "type_error"],
+            "parse_transform",
+            resource_file("parse_transform/eqwalize_invalid_code_type_error.pretty"),
+            false,
+            None,
+        );
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_jsonl(buck: bool) {

@@ -1,0 +1,5 @@
+{application, fake_lager, [
+    {description, "Minimal stand-in for lager and its parse transform"},
+    {vsn, "inplace"},
+    {applications, [kernel, stdlib]}
+]}.
