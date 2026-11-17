@@ -127,9 +127,18 @@ impl SsrPatternsLinter for CouldBeAStringLiteralLinter {
             None
         } else {
             match context.from {
-                StringKind::List => Some(Option::is_some(
-                    &matched.placeholder_is_string(ctx.sema, STRING_VAR),
-                )),
+                StringKind::List => {
+                    let string = matched.placeholder_is_string(ctx.sema, STRING_VAR)?;
+                    if context.to == StringKind::Binary
+                        && string.chars().any(|c| ('\u{80}'..='\u{FF}').contains(&c))
+                    {
+                        // `list_to_binary/1` stores these characters as single
+                        // bytes, but `~"..."` is UTF-8 encoded, so the rewrite
+                        // would change the resulting binary.
+                        return None;
+                    }
+                    Some(true)
+                }
                 StringKind::Binary => None, // Possible future work
                 StringKind::Atom => Some(Option::is_some(
                     &matched.placeholder_is_atom(ctx.sema, STRING_VAR),
@@ -1002,6 +1011,42 @@ mod tests {
          fn() -> '_'.
 
          "#]],
+        )
+    }
+
+    #[test]
+    fn ignores_list_to_binary_latin1() {
+        // `list_to_binary/1` stores each character as one byte, but `~"..."`
+        // is UTF-8 encoded, so the rewrite would change the value.
+        check_diagnostics(
+            r#"
+         //- /src/main.erl
+         -module(main).
+
+         fn() -> list_to_binary("café").
+
+         //- /src/erlang.erl
+         -module(erlang).
+         -export([list_to_binary/1]).
+         list_to_binary(_List) -> error(not_impl).
+            "#,
+        )
+    }
+
+    #[test]
+    fn ignores_list_to_binary_latin1_escape() {
+        check_diagnostics(
+            r#"
+         //- /src/main.erl
+         -module(main).
+
+         fn() -> list_to_binary("caf\x{e9}").
+
+         //- /src/erlang.erl
+         -module(erlang).
+         -export([list_to_binary/1]).
+         list_to_binary(_List) -> error(not_impl).
+            "#,
         )
     }
 }
