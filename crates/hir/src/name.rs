@@ -342,8 +342,10 @@ pub mod known {
         suite,
         testcase,
         // Warnings
+        nowarn_deprecated_function,
         nowarn_missing_spec_all,
         nowarn_missing_spec,
+        warn_deprecated_function,
         warn_missing_spec_all,
         warn_missing_spec,
         // Attribute names

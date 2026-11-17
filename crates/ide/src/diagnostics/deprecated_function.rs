@@ -16,14 +16,29 @@
 // allows the user to specify a "third" field to explain the reason of a deprecation, but
 // XRef itself ignores that field, which is intended to be used by other tools.
 // This diagnostic does just that and shows the message at the call-site.
+//
+// Like the Erlang compiler, it honours the `nowarn_deprecated_function`,
+// `{nowarn_deprecated_function, MFAs}` and `warn_deprecated_function` options
+// given via `-compile` attributes in the calling module.
 
 use std::borrow::Cow;
 
 use elp_ide_assists::Assist;
+use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_ide_db::text_edit::TextSize;
 use elp_syntax::AstNode;
+use hir::Body;
+use hir::InFile;
+use hir::Literal;
+use hir::Name;
+use hir::NameArity;
+use hir::PPConditionResult;
+use hir::Semantic;
+use hir::Term;
+use hir::TermId;
+use hir::known;
 
 use super::DiagnosticCode;
 use super::DiagnosticTag;
@@ -104,6 +119,11 @@ impl FunctionCallLinter for DeprecatedFunctionLinter {
             .expect("module should have a name")
             .as_str()
             .to_string();
+        if DeprecatedWarningOptions::new(ctx.sema, ctx.in_clause.file_id())
+            .is_suppressed(&target_module, &target_def.name)
+        {
+            return None;
+        }
         let target_name = target_def.name.name().to_string();
         let target_arity = target_def.name.arity();
 
@@ -152,6 +172,117 @@ impl FunctionCallLinter for DeprecatedFunctionLinter {
 }
 
 pub static LINTER: DeprecatedFunctionLinter = DeprecatedFunctionLinter;
+
+/// The deprecated-function warning options of a module's `-compile`
+/// attributes, with the semantics of `erl_lint`: the last of
+/// `nowarn_deprecated_function` and `warn_deprecated_function` decides whether
+/// the warning is enabled, while `{nowarn_deprecated_function, MFAs}`
+/// suppresses it for the listed functions either way.
+#[derive(Debug, Default)]
+struct DeprecatedWarningOptions {
+    disabled: bool,
+    /// Bare module atoms in `MFAs`, which `erl_lint` accepts and applies to
+    /// every function of the module.
+    modules: Vec<Name>,
+    functions: Vec<(Name, NameArity)>,
+}
+
+impl DeprecatedWarningOptions {
+    fn new(sema: &Semantic, file_id: FileId) -> Self {
+        let form_list = sema.form_list(file_id);
+        let mut options = Self::default();
+        form_list
+            .compile_attributes()
+            .filter(|(_, attribute)| {
+                form_list.is_form_active(sema.db, file_id, &attribute.pp_ctx, None)
+                    != PPConditionResult::Inactive
+            })
+            .for_each(|(id, _)| {
+                let attribute = sema.db.compile_body(InFile::new(file_id, id));
+                flatten(&attribute.body, attribute.value)
+                    .into_iter()
+                    .for_each(|option| options.add_option(&attribute.body, option));
+            });
+        options
+    }
+
+    fn add_option(&mut self, body: &Body, option: TermId) {
+        match expand(body, option) {
+            Term::Literal(Literal::Atom(atom)) => {
+                let name = atom.as_name();
+                if name == *known::nowarn_deprecated_function {
+                    self.disabled = true;
+                } else if name == *known::warn_deprecated_function {
+                    self.disabled = false;
+                }
+            }
+            Term::Tuple { exprs } => {
+                if let [tag, mfas] = exprs.as_slice()
+                    && atom_name(body, *tag) == Some(*known::nowarn_deprecated_function)
+                {
+                    flatten(body, *mfas)
+                        .into_iter()
+                        .for_each(|mfa| self.add_mfa(body, mfa));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn add_mfa(&mut self, body: &Body, mfa: TermId) {
+        match expand(body, mfa) {
+            Term::Literal(Literal::Atom(module)) => self.modules.push(module.as_name()),
+            Term::Tuple { exprs } => {
+                if let [module, name, arity] = exprs.as_slice()
+                    && let Some(module) = atom_name(body, *module)
+                    && let Some(name) = atom_name(body, *name)
+                    && let Term::Literal(Literal::Integer(arity)) = expand(body, *arity)
+                    && let Ok(arity) = arity.value.try_into()
+                {
+                    self.functions.push((module, NameArity::new(name, arity)));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn is_suppressed(&self, module: &str, function: &NameArity) -> bool {
+        self.disabled
+            || self.modules.iter().any(|m| m == module)
+            || self
+                .functions
+                .iter()
+                .any(|(m, fa)| m == module && fa == function)
+    }
+}
+
+/// The elements of a possibly deep list, as `lists:flatten/1` returns them.
+/// Any other term is a single element.
+fn flatten(body: &Body, term: TermId) -> Vec<TermId> {
+    match &body[term] {
+        Term::List { exprs, tail } => exprs
+            .iter()
+            .chain(tail)
+            .flat_map(|e| flatten(body, *e))
+            .collect(),
+        Term::MacroCall { expansion, .. } => flatten(body, *expansion),
+        _ => vec![term],
+    }
+}
+
+fn expand(body: &Body, term: TermId) -> &Term {
+    match &body[term] {
+        Term::MacroCall { expansion, .. } => expand(body, *expansion),
+        term => term,
+    }
+}
+
+fn atom_name(body: &Body, term: TermId) -> Option<Name> {
+    match expand(body, term) {
+        Term::Literal(Literal::Atom(atom)) => Some(atom.as_name()),
+        _ => None,
+    }
+}
 
 fn strip_quotes(s: &str) -> &str {
     let quote = "\"";
@@ -287,6 +418,256 @@ mod tests {
     really_now.
   later() ->
     {now(), but_later}.
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_nowarn_deprecated_function_all() {
+        check_diagnostics(
+            r#"
+//- /src/b.erl
+  -module(b).
+  -export([f/0]).
+  -deprecated([f/0]).
+  f() -> ok.
+//- /src/a.erl
+  -module(a).
+  -compile(nowarn_deprecated_function).
+%%         ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+%%                                  | 💡 <suppression>
+  -deprecated([local/0]).
+  local() -> ok.
+  main() ->
+    local(),
+    b:f().
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_nowarn_deprecated_function_mfa() {
+        check_diagnostics(
+            r#"
+//- /src/b.erl
+  -module(b).
+  -export([f/0, f/1, g/0]).
+  -deprecated([f/0, f/1, g/0]).
+  f() -> ok.
+  f(_) -> ok.
+  g() -> ok.
+//- /src/a.erl
+  -module(a).
+  -compile({nowarn_deprecated_function, {b, f, 0}}).
+%%          ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+%%                                   | 💡 <suppression>
+  main() ->
+    b:f(),
+    b:f(1),
+%%  ^^^ warning: W0016: Function 'f/1' is deprecated.
+%%    | 💡 Add xref ignore for all calls to this function
+%%    | 💡 <suppression>
+    b:g().
+%%  ^^^ warning: W0016: Function 'g/0' is deprecated.
+%%    | 💡 Add xref ignore for all calls to this function
+%%    | 💡 <suppression>
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_nowarn_deprecated_function_mfa_list() {
+        check_diagnostics(
+            r#"
+//- /src/b.erl
+  -module(b).
+  -export([f/0, g/0, h/0]).
+  -deprecated([f/0, g/0, h/0]).
+  f() -> ok.
+  g() -> ok.
+  h() -> ok.
+//- /src/a.erl
+  -module(a).
+  -compile({nowarn_deprecated_function, [{b, f, 0}, {b, g, 0}, {c, h, 0}]}).
+%%          ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+%%                                   | 💡 <suppression>
+  main() ->
+    b:f(),
+    b:g(),
+    b:h().
+%%  ^^^ warning: W0016: Function 'h/0' is deprecated.
+%%    | 💡 Add xref ignore for all calls to this function
+%%    | 💡 <suppression>
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_nowarn_deprecated_function_in_option_list() {
+        check_diagnostics(
+            r#"
+//- /src/b.erl
+  -module(b).
+  -export([f/0, g/0, h/0]).
+  -deprecated([f/0, g/0, h/0]).
+  f() -> ok.
+  g() -> ok.
+  h() -> ok.
+//- /src/a.erl
+  -module(a).
+  -compile([debug_info, {nowarn_deprecated_function, [{b, f, 0}]}]).
+%%                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+%%                                                | 💡 <suppression>
+  -compile({nowarn_deprecated_function, {b, g, 0}}).
+%%          ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+%%                                   | 💡 <suppression>
+  main() ->
+    b:f(),
+    b:g(),
+    b:h().
+%%  ^^^ warning: W0016: Function 'h/0' is deprecated.
+%%    | 💡 Add xref ignore for all calls to this function
+%%    | 💡 <suppression>
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_nowarn_deprecated_function_list_tail() {
+        check_diagnostics(
+            r#"
+//- /src/b.erl
+  -module(b).
+  -export([f/0, g/0, h/0, i/0]).
+  -deprecated([f/0, g/0, h/0, i/0]).
+  f() -> ok.
+  g() -> ok.
+  h() -> ok.
+  i() -> ok.
+//- /src/a.erl
+  -module(a).
+  -define(EXTRA, [{nowarn_deprecated_function, {b, f, 0}}]).
+  -compile([debug_info | ?EXTRA]).
+  -compile({nowarn_deprecated_function, [{b, g, 0} | [{b, h, 0}]]}).
+%%          ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+%%                                   | 💡 <suppression>
+  main() ->
+    b:f(),
+    b:g(),
+    b:h(),
+    b:i().
+%%  ^^^ warning: W0016: Function 'i/0' is deprecated.
+%%    | 💡 Add xref ignore for all calls to this function
+%%    | 💡 <suppression>
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_nowarn_deprecated_function_macro() {
+        check_diagnostics(
+            r#"
+  -module(main).
+  -define(DEPRECATED, {?MODULE, local, 0}).
+  -compile({nowarn_deprecated_function, [?DEPRECATED]}).
+  %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+  %%                                 | 💡 <suppression>
+  -deprecated([local/0, other/0]).
+  local() -> ok.
+  other() -> ok.
+  main() ->
+    local(),
+    other().
+  %%^^^^^ warning: W0016: Function 'other/0' is deprecated.
+  %%    | 💡 Add xref ignore for all calls to this function
+  %%    | 💡 <suppression>
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_nowarn_deprecated_function_module() {
+        check_diagnostics(
+            r#"
+//- /src/b.erl
+  -module(b).
+  -export([f/0]).
+  -deprecated([f/0]).
+  f() -> ok.
+//- /src/c.erl
+  -module(c).
+  -export([f/0]).
+  -deprecated([f/0]).
+  f() -> ok.
+//- /src/a.erl
+  -module(a).
+  -compile({nowarn_deprecated_function, [b]}).
+%%          ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+%%                                   | 💡 <suppression>
+  main() ->
+    b:f(),
+    c:f().
+%%  ^^^ warning: W0016: Function 'f/0' is deprecated.
+%%    | 💡 Add xref ignore for all calls to this function
+%%    | 💡 <suppression>
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_warn_deprecated_function_last_wins() {
+        check_diagnostics(
+            r#"
+//- /src/b.erl
+  -module(b).
+  -export([f/0, g/0]).
+  -deprecated([f/0, g/0]).
+  f() -> ok.
+  g() -> ok.
+//- /src/a.erl
+  -module(a).
+  -compile([nowarn_deprecated_function, {nowarn_deprecated_function, {b, f, 0}}]).
+%%          ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+%%                                   | 💡 <suppression>
+%%                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+%%                                                                | 💡 <suppression>
+  -compile(warn_deprecated_function).
+  main() ->
+    b:f(),
+    b:g().
+%%  ^^^ warning: W0016: Function 'g/0' is deprecated.
+%%    | 💡 Add xref ignore for all calls to this function
+%%    | 💡 <suppression>
+//- /src/c.erl
+  -module(c).
+  -compile(warn_deprecated_function).
+  -compile(nowarn_deprecated_function).
+%%         ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+%%                                  | 💡 <suppression>
+  main() ->
+    b:f(),
+    b:g().
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_nowarn_deprecated_function_inactive() {
+        check_diagnostics(
+            r#"
+  -module(main).
+  -ifdef(UNDEFINED_MACRO).
+  -compile(nowarn_deprecated_function).
+  %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0054: Do not suppress compiler warnings at module level.
+  %%                                | 💡 <suppression>
+  -endif.
+  -deprecated([local/0]).
+  local() -> ok.
+  main() ->
+    local().
+  %%^^^^^ warning: W0016: Function 'local/0' is deprecated.
+  %%    | 💡 Add xref ignore for all calls to this function
+  %%    | 💡 <suppression>
             "#,
         )
     }
