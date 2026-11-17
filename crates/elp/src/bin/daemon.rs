@@ -443,39 +443,20 @@ impl DaemonCli {
             ProgressKind::Bar | ProgressKind::Simple => ProgressBar::new(len),
         };
         pb.set_prefix(prefix);
-        let forward = Arc::new(ForwardProgress {
-            cli: self.clone(),
-            progress: Mutex::new(ProgressMessage {
-                id: NEXT_PROGRESS_ID.fetch_add(1, Ordering::Relaxed),
-                kind,
-                prefix: prefix.to_owned(),
-                message: String::new(),
-                len,
-                pos: 0,
-                elapsed_millis: 0,
-                finished: false,
-            }),
-        });
-        let tracker = forward.clone();
+        let target = LogProgress::new(self.clone(), len, prefix, kind);
+        let tracker = target.clone();
         pb.set_style(
             ProgressStyle::with_template("{client_progress}{msg}")
                 .expect("BUG: invalid template")
                 .with_key(
                     "client_progress",
                     move |state: &ProgressState, _out: &mut dyn fmt::Write| {
-                        let mut progress = tracker.progress.lock().expect("progress poisoned");
-                        progress.len = state.len().unwrap_or(0);
-                        progress.pos = state.pos();
-                        progress.elapsed_millis = state.elapsed().as_millis() as u64;
-                        progress.finished = state.is_finished();
+                        tracker.update(state);
                     },
                 ),
         );
         pb.set_draw_target(ProgressDrawTarget::term_like_with_hz(
-            Box::new(LogProgress {
-                forward: Some(forward),
-                ..LogProgress::new()
-            }),
+            Box::new(target),
             LOG_PROGRESS_HZ,
         ));
         pb.force_draw();
@@ -557,38 +538,18 @@ const LOG_PROGRESS_HZ: u8 = 2;
 const STARTUP_PROGRESS_FILE: &str = "startup.progress.jsonl";
 static NEXT_PROGRESS_ID: AtomicU64 = AtomicU64::new(0);
 
-/// The draw target supplies the untruncated `{msg}`; the tracker supplies its state.
-#[derive(Debug)]
-struct ForwardProgress {
-    cli: DaemonCli,
-    progress: Mutex<ProgressMessage>,
-}
-
-impl ForwardProgress {
-    fn send(&self, message: &str) -> String {
-        let mut progress = self.progress.lock().expect("progress poisoned");
-        progress.message = message.trim_end().to_owned();
-        let log = match progress.kind {
-            ProgressKind::Spinner => format!("{} {}", progress.prefix, progress.message),
-            ProgressKind::Bar | ProgressKind::Simple => {
-                format!("{} {}/{}", progress.prefix, progress.pos, progress.len)
-            }
-        };
-        let response = DaemonResponse::<()>::Progress {
-            progress: progress.clone(),
-        };
-        let _ = self.cli.send(&response);
-        log
-    }
-}
-
 /// A count-style progress bar (`"{prefix} {pos}/{len}"`) that narrates to the
 /// log. Used for positional phases (loading files, eqwalizing modules), where a
 /// churning `{msg}` would flood the log.
 fn log_progress_bar(len: u64, prefix: &'static str) -> ProgressBar {
     let pb = ProgressBar::new(len);
     pb.set_draw_target(ProgressDrawTarget::term_like_with_hz(
-        Box::new(LogProgress::new()),
+        Box::new(LogProgress::new(
+            DaemonCli::log(),
+            len,
+            prefix,
+            ProgressKind::Bar,
+        )),
         LOG_PROGRESS_HZ,
     ));
     pb.set_style(
@@ -605,7 +566,12 @@ fn log_progress_bar(len: u64, prefix: &'static str) -> ProgressBar {
 fn log_spinner(prefix: &'static str) -> ProgressBar {
     let pb = ProgressBar::new_spinner();
     pb.set_draw_target(ProgressDrawTarget::term_like_with_hz(
-        Box::new(LogProgress::new()),
+        Box::new(LogProgress::new(
+            DaemonCli::log(),
+            0,
+            prefix,
+            ProgressKind::Spinner,
+        )),
         LOG_PROGRESS_HZ,
     ));
     pb.set_style(ProgressStyle::with_template("{prefix} {msg}").expect("BUG: invalid template"));
@@ -624,20 +590,73 @@ fn log_spinner(prefix: &'static str) -> ProgressBar {
 /// those into a buffer and, on `flush`, emit each distinct, non-empty, trimmed
 /// line — deduping consecutive repeats, since a position-only update redraws the
 /// same text many times.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct LogProgress {
-    buffer: Mutex<String>,
-    last: Mutex<Option<String>>,
-    forward: Option<Arc<ForwardProgress>>,
+    cli: DaemonCli,
+    state: Arc<Mutex<LogProgressState>>,
+}
+
+#[derive(Debug)]
+struct LogProgressState {
+    buffer: String,
+    last: Option<String>,
+    progress: ProgressMessage,
 }
 
 impl LogProgress {
-    fn new() -> Self {
+    fn new(cli: DaemonCli, len: u64, prefix: &'static str, kind: ProgressKind) -> Self {
+        let id = if cli.sink.is_some() {
+            NEXT_PROGRESS_ID.fetch_add(1, Ordering::Relaxed)
+        } else {
+            0
+        };
         Self {
-            buffer: Mutex::new(String::new()),
-            last: Mutex::new(None),
-            forward: None,
+            cli,
+            state: Arc::new(Mutex::new(LogProgressState {
+                buffer: String::new(),
+                last: None,
+                progress: ProgressMessage {
+                    id,
+                    kind,
+                    prefix: prefix.to_owned(),
+                    message: String::new(),
+                    len,
+                    pos: 0,
+                    elapsed_millis: 0,
+                    finished: false,
+                },
+            })),
         }
+    }
+
+    fn update(&self, state: &ProgressState) {
+        let mut shared = self.state.lock().expect("LogProgress poisoned");
+        shared.progress.len = state.len().unwrap_or(0);
+        shared.progress.pos = state.pos();
+        shared.progress.elapsed_millis = state.elapsed().as_millis() as u64;
+        shared.progress.finished = state.is_finished();
+    }
+
+    fn drain(&self) -> (Option<ProgressMessage>, Vec<String>) {
+        let mut state = self.state.lock().expect("LogProgress poisoned");
+        let content = std::mem::take(&mut state.buffer);
+        let progress = if self.cli.sink.is_some() {
+            state.progress.message = content.trim_end().to_owned();
+            Some(state.progress.clone())
+        } else {
+            None
+        };
+        let content = match &progress {
+            Some(progress) => match progress.kind {
+                ProgressKind::Spinner => format!("{} {}", progress.prefix, progress.message),
+                ProgressKind::Bar | ProgressKind::Simple => {
+                    format!("{} {}/{}", progress.prefix, progress.pos, progress.len)
+                }
+            },
+            None => content,
+        };
+        let lines = Self::distinct_lines(&content, &mut state.last);
+        (progress, lines)
     }
 
     /// Extract the lines worth logging from one redraw's buffered content:
@@ -684,16 +703,17 @@ impl TermLike for LogProgress {
     }
 
     fn write_line(&self, s: &str) -> io::Result<()> {
-        let mut buffer = self.buffer.lock().expect("LogProgress buffer poisoned");
-        buffer.push_str(s);
-        buffer.push('\n');
+        let mut state = self.state.lock().expect("LogProgress poisoned");
+        state.buffer.push_str(s);
+        state.buffer.push('\n');
         Ok(())
     }
 
     fn write_str(&self, s: &str) -> io::Result<()> {
-        self.buffer
+        self.state
             .lock()
-            .expect("LogProgress buffer poisoned")
+            .expect("LogProgress poisoned")
+            .buffer
             .push_str(s);
         Ok(())
     }
@@ -703,16 +723,11 @@ impl TermLike for LogProgress {
     }
 
     fn flush(&self) -> io::Result<()> {
-        let content = {
-            let mut buffer = self.buffer.lock().expect("LogProgress buffer poisoned");
-            std::mem::take(&mut *buffer)
-        };
-        let content = match &self.forward {
-            Some(forward) => forward.send(&content),
-            None => content,
-        };
-        let mut last = self.last.lock().expect("LogProgress last poisoned");
-        for line in Self::distinct_lines(&content, &mut last) {
+        let (progress, lines) = self.drain();
+        if let Some(progress) = progress {
+            let _ = self.cli.send(&DaemonResponse::<()>::Progress { progress });
+        }
+        for line in lines {
             eprintln!("[elp-daemon] {line}");
         }
         Ok(())
@@ -2710,6 +2725,72 @@ mod tests {
 
         let expected = "0ms".to_string();
         assert_eq_expected!(expected, format_duration(Duration::ZERO));
+    }
+
+    #[test]
+    fn log_progress_snapshot_preserves_fragments_and_duplicate_updates() {
+        let target = LogProgress::new(
+            DaemonCli::startup(tempfile::tempfile().unwrap()),
+            0,
+            "Loading",
+            ProgressKind::Spinner,
+        );
+        target.write_str("λ").unwrap();
+        target.write_line(" project   ").unwrap();
+        let (progress, lines) = target.drain();
+        let progress = progress.expect("startup progress should be forwarded");
+        assert_eq_expected!("λ project", progress.message.as_str());
+        assert_eq_expected!(vec!["Loading λ project".to_string()], lines);
+
+        target.write_str("λ project   ").unwrap();
+        let (repeat, lines) = target.drain();
+        assert_eq_expected!(Some(progress), repeat);
+        assert_eq_expected!(Vec::<String>::new(), lines);
+
+        target.write_line("next").unwrap();
+        target.write_str("step   ").unwrap();
+        let (multiline, lines) = target.drain();
+        let multiline = multiline.unwrap();
+        assert_eq_expected!("next\nstep", multiline.message.as_str());
+        assert_eq_expected!(vec!["Loading next".to_string(), "step".to_string()], lines);
+
+        let (empty, _) = target.drain();
+        let empty = empty.unwrap();
+        assert_eq_expected!("", empty.message.as_str());
+    }
+
+    #[test]
+    fn log_progress_snapshot_preserves_count_style() {
+        for kind in [ProgressKind::Bar, ProgressKind::Simple] {
+            let target = LogProgress::new(
+                DaemonCli::startup(tempfile::tempfile().unwrap()),
+                3,
+                "Checking",
+                kind,
+            );
+            target.write_str("module name   ").unwrap();
+            let (progress, lines) = target.drain();
+            let progress = progress.unwrap();
+            assert_eq_expected!("module name", progress.message.as_str());
+            assert_eq_expected!(kind, progress.kind);
+            assert_eq_expected!(vec!["Checking 0/3".to_string()], lines);
+        }
+    }
+
+    #[test]
+    fn log_only_progress_snapshot_keeps_rendered_lines() {
+        let target = LogProgress::new(DaemonCli::log(), 0, "Loading", ProgressKind::Spinner);
+        target.write_line("Loading project   ").unwrap();
+        target.write_str(" next phase ").unwrap();
+        let (progress, lines) = target.drain();
+        assert_eq_expected!(None, progress);
+        assert_eq_expected!(
+            vec!["Loading project".to_string(), "next phase".to_string()],
+            lines
+        );
+        let (progress, lines) = target.drain();
+        assert_eq_expected!(None, progress);
+        assert_eq_expected!(Vec::<String>::new(), lines);
     }
 
     // -- LogProgress line extraction --
