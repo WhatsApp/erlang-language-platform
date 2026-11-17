@@ -155,6 +155,8 @@ use elp_types_db::eqwalizer::guard::TestString;
 use elp_types_db::eqwalizer::guard::TestTuple;
 use elp_types_db::eqwalizer::guard::TestUnOp;
 use elp_types_db::eqwalizer::guard::TestVar;
+use elp_types_db::eqwalizer::pat::ClausePat;
+use elp_types_db::eqwalizer::pat::DPat;
 use elp_types_db::eqwalizer::pat::Pat;
 use elp_types_db::eqwalizer::pat::PatAtom;
 use elp_types_db::eqwalizer::pat::PatBinOp;
@@ -176,6 +178,7 @@ use elp_types_db::eqwalizer::pat::PatTuple;
 use elp_types_db::eqwalizer::pat::PatUnOp;
 use elp_types_db::eqwalizer::pat::PatVar;
 use elp_types_db::eqwalizer::pat::PatWild;
+use elp_types_db::eqwalizer::pat::SPat;
 use elp_types_db::eqwalizer::types::Type;
 
 use super::ConversionError;
@@ -613,7 +616,7 @@ impl Converter {
             let pats = pats
                 .elements
                 .iter()
-                .map(|p| self.convert_pat(p))
+                .map(|p| self.convert_clause_pat(p))
                 .collect::<Result<Vec<_>, _>>()?;
             let guards = guards
                 .elements
@@ -1428,6 +1431,21 @@ impl Converter {
             }
         }
         Err(ConversionError::InvalidBinaryElem)
+    }
+
+    fn convert_clause_pat(&self, pat: &eetf::Term) -> Result<ClausePat, ConversionError> {
+        if let Term::Tuple(tuple) = pat
+            && let [Term::Atom(kind), pos, args @ ..] = &tuple.elements[..]
+        {
+            let pos = self.convert_pos(pos)?;
+            if let ("dyn_pattern", [pat]) = (kind.name.as_str(), args) {
+                let pat = self.convert_pat(pat)?;
+                return Ok(ClausePat::DPat(DPat { pos, pat }));
+            }
+            let pat = self.convert_pat(pat)?;
+            return Ok(ClausePat::SPat(SPat { pos, pat }));
+        }
+        Err(ConversionError::InvalidPattern)
     }
 
     fn convert_pat(&self, pat: &eetf::Term) -> Result<Pat, ConversionError> {

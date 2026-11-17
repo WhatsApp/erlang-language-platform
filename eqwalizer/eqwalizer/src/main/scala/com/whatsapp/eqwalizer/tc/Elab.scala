@@ -85,7 +85,7 @@ final class Elab(pipelineContext: PipelineContext) {
     val env1 = util.enterScope(env0, patVars)
     // Refine guards before patterns (so refinements feed pattern elaboration)
     val env2 = occurrence.refineGuards(clause.guards, env1)
-    val (patTys, env3) = elabPat.elabPats(clause.pats, argTys, env2)
+    val (patTys, env3) = elabPat.elabClausePats(clause.pats, argTys, env2)
     occurrence.annotateGuards(clause.guards, env3)
     val hasEmptyType = env3.exists { case (_, ty) => Subtype.isNoneType(ty) }
     if (checkReachability && (hasEmptyType || patTys.exists(Subtype.isNoneType)))

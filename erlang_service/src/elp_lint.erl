@@ -2006,6 +2006,8 @@ clause({clause,_Anno,H,G,B}, St0) ->
 head(Ps, Vt, St0) ->
     head(Ps, Vt, Vt, St0).    % Old = Vt
 
+head([{dyn_pattern,_Anno,P}|Ps], Vt0, Old, St0) ->
+    head([P|Ps], Vt0, Old, St0);
 head([P|Ps], Vt0, Old, St0) ->
     {Pvt, Pnew, St1} = pattern(P, Vt0, Old, St0),
     {Psvt, Psnew, St2} = head(Ps, Vt0, Old, St1),
@@ -3028,7 +3030,9 @@ expr({ssa_check_when,_Anno,_WantedResult,_Args,_Tag,_Exprs}, _Vt, St) ->
 expr({checked_cast, _Anno, Expr, _Type}, Vt, St) ->
     expr(Expr, Vt, St);
 expr({unchecked_cast, _Anno, Expr, _Type}, Vt, St) ->
-    expr(Expr, Vt, St).
+    expr(Expr, Vt, St);
+expr({dyn_pattern_marker, Anno}, _Vt, St) ->
+    {[],add_error(Anno, illegal_expr, St)}.
 
 %% Checks whether 0.0 occurs naked in the LHS or RHS of an equality check. Note
 %% that we do not warn when it's being used as arguments for expressions in

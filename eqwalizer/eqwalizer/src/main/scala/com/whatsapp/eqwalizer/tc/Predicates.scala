@@ -12,7 +12,7 @@ package com.whatsapp.eqwalizer.tc
 
 import com.whatsapp.eqwalizer.ast.Exprs._
 import com.whatsapp.eqwalizer.ast.Guards.Guard
-import com.whatsapp.eqwalizer.ast.Pats.{PatAtom, PatWild}
+import com.whatsapp.eqwalizer.ast.Pats.{PatAtom, PatWild, SPat}
 import com.whatsapp.eqwalizer.ast.Filters
 
 object Predicates {
@@ -26,7 +26,7 @@ object Predicates {
     val List(clause1, clause2) = clauses
     val Some(test) = Filters.asTest(sel): @unchecked
     clause1.pats.head match {
-      case PatAtom("true") =>
+      case SPat(PatAtom("true")) =>
         val ifClause1 = Clause(List.empty, List(Guard(List(test))), clause1.body)(clause1.pos)
         val ifClause2 = Clause(List.empty, List.empty, clause2.body)(clause2.pos)
         If(List(ifClause1, ifClause2))(e.pos)
@@ -41,9 +41,9 @@ object Predicates {
     clauses match {
       case List(Clause(List(pat1), List(), _), Clause(List(pat2), List(), _)) =>
         (pat1, pat2) match {
-          case (PatAtom("true"), PatAtom("false") | PatWild()) => true
-          case (PatAtom("false"), PatAtom("true") | PatWild()) => true
-          case (_, _)                                          => false
+          case (SPat(PatAtom("true")), SPat(PatAtom("false") | PatWild())) => true
+          case (SPat(PatAtom("false")), SPat(PatAtom("true") | PatWild())) => true
+          case (_, _)                                                      => false
         }
       case _ =>
         false
@@ -52,7 +52,7 @@ object Predicates {
   def posNegClauses(clauses: List[Clause]): (Clause, Clause) = {
     val List(clause1 @ Clause(List(pat1), List(), _), clause2 @ Clause(List(pat2), List(), _)) = clauses
     (pat1, pat2) match {
-      case (PatAtom("true"), PatAtom("false") | PatWild()) =>
+      case (SPat(PatAtom("true")), SPat(PatAtom("false") | PatWild())) =>
         (clause1, clause2)
       case (_, _) =>
         (clause2, clause1)

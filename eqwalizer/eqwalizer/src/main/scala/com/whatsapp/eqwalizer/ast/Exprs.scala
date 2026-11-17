@@ -11,8 +11,8 @@
 package com.whatsapp.eqwalizer.ast
 
 import com.whatsapp.eqwalizer.ast.Guards.Guard
-import com.whatsapp.eqwalizer.ast.Pats.Pat
-import com.github.plokhotnyuk.jsoniter_scala.core._
+import com.whatsapp.eqwalizer.ast.Pats.{ClausePat, Pat}
+import com.github.plokhotnyuk.jsoniter_scala.core.*
 
 object Exprs {
   case class Body(exprs: List[Expr])
@@ -90,7 +90,7 @@ object Exprs {
 
   case class TypeCast(expr: Expr, ty: ExtType, checked: Boolean)(val pos: Pos) extends Expr
 
-  case class Clause(pats: List[Pat], guards: List[Guard], body: Body)(val pos: Pos)
+  case class Clause(pats: List[ClausePat], guards: List[Guard], body: Body)(val pos: Pos)
   case class BinaryElem(expr: Expr, size: Option[Expr], specifier: Specifier)(val pos: Pos)
   sealed trait RecordField {
     val value: Expr

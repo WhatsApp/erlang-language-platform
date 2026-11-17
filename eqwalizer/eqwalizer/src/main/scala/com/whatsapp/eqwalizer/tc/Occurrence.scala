@@ -178,7 +178,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
   }
 
   def caseEnvs(c: Case, selType: Type, env: Env): List[Env] = {
-    val (env1, x) = c.expr match {
+    val (occEnv, occVar) = c.expr match {
       case Var(n) =>
         (env, n)
       // important for thrift - see D31025723
@@ -190,7 +190,9 @@ final class Occurrence(pipelineContext: PipelineContext) {
     }
     val eMap = c.expr match {
       case Tuple(elems) =>
-        elems.zipWithIndex.collect { case (Var(n), i) => n -> mkObj(x, List(TupleField(i, Some(elems.size)))) }.toMap
+        elems.zipWithIndex.collect { case (Var(n), i) =>
+          n -> mkObj(occVar, List(TupleField(i, Some(elems.size))))
+        }.toMap
       case _ =>
         Map.empty[Name, Obj]
     }
@@ -199,12 +201,22 @@ final class Occurrence(pipelineContext: PipelineContext) {
     var propsAcc = List.empty[Prop]
     val clauseEnvs = ListBuffer.empty[Env]
     for (clause <- c.clauses) {
-      val pat = clause.pats.head
-      val info = patProps(x, Nil, pat, env1)
+      var clauseOccEnv = occEnv
+      val clausePat = clause.pats.head
+      val pat = clausePat match {
+        case DPat(pat) =>
+          clauseOccEnv = clauseOccEnv + (occVar -> DynamicType)
+          pat
+        case SPat(pat) =>
+          pat
+      }
+      val info = patProps(occVar, Nil, pat, occEnv)
       val (patPos, patNeg) =
         pat match {
-          case PatVar(`x`) => (None, None)
-          case _           => info.props.unzip
+          case PatVar(`occVar`) =>
+            (None, None)
+          case _ =>
+            info.props.unzip
         }
       val aMap = info.aliases.toMap
       val (testPos, testNeg) = guardsProps(clause.guards, aMap)
@@ -212,7 +224,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
       val clauseProps =
         if (accumulateNegProps) combine(localClauseProps, propsAcc)
         else localClauseProps
-      val clauseEnv = batchSelect(bindSeeds(env1, info.seeds), clauseProps, aMap ++ eMap)
+      val clauseEnv = batchSelect(bindSeeds(clauseOccEnv, info.seeds), clauseProps, aMap ++ eMap)
       clauseEnvs.addOne(clauseEnv)
       if (accumulateNegProps && linearVars(clause)) {
         val clauseNeg = patNeg.toList ++ testNeg
@@ -227,17 +239,25 @@ final class Occurrence(pipelineContext: PipelineContext) {
     var propsAcc = List.empty[Prop]
     val clauseEnvs = ListBuffer.empty[Env]
 
-    val vars = argTys.map(_ => genVar())
-    val env1 = env ++ vars.zip(argTys).toMap
+    val occVars = argTys.map(_ => genVar())
+    val occEnv = env ++ occVars.zip(argTys).toMap
 
     for (clause <- clauses) {
-      val pats = clause.pats
+      val clasePats = clause.pats
       val patsPos = ListBuffer.empty[Prop]
       val patsNeg = ListBuffer.empty[Prop]
       var aMap: AMap = Map.empty
       val seeds = ListBuffer.empty[(Name, Obj)]
-      for ((x, pat) <- vars.zip(pats)) {
-        val info = patProps(x, Nil, pat, env)
+      var clauseOccEnv = occEnv
+      for ((occVar, clausePat) <- occVars.zip(clasePats)) {
+        val pat = clausePat match {
+          case DPat(pat) =>
+            clauseOccEnv = clauseOccEnv + (occVar -> DynamicType)
+            pat
+          case SPat(pat) =>
+            pat
+        }
+        val info = patProps(occVar, Nil, pat, env)
         val (patPos, patNeg) = info.props.unzip
         patPos.foreach(patsPos.addOne)
         patNeg.foreach(patsNeg.addOne)
@@ -249,7 +269,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
       val clauseProps =
         if (accumulateNegProps) combine(localClauseProps, propsAcc)
         else localClauseProps
-      val clauseEnv = batchSelect(bindSeeds(env1, seeds.toList), clauseProps, aMap)
+      val clauseEnv = batchSelect(bindSeeds(clauseOccEnv, seeds.toList), clauseProps, aMap)
       clauseEnvs.addOne(clauseEnv)
       if (accumulateNegProps && linearVars(clause)) {
         val clauseNeg = (patsNeg ++ testNeg).toList

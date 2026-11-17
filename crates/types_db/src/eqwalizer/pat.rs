@@ -17,6 +17,35 @@ use crate::eqwalizer::binary_specifier;
 use crate::eqwalizer::expr;
 use crate::eqwalizer::guard;
 
+/// A top-level pattern of a clause.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ClausePat {
+    /// Dynamic pattern `Pat = :?`: matched against `dynamic()`.
+    DPat(DPat),
+    /// Static (regular) pattern.
+    SPat(SPat),
+}
+
+impl ClausePat {
+    pub fn pat(&self) -> &Pat {
+        match self {
+            ClausePat::DPat(DPat { pat, .. }) | ClausePat::SPat(SPat { pat, .. }) => pat,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct DPat {
+    pub pos: eqwalizer::Pos,
+    pub pat: Pat,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct SPat {
+    pub pos: eqwalizer::Pos,
+    pub pat: Pat,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Pat {
     PatWild(PatWild),

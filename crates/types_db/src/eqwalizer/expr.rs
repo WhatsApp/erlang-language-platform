@@ -396,7 +396,7 @@ pub struct MapUpdate {
 pub struct Clause {
     pub pos: Pos,
     #[serde(default)]
-    pub pats: Vec<pat::Pat>,
+    pub pats: Vec<pat::ClausePat>,
     #[serde(default)]
     pub guards: Vec<guard::Guard>,
     pub body: Body,

@@ -166,10 +166,10 @@ object Vars {
     (bodyVars(body) :: clauses.map(clauseVars)).reduce(_ intersect _)
 
   private def clauseVars(clause: Clause): Set[String] =
-    clause.pats.flatMap(patVars).toSet ++ bodyVars(clause.body)
+    clause.pats.flatMap(p => patVars(p.pat)).toSet ++ bodyVars(clause.body)
 
   def clausePatVars(clause: Clause): Set[String] =
-    clause.pats.flatMap(patVars).toSet
+    clause.pats.flatMap(p => patVars(p.pat)).toSet
 
 }
 
@@ -224,5 +224,5 @@ final class Vars(pipelineContext: PipelineContext) {
     patVarsL(elem.pat)
 
   def clausePatVarsL(clause: Clause): List[String] =
-    clause.pats.flatMap(patVarsL)
+    clause.pats.flatMap(p => patVarsL(p.pat))
 }

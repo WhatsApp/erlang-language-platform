@@ -1,0 +1,42 @@
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dyn_pat.erl:13:22
+stdout |    │
+stdout | 13 │ fun_clause_neg(X) -> X.
+stdout |    │                      ^ X.
+stdout | Expression has type:   integer()
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dyn_pat.erl:25:46
+stdout |    │
+stdout | 25 │ fun_clause_multi_neg(X = ?dyn_pattern, Y) -> {X, Y}.
+stdout |    │                                              ^^^^^^
+stdout |    │                                              │
+stdout |    │                                              {X, Y}.
+stdout | Expression has type:   {dynamic(), integer()}
+stdout | Context expected type: {atom(), atom()}
+stdout |    │                                              
+stdout |
+stdout | Because in the expression's type:
+stdout |   { dynamic(), 
+stdout |     Here the type is:     integer()
+stdout |     Context expects type: atom()
+stdout |   }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dyn_pat.erl:30:10
+stdout |    │
+stdout | 30 │     X -> X
+stdout |    │          ^ X.
+stdout | Expression has type:   integer()
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dyn_pat.erl:40:27
+stdout |    │
+stdout | 40 │ lambda_neg() -> fun(X) -> X end.
+stdout |    │                           ^ X.
+stdout | Expression has type:   integer()
+stdout | Context expected type: atom()
+stdout |
+stdout | 4 ERRORS

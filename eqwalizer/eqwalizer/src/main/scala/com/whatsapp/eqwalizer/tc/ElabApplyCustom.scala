@@ -12,10 +12,9 @@ package com.whatsapp.eqwalizer.tc
 
 import com.whatsapp.eqwalizer.ast.Exprs.{AtomLit, Cons, Expr, IntLit, Lambda, NilLit, Var}
 import com.whatsapp.eqwalizer.ast.Types.*
-import com.whatsapp.eqwalizer.ast.{Exprs, Pos, RemoteId}
+import com.whatsapp.eqwalizer.ast.{CompilerMacro, Exprs, Pos, RemoteId}
 import com.whatsapp.eqwalizer.tc.TcDiagnostics.{ExpectedSubtype, IndexOutOfBounds}
-import com.whatsapp.eqwalizer.ast.CompilerMacro
-import com.whatsapp.eqwalizer.ast.Pats.{Pat, PatAtom, PatTuple, PatVar, PatWild}
+import com.whatsapp.eqwalizer.ast.Pats.{Pat, PatAtom, PatTuple, PatVar, PatWild, SPat}
 import com.whatsapp.eqwalizer.ast.Types.Key.asType
 
 import scala.collection.mutable
@@ -253,8 +252,8 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
             val (trueClause, falseClause) = Predicates.getTrueFalseReturnClauses(lambda.clauses)
             val lamEnv = lambda.name.map(name => env.updated(name, expFunTy)).getOrElse(env1)
             val List(trueEnv, falseEnv) = occurrence.clausesEnvs(List(trueClause, falseClause), List(elemTy), lamEnv)
-            val (trueTy, _) = elabPat.elabPat(trueClause.pats.head, elemTy, trueEnv)
-            val (falseTy, _) = elabPat.elabPat(falseClause.pats.head, elemTy, falseEnv)
+            val (trueTy, _) = elabPat.elabClausePat(trueClause.pats.head, elemTy, trueEnv)
+            val (falseTy, _) = elabPat.elabClausePat(falseClause.pats.head, elemTy, falseEnv)
             (TupleType(List(ListType(trueTy), ListType(falseTy))), env1)
           case _ =>
             if (!subtype.subType(predTy, expFunTy)) {
@@ -278,7 +277,7 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
             val lamEnv = lambda.name.map(name => env.updated(name, expFunTy)).getOrElse(env)
             val List(trueEnv, _) =
               occurrence.clausesEnvs(List(trueClause, falseClause), List(keyTy, valTy), lamEnv)
-            val (nv, _) = elabPat.elabPat(trueClause.pats(1), valTy, trueEnv)
+            val (nv, _) = elabPat.elabClausePat(trueClause.pats(1), valTy, trueEnv)
             Some(nv)
           case lambda: Lambda =>
             elab.checkLambda(lambda, expFunTy, env)
@@ -335,17 +334,17 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
           val usedKeys = mutable.Set[String]()
           (lambda.clauses forall { clause =>
             clause.pats match {
-              case List(PatAtom(a), _, _) if !usedKeys(a) =>
+              case List(SPat(PatAtom(a)), _, _) if !usedKeys(a) =>
                 usedKeys.add(a)
                 true
-              case List(PatVar(_) | PatWild(), _, _) =>
+              case List(SPat(PatVar(_) | PatWild()), _, _) =>
                 true
               case _ =>
                 false
             }
           }) && (lambda.clauses.count { clause =>
             clause.pats match {
-              case List(PatVar(_) | PatWild(), _, _) =>
+              case List(SPat(PatVar(_) | PatWild()), _, _) =>
                 true
               case _ =>
                 false
@@ -361,7 +360,7 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
             var keyTyLast = keyTy
             val vTys = lambda.clauses.lazyZip(occEnvs).map { (clause, occEnv) =>
               clause.pats.head match {
-                case PatAtom(a) =>
+                case SPat(PatAtom(a)) =>
                   val refinedValTy = UnionType(mapTys.map(m => narrow.getValType(AtomKey(a), m)))
                   keyTyLast = occurrence.remove(keyTyLast, AtomLitType(a))
                   elab.elabClause(clause, List(AtomLitType(a), refinedValTy, accTy), occEnv, Set.empty)._1
@@ -394,7 +393,7 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
             var keyTyLast = keyTy
             lambda.clauses.lazyZip(occEnvs).map { (clause, occEnv) =>
               clause.pats.head match {
-                case PatAtom(a) =>
+                case SPat(PatAtom(a)) =>
                   val refinedValTy = UnionType(mapTys.map(m => narrow.getValType(AtomKey(a), m)))
                   keyTyLast = occurrence.remove(keyTyLast, AtomLitType(a))
                   elab.elabClause(clause, List(AtomLitType(a), refinedValTy, accTy), occEnv, Set.empty, accTy)
@@ -580,17 +579,17 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
           val usedKeys = mutable.Set[Pat]()
           (lambda.clauses forall { clause =>
             clause.pats match {
-              case List(pat, _) if isShapeKey(pat) && !usedKeys(pat) =>
+              case List(SPat(pat), _) if isShapeKey(pat) && !usedKeys(pat) =>
                 usedKeys.add(pat)
                 true
-              case List(PatVar(_) | PatWild(), _) =>
+              case List(SPat(PatVar(_) | PatWild()), _) =>
                 true
               case _ =>
                 false
             }
           }) && (lambda.clauses.count { clause =>
             clause.pats match {
-              case List(PatVar(_) | PatWild(), _, _) =>
+              case List(SPat(PatVar(_) | PatWild()), _, _) =>
                 true
               case _ =>
                 false
@@ -604,14 +603,15 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
           case lambda: Lambda if isShapeIterator(lambda) =>
             val lamEnv = lambda.name.map(name => env.updated(name, expFunTy)).getOrElse(env)
             lambda.clauses.foreach { clause =>
-              if (isShapeKey(clause.pats.head)) {
-                val key = asKey(clause.pats.head)
-                val refinedValTy = UnionType(mapTys.map(m => narrow.getValType(key, m)))
-                val kTy = Key.asType(key)
-                keyTyLast = occurrence.remove(keyTyLast, kTy)
-                elab.elabClause(clause, List(kTy, refinedValTy), lamEnv, Set.empty)
-              } else {
-                elab.elabClause(clause, List(keyTyLast, valTy), lamEnv, Set.empty)
+              clause.pats.head match {
+                case SPat(pat) if isShapeKey(pat) =>
+                  val key = asKey(pat)
+                  val refinedValTy = UnionType(mapTys.map(m => narrow.getValType(key, m)))
+                  val kTy = Key.asType(key)
+                  keyTyLast = occurrence.remove(keyTyLast, kTy)
+                  elab.elabClause(clause, List(kTy, refinedValTy), lamEnv, Set.empty)
+                case _ =>
+                  elab.elabClause(clause, List(keyTyLast, valTy), lamEnv, Set.empty)
               }
             }
           case _ =>

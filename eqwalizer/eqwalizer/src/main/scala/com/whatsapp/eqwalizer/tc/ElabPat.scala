@@ -30,15 +30,23 @@ final class ElabPat(pipelineContext: PipelineContext) {
   private lazy val diagnosticsInfo = pipelineContext.diagnosticsInfo
   private lazy val typeInfo = pipelineContext.typeInfo
 
-  def elabPats(pats: List[Pat], tys: List[Type], env: Env): (List[Type], Env) = {
+  def elabClausePats(pats: List[ClausePat], tys: List[Type], env: Env): (List[Type], Env) = {
     var envAcc = env
-    val patTypes = (pats zip tys).map { case (pat, ty) =>
-      val (patType, env1) = elabPat(pat, ty, envAcc)
+    val patTypes = (pats zip tys).map { case (clausePat, ty) =>
+      val (patType, env1) = elabClausePat(clausePat, ty, envAcc)
       envAcc = env1
       patType
     }
     (patTypes, envAcc)
   }
+
+  def elabClausePat(clausePat: ClausePat, t: Type, env: Env): (Type, Env) =
+    clausePat match {
+      case DPat(pat) =>
+        elabPat(pat, DynamicType, env)
+      case SPat(pat) =>
+        elabPat(pat, t, env)
+    }
 
   def elabPat(pat: Pat, t: Type, env: Env): (Type, Env) = {
     pat match {

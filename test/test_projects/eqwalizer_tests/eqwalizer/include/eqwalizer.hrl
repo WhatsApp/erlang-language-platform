@@ -9,9 +9,11 @@
 -ifdef(ELP_ERLANG_SERVICE).
 -define(checked_cast(Expr, Type), (Expr :: Type)).
 -define(unchecked_cast(Expr, Type), (Expr :> Type)).
+-define(dyn_pattern, :?).
 -else.
 -define(checked_cast(Expr, _Type), Expr).
 -define(unchecked_cast(Expr, _Type), Expr).
+-define(dyn_pattern, _).
 -endif.
 
 -endif.

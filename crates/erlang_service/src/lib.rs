@@ -1007,6 +1007,14 @@ mod tests {
     }
 
     #[test]
+    fn dyn_pattern() {
+        expect_module(
+            "dyn_pattern.erl".into(),
+            fixture_file!("dyn_pattern.expected"),
+        );
+    }
+
+    #[test]
     fn based_float() {
         expect_module(
             "based_float.erl".into(),

@@ -13,6 +13,10 @@ package com.whatsapp.eqwalizer.ast
 import com.whatsapp.eqwalizer.ast.Exprs.Expr
 
 object Pats {
+  sealed trait ClausePat { val pat: Pat; val pos: Pos }
+  case class DPat(pat: Pat)(val pos: Pos) extends ClausePat
+  case class SPat(pat: Pat)(val pos: Pos) extends ClausePat
+
   sealed trait Pat { val pos: Pos }
 
   case class PatWild()(val pos: Pos) extends Pat

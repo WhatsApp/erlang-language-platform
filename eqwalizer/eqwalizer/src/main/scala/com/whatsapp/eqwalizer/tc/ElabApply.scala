@@ -11,7 +11,7 @@
 package com.whatsapp.eqwalizer.tc
 
 import com.whatsapp.eqwalizer.ast.Exprs.*
-import com.whatsapp.eqwalizer.ast.Pats.PatVar
+import com.whatsapp.eqwalizer.ast.Pats.{PatVar, SPat}
 import com.whatsapp.eqwalizer.ast.Subst.Subst
 import com.whatsapp.eqwalizer.ast.{Pos, Subst, TypeVars, Variance}
 import com.whatsapp.eqwalizer.ast.Types.*
@@ -39,7 +39,7 @@ class ElabApply(pipelineContext: PipelineContext) {
     val pos = fun.pos
     val varNames = (1 to fun.id.arity).map(n => s"Arg $n of '${fun.id}'").toList
     val vars = varNames.map(Var(_)(pos))
-    val patVars = varNames.map(PatVar(_)(pos))
+    val patVars = varNames.map(n => SPat(PatVar(n)(pos))(pos))
     val app = LocalCall(fun.id, vars)(pos)
     val clause = Clause(patVars, Nil, Body(List(app)))(pos)
     Lambda(List(clause))(pos, name = None)
@@ -47,7 +47,7 @@ class ElabApply(pipelineContext: PipelineContext) {
   private def etaExpand(fun: RemoteFun): Lambda = {
     val pos = fun.pos
     val varNames = (1 to fun.id.arity).map(n => s"Arg $n of '${fun.id}'").toList
-    val patVars = varNames.map(PatVar(_)(pos))
+    val patVars = varNames.map(n => SPat(PatVar(n)(pos))(pos))
     val vars = varNames.map(Var(_)(pos))
     val app = RemoteCall(fun.id, vars)(pos)
     val clause = Clause(patVars, Nil, Body(List(app)))(pos)

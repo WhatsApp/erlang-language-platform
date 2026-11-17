@@ -1848,6 +1848,13 @@ expand_macros([{'?', _Aq}, Token | _Toks], _St) ->
     Symbol = elp_scan:symbol(Token),
     T = io_lib:fwrite(<<"~tp">>, [Symbol]),
     throw({error, loc(Token), {call, [$? | T]}});
+%% ELP-specific: `:?` is the dynamic pattern marker, unless it starts a remote macro call `M:?F`
+expand_macros([{':', _} = Colon | [{'?', _}, {Kind, _, _} | _] = Toks], St) when
+    Kind =:= atom; Kind =:= var
+->
+    [Colon | expand_macros(Toks, St)];
+expand_macros([{':', Aq1}, {'?', Aq2} | Toks], St) ->
+    [{':?', ?anno(Aq1, Aq2)} | expand_macros(Toks, St)];
 expand_macros([T | Ts], St) ->
     [T | expand_macros(Ts, St)];
 expand_macros([], _St) ->

@@ -77,7 +77,10 @@ pub fn walk_body<'a, T, V: Visitor<'a, T>>(visitor: &mut V, body: &'a Body) -> R
 }
 
 pub fn walk_clause<'a, T, V: Visitor<'a, T>>(visitor: &mut V, clause: &'a Clause) -> Result<(), T> {
-    clause.pats.iter().try_for_each(|p| visitor.visit_pat(p))?;
+    clause
+        .pats
+        .iter()
+        .try_for_each(|p| visitor.visit_pat(p.pat()))?;
     clause
         .guards
         .iter()

@@ -30,8 +30,10 @@ use elp_types_db::eqwalizer::guard::TestInteger;
 use elp_types_db::eqwalizer::guard::TestTuple;
 use elp_types_db::eqwalizer::guard::TestUnOp;
 use elp_types_db::eqwalizer::guard::TestVar;
+use elp_types_db::eqwalizer::pat::ClausePat;
 use elp_types_db::eqwalizer::pat::Pat;
 use elp_types_db::eqwalizer::pat::PatVar;
+use elp_types_db::eqwalizer::pat::SPat;
 use elp_types_db::eqwalizer::transformer;
 use elp_types_db::eqwalizer::transformer::Transformer;
 
@@ -147,7 +149,10 @@ impl Preprocessor {
         });
         let clause_pos = Clause {
             pos: location.clone(),
-            pats: vec![Pat::pat_var(location.clone(), var_name)],
+            pats: vec![ClausePat::SPat(SPat {
+                pos: location.clone(),
+                pat: Pat::pat_var(location.clone(), var_name),
+            })],
             guards: vec![Guard {
                 tests: vec![test_call],
             }],
@@ -157,7 +162,10 @@ impl Preprocessor {
         };
         let clause_neg = Clause {
             pos: location.clone(),
-            pats: vec![Pat::pat_var(location.clone(), var_name)],
+            pats: vec![ClausePat::SPat(SPat {
+                pos: location.clone(),
+                pat: Pat::pat_var(location.clone(), var_name),
+            })],
             guards: vec![],
             body: Body {
                 exprs: vec![Expr::atom_false(location.clone())],
@@ -197,8 +205,13 @@ impl Preprocessor {
                     && let [body] = &clause.body.exprs[..]
                     && let Some(test) = as_test(body.clone())
                 {
-                    let false_pats: Vec<Pat> = (0..expected_arity)
-                        .map(|_| self.fresh_pat_var(&clause.pos))
+                    let false_pats: Vec<ClausePat> = (0..expected_arity)
+                        .map(|_| {
+                            ClausePat::SPat(SPat {
+                                pos: clause.pos.clone(),
+                                pat: self.fresh_pat_var(&clause.pos),
+                            })
+                        })
                         .collect();
                     return Expr::Lambda(Lambda {
                         pos: lambda.pos.clone(),

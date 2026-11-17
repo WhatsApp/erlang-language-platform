@@ -1,0 +1,109 @@
+AST
+{attribute,{0,0},file,{"dyn_pattern.erl",0}}.
+{attribute,{0,20},module,dyn_pattern}.
+{attribute,{22,79},
+           export,
+           [{f,1},{g,2},{h,1},{l,0},{nested,1},{expr,0},{remote,0}]}.
+{function,{108,132},
+          f,1,
+          [{clause,{108,132},
+                   [{dyn_pattern,{110,126},{var,{110,111},'X'}}],
+                   [],
+                   [{var,{131,132},'X'}]}]}.
+{function,
+    {135,187},
+    g,2,
+    [{clause,
+         {135,187},
+         [{dyn_pattern,
+              {137,158},
+              {tuple,{137,143},[{var,{138,139},'A'},{var,{141,142},'B'}]}},
+          {dyn_pattern,
+              {160,170},
+              {match,{160,165},{var,{160,161},'C'},{var,{164,165},'D'}}}],
+         [],
+         [{tuple,
+              {175,187},
+              [{var,{176,177},'A'},
+               {var,{179,180},'B'},
+               {var,{182,183},'C'},
+               {var,{185,186},'D'}]}]}]}.
+{function,
+    {190,249},
+    h,1,
+    [{clause,
+         {190,249},
+         [{var,{192,193},'X'}],
+         [],
+         [{'case',
+              {202,249},
+              {var,{207,208},'X'},
+              [{clause,
+                   {222,241},
+                   [{dyn_pattern,{220,236},{var,{220,221},'Y'}}],
+                   [],
+                   [{var,{240,241},'Y'}]}]}]}]}.
+{function,
+    {252,279},
+    l,0,
+    [{clause,
+         {252,279},
+         [],[],
+         [{'fun',
+              {259,279},
+              {clauses,
+                  [{clause,
+                       {262,275},
+                       [{dyn_pattern,{263,269},{var,{263,264},'X'}}],
+                       [],
+                       [{var,{274,275},'X'}]}]}}]}]}.
+{function,{282,303},
+          nested,1,
+          [{clause,{282,303},
+                   [{tuple,{289,297},
+                           [{match,{292,296},
+                                   {var,{290,291},'X'},
+                                   {dyn_pattern_marker,{294,296}}}]}],
+                   [],
+                   [{var,{302,303},'X'}]}]}.
+{function,{306,318},
+          expr,0,
+          [{clause,{306,318},[],[],[{dyn_pattern_marker,{316,318}}]}]}.
+{function,{336,361},
+          remote,0,
+          [{clause,{336,361},
+                   [],[],
+                   [{call,{348,361},
+                          {remote,{348,361},
+                                  {atom,{348,355},dyn_pattern},
+                                  {atom,{356,361},f}},
+                          [{integer,{359,360},1}]}]}]}.
+{eof,{363,363}}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[
+    ParseError {
+        path: "dyn_pattern.erl",
+        location: Some(
+            Normal(
+                294..296,
+            ),
+        ),
+        msg: "illegal pattern",
+        code: "L1245",
+    },
+    ParseError {
+        path: "dyn_pattern.erl",
+        location: Some(
+            Normal(
+                316..318,
+            ),
+        ),
+        msg: "illegal expression",
+        code: "L1248",
+    },
+]

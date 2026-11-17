@@ -79,6 +79,8 @@ use super::guard::TestRecordFieldNamed;
 use super::guard::TestRecordSelect;
 use super::guard::TestTuple;
 use super::guard::TestUnOp;
+use super::pat::ClausePat;
+use super::pat::DPat;
 use super::pat::Pat;
 use super::pat::PatBinOp;
 use super::pat::PatBinary;
@@ -92,6 +94,7 @@ use super::pat::PatRecord;
 use super::pat::PatRecordFieldNamed;
 use super::pat::PatTuple;
 use super::pat::PatUnOp;
+use super::pat::SPat;
 use crate::eqwalizer::expr::RecordFieldNamed;
 use crate::eqwalizer::expr::TypeCast;
 
@@ -157,7 +160,16 @@ pub fn walk_clause<T, V: Transformer<T>>(transformer: &mut V, clause: Clause) ->
     let pats = clause
         .pats
         .into_iter()
-        .map(|p| transformer.transform_pat(p))
+        .map(|p| match p {
+            ClausePat::DPat(DPat { pos, pat }) => {
+                let pat = transformer.transform_pat(pat)?;
+                Ok(ClausePat::DPat(DPat { pos, pat }))
+            }
+            ClausePat::SPat(SPat { pos, pat }) => {
+                let pat = transformer.transform_pat(pat)?;
+                Ok(ClausePat::SPat(SPat { pos, pat }))
+            }
+        })
         .collect::<Result<Vec<_>, _>>()?;
     let guards = clause
         .guards

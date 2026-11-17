@@ -71,6 +71,7 @@ char integer float atom sigil_prefix string sigil_suffix var
 '==' '/=' '=<' '<' '>=' '>' '=:=' '=/=' '<=' '<:=' '=>' ':='
 '<<' '>>'
 '!' '=' '::' ':>' '..' '...'
+':?'
 '?='
 'spec' 'callback' 'record' % helper
 dot.
@@ -257,7 +258,7 @@ function_clauses -> function_clause : ['$1'].
 function_clauses -> function_clause ';' function_clauses : ['$1'|'$3'].
 
 function_clause -> atom clause_args clause_guard clause_body :
-	{clause, ?anno('$1', '$4'), element(3, '$1'), '$2', '$3', element(1, '$4')}.
+	{clause, ?anno('$1', '$4'), element(3, '$1'), build_clause_pats('$2'), '$3', element(1, '$4')}.
 
 clause_args -> pat_argument_list : element(1, '$1').
 
@@ -302,6 +303,7 @@ expr_max -> fun_expr : '$1'.
 expr_max -> try_expr : '$1'.
 expr_max -> maybe_expr : '$1'.
 expr_max -> cast_expr : '$1'.
+expr_max -> ':?' : {dyn_pattern_marker, ?anno('$1')}.
 
 pat_expr -> pat_expr '=' pat_expr : {match,?anno('$1','$3'),'$1','$3'}.
 pat_expr -> pat_expr comp_op pat_expr : ?mkop2('$1', '$2', '$3').
@@ -320,6 +322,7 @@ pat_expr_max -> binary : '$1'.
 pat_expr_max -> sigil : '$1'.
 pat_expr_max -> tuple : '$1'.
 pat_expr_max -> '(' pat_expr ')' : '$2'.
+pat_expr_max -> ':?' : {dyn_pattern_marker, ?anno('$1')}.
 
 map_pat_expr -> '#' map_tuple :
 	{map, ?anno('$1', '$2'), element(1, '$2')}.
@@ -487,7 +490,7 @@ cr_clauses -> cr_clause ';' cr_clauses : ['$1' | '$3'].
 %% should be a better way.
 
 cr_clause -> expr clause_guard clause_body :
-	{clause, ?anno('$1', '$3'), ['$1'], '$2', element(1, '$3')}.
+	{clause, ?anno('$1', '$3'), [build_clause_pat('$1')], '$2', element(1, '$3')}.
 
 receive_expr -> 'receive' cr_clauses 'end' :
 	{'receive', ?anno('$1', '$3'), '$2'}.
@@ -513,10 +516,10 @@ fun_clauses -> fun_clause : ['$1'].
 fun_clauses -> fun_clause ';' fun_clauses : ['$1' | '$3'].
 
 fun_clause -> pat_argument_list clause_guard clause_body :
-	{clause, ?anno('$1', '$3'), 'fun', element(1, '$1'), '$2', element(1, '$3')}.
+	{clause, ?anno('$1', '$3'), 'fun', build_clause_pats(element(1, '$1')), '$2', element(1, '$3')}.
 
 fun_clause -> var pat_argument_list clause_guard clause_body :
-	{clause, ?anno('$1', '$4'), element(3, '$1'), element(1, '$2'), '$3', element(1, '$4')}.
+	{clause, ?anno('$1', '$4'), element(3, '$1'), build_clause_pats(element(1, '$2')), '$3', element(1, '$4')}.
 
 try_expr -> 'try' body_exprs 'of' cr_clauses try_catch :
 	build_try('$1','$2','$4','$5').
@@ -1607,6 +1610,30 @@ build_function(Cs) ->
     Name = element(3, hd(Cs)),
     Arity = length(element(4, hd(Cs))),
     {function, ?anno(hd(Cs), lists:last(Cs)), Name, Arity, check_clauses(Cs, Name, Arity)}.
+
+%% ELP-specific: a top-level clause pattern `P = :?` becomes {dyn_pattern, Anno, P}.
+%% Any other occurrence of `:?` stays as {dyn_pattern_marker, Anno} and is rejected by elp_lint.
+
+build_clause_pats(Ps) ->
+    [build_clause_pat(P) || P <- Ps].
+
+build_clause_pat({match, _, _, _} = P) ->
+    case strip_dyn_pattern_marker(P) of
+        {ok, Pat, Marker} -> {dyn_pattern, ?anno(Pat, Marker), Pat};
+        error -> P
+    end;
+build_clause_pat(P) ->
+    P.
+
+strip_dyn_pattern_marker({match, _, Pat, {dyn_pattern_marker, _} = Marker}) ->
+    {ok, Pat, Marker};
+strip_dyn_pattern_marker({match, _, Pat1, Pat2}) ->
+    case strip_dyn_pattern_marker(Pat2) of
+        {ok, Pat, Marker} -> {ok, {match, ?anno(Pat1, Pat), Pat1, Pat}, Marker};
+        error -> error
+    end;
+strip_dyn_pattern_marker(_) ->
+    error.
 
 %% build_fun(Anno, [Clause]) -> {'fun',Anno,{clauses,[Clause]}}.
 
