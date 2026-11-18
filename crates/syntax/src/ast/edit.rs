@@ -15,6 +15,7 @@ use std::fmt;
 use std::iter;
 use std::ops;
 
+use itertools::Itertools;
 use rowan::TextRange;
 use rowan::TextSize;
 
@@ -156,24 +157,27 @@ pub fn start_of_line(token: &SyntaxToken) -> TextSize {
     token.text_range().start()
 }
 
-/// Given a token, return the range of its line, from the start of the line
-/// to its last character that is not whitespace.
+/// Given a token, return the range of its first line, from the start of the
+/// line to its last character that is not whitespace. Any token can hold a
+/// line break, not only whitespace: a string literal can span several lines.
 pub fn line_range(token: &SyntaxToken) -> TextRange {
     let start = prev_tokens(token.clone())
         .skip(1)
-        .filter(|t| t.kind() == WHITESPACE)
-        .find_map(|ws| {
-            let pos = ws.text().rfind('\n')?;
-            Some(ws.text_range().start() + TextSize::from(pos as u32 + 1))
+        .find_map(|t| {
+            let pos = t.text().rfind('\n')?;
+            Some(t.text_range().start() + TextSize::from(pos as u32 + 1))
         })
         .unwrap_or_default();
     let end = next_tokens(token.clone())
-        .take_while(|t| !(t.kind() == WHITESPACE && t.text().contains('\n')))
-        .filter(|t| t.kind() != WHITESPACE)
+        .take_while_inclusive(|t| !t.text().contains('\n'))
+        .filter_map(|t| {
+            let text = t.text();
+            let line = text.split_once('\n').map_or(text, |(line, _)| line);
+            let code = line.trim_end();
+            (!code.is_empty()).then(|| t.text_range().start() + TextSize::of(code))
+        })
         .last()
-        .map_or(token.text_range().end(), |t| {
-            t.text_range().start() + TextSize::of(t.text().trim_end())
-        });
+        .unwrap_or(token.text_range().start());
     TextRange::new(start, end)
 }
 
@@ -295,5 +299,28 @@ mod tests {
     #[test]
     fn test_line_range_last_line_without_newline() {
         check_line_range("-define(A, 1).\n-define(B, 2).  ", "B,", "-define(B, 2).");
+    }
+
+    #[test]
+    fn test_line_range_multiline_string() {
+        check_line_range("-define(A, \"a  \nb\").\n", "define", "-define(A, \"a");
+    }
+
+    #[test]
+    fn test_line_range_triple_quoted_string() {
+        check_line_range(
+            "-define(DOC, \"\"\"\n    Text\n    \"\"\").\n",
+            "define",
+            "-define(DOC, \"\"\"",
+        );
+    }
+
+    #[test]
+    fn test_line_range_after_multiline_string() {
+        check_line_range(
+            "-define(A, \"a\nb\"). -define(B, 2).\n",
+            "B,",
+            "b\"). -define(B, 2).",
+        );
     }
 }

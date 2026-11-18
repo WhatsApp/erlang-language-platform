@@ -251,6 +251,19 @@ mod tests {
     }
 
     #[test]
+    fn header_first_line_with_multiline_string() {
+        check_diagnostics(
+            r#"
+            //- /include/unused.hrl include_path:/include
+            -define(MSG, "a
+            %%<^^^^^^^^^^^^ warning: W0093: No file includes this header.
+            %%            | 💡 <suppression>
+            b").
+            "#,
+        )
+    }
+
+    #[test]
     fn header_suppressed() {
         check_diagnostics(
             r#"
