@@ -7,6 +7,8 @@
 
 -compile([export_all, nowarn_export_all]).
 
+-if(?OTP_RELEASE >= 29).
+
 -spec int_range_guard(term()) -> integer().
 int_range_guard(X) when is_integer(X, 0, 10) -> X;
 int_range_guard(_) -> 0.
@@ -143,3 +145,5 @@ mv_map_gen_elab_neg(M) -> #{K => V, V => V + 1 || K := V <- M}.
 
 -spec mv_map_gen_filter(#{atom() | binary() => integer()}) -> #{atom() | integer() => atom() | integer()}.
 mv_map_gen_filter(M) -> #{K => V, V => K || K := V <- M, is_atom(K)}.
+
+-endif.
