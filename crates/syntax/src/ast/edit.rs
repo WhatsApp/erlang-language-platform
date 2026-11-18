@@ -16,16 +16,19 @@ use std::iter;
 use std::ops;
 
 use itertools::Itertools;
+use rowan::GreenNode;
+use rowan::GreenNodeData;
+use rowan::Language;
+use rowan::NodeOrToken;
 use rowan::TextRange;
 use rowan::TextSize;
 
-use crate::NodeOrToken;
+use crate::ELPLanguage;
 use crate::SyntaxElement;
 use crate::SyntaxKind::*;
 use crate::SyntaxNode;
 use crate::SyntaxToken;
 use crate::ast::AstNode;
-use crate::ted;
 use crate::ted::make_whitespace;
 
 #[derive(Debug, Clone, Copy)]
@@ -115,31 +118,35 @@ impl IndentLevel {
         IndentLevel(0)
     }
 
-    pub(super) fn increase_indent(self, node: &SyntaxNode) {
-        let tokens = node.preorder_with_tokens().filter_map(|event| match event {
-            rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
-            _ => None,
-        });
-        for token in tokens {
-            if token.kind() == WHITESPACE && token.text().contains('\n') {
-                let new_ws = make_whitespace(&format!("{}{}", token.text(), self));
-                ted::replace(token, &new_ws);
-            }
-        }
+    pub(super) fn increase_indent(self, node: &SyntaxNode) -> SyntaxNode {
+        map_newline_whitespace(node, |text| format!("{text}{self}"))
     }
 
-    pub(super) fn decrease_indent(self, node: &SyntaxNode) {
-        let tokens = node.preorder_with_tokens().filter_map(|event| match event {
-            rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
-            _ => None,
-        });
-        for token in tokens {
-            if token.kind() == WHITESPACE && token.text().contains('\n') {
-                let new_ws = make_whitespace(&token.text().replace(&format!("\n{self}"), "\n"));
-                ted::replace(token, &new_ws);
-            }
-        }
+    pub(super) fn decrease_indent(self, node: &SyntaxNode) -> SyntaxNode {
+        map_newline_whitespace(node, |text| text.replace(&format!("\n{self}"), "\n"))
     }
+}
+
+/// Returns a copy of `node` as a new root, with the text of every whitespace
+/// token containing a newline replaced by `f(text)`.
+fn map_newline_whitespace(node: &SyntaxNode, f: impl Fn(&str) -> String) -> SyntaxNode {
+    fn map_green(green: &GreenNodeData, f: &impl Fn(&str) -> String) -> GreenNode {
+        let children = green.children().map(|child| match child {
+            NodeOrToken::Node(node) => NodeOrToken::Node(map_green(node, f)),
+            NodeOrToken::Token(token) => {
+                let text = token.text();
+                if token.kind() == ELPLanguage::kind_to_raw(WHITESPACE) && text.contains('\n') {
+                    let new_ws = make_whitespace(&f(text));
+                    NodeOrToken::Token(new_ws.green().to_owned())
+                } else {
+                    NodeOrToken::Token(token.to_owned())
+                }
+            }
+        });
+        GreenNode::new(green.kind(), children)
+    }
+
+    SyntaxNode::new_root(map_green(node.green(), &f))
 }
 
 /// Given a token, return the `TextSize` of the preceding start of
@@ -197,9 +204,7 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
     #[must_use]
     fn indent(&self, level: IndentLevel) -> Self {
         fn indent_inner(node: &SyntaxNode, level: IndentLevel) -> SyntaxNode {
-            let res = node.clone_subtree().clone_for_update();
-            level.increase_indent(&res);
-            res.clone_subtree()
+            level.increase_indent(node)
         }
 
         Self::cast(indent_inner(self.syntax(), level)).expect("indent should preserve node type")
@@ -207,9 +212,7 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
     #[must_use]
     fn dedent(&self, level: IndentLevel) -> Self {
         fn dedent_inner(node: &SyntaxNode, level: IndentLevel) -> SyntaxNode {
-            let res = node.clone_subtree().clone_for_update();
-            level.decrease_indent(&res);
-            res.clone_subtree()
+            level.decrease_indent(node)
         }
 
         Self::cast(dedent_inner(self.syntax(), level)).expect("dedent should preserve node type")

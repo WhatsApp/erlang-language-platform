@@ -102,7 +102,7 @@ impl<T: AstNode> Parse<T> {
 
     pub fn from_ast(ast: &T) -> Parse<T> {
         Parse {
-            green: ast.syntax().green().into(),
+            green: ast.syntax().green().to_owned(),
             errors: Arc::new(vec![]),
             _ty: PhantomData,
         }

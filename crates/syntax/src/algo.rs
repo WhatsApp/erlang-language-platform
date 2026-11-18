@@ -293,7 +293,7 @@ fn position_of_child(parent: &SyntaxNode, child: SyntaxElement) -> usize {
 
 fn to_green_element(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
     match element {
-        NodeOrToken::Node(it) => it.green().into(),
+        NodeOrToken::Node(it) => it.green().to_owned().into(),
         NodeOrToken::Token(it) => it.green().to_owned().into(),
     }
 }

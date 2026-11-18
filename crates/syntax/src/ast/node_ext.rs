@@ -11,7 +11,6 @@
 //! Various extension methods to ast Nodes, which are hard to code-generate.
 //! Extensions for various expressions live in a sibling `expr_extensions` module.
 
-use std::borrow::Cow;
 use std::sync::LazyLock;
 
 use regex::Regex;
@@ -175,10 +174,7 @@ fn text_of_token(node: &SyntaxNode) -> TokenText<'_> {
             .expect("node should have first token")
     }
 
-    match node.green() {
-        Cow::Borrowed(green_ref) => TokenText::borrowed(first_token(green_ref).text()),
-        Cow::Owned(green) => TokenText::owned(first_token(&green).to_owned()),
-    }
+    TokenText::borrowed(first_token(node.green()).text())
 }
 
 // ---------------------------------------------------------------------

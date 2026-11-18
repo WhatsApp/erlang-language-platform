@@ -14,29 +14,15 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::ops;
 
-use rowan::GreenToken;
-
-pub struct TokenText<'a>(pub(crate) Repr<'a>);
-
-pub(crate) enum Repr<'a> {
-    Borrowed(&'a str),
-    Owned(GreenToken),
-}
+pub struct TokenText<'a>(pub(crate) &'a str);
 
 impl<'a> TokenText<'a> {
     pub(crate) fn borrowed(text: &'a str) -> Self {
-        TokenText(Repr::Borrowed(text))
-    }
-
-    pub(crate) fn owned(green: GreenToken) -> Self {
-        TokenText(Repr::Owned(green))
+        TokenText(text)
     }
 
     pub fn as_str(&self) -> &str {
-        match &self.0 {
-            Repr::Borrowed(it) => it,
-            Repr::Owned(green) => green.text(),
-        }
+        self.0
     }
 }
 
