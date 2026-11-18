@@ -71,6 +71,8 @@ object Filters {
         true
       case ("is_function", 2) =>
         true
+      case ("is_integer", 3) =>
+        true
       case ("is_record", 3) =>
         true
       case _ =>

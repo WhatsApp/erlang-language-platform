@@ -216,6 +216,10 @@ better type-checking with eqWAlizer.
 -spec 'erlang:hd'([A, ...]) -> A.
 'erlang:hd'(_) -> error(eqwalizer_specs).
 
+% OTP specs the tested term as integer(), but the BIF takes any term.
+-spec 'erlang:is_integer'(term(), integer(), integer()) -> boolean().
+'erlang:is_integer'(_, _, _) -> error(eqwalizer_specs).
+
 -spec 'erlang:max'(A, B) -> A | B.
 'erlang:max'(_, _) -> error(eqwalizer_specs).
 

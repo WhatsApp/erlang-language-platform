@@ -528,6 +528,14 @@ final class Occurrence(pipelineContext: PipelineContext) {
   private def thIs(test: Test, aMap: AMap, ty: Type): Prop =
     testObj(test, aMap).map(Pos(_, ty)).getOrElse(Unknown)
 
+  // Throw-domain of an argument that must be an integer, `tp` its props:
+  // empty for an integer literal, which neither throws nor has another type.
+  private def thNotInt(test: Test, tp: TP, aMap: AMap): Prop =
+    test match {
+      case TestInteger(_) | TestUnOp("-" | "+", TestInteger(_)) => False
+      case _                                                    => or(List(tp.th, thNot(test, aMap, IntegerType)))
+    }
+
   // "the result of `test` is not a boolean" as a throw-cause: impossible for
   // structurally-boolean tests, a Neg for trackable ones, unknowable otherwise
   private def thNotBool(test: Test, tp: TP, aMap: AMap): Prop =
@@ -597,6 +605,15 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val tpArg = testProps(arg, aMap)
         val pos = objProp(arg, aMap, AnyFunType)
         TP(and(List(pos, tpArg.ev)), tpArg.ev, tpArg.ev, th = Unknown, resT = Some(booleanType))
+      case TestCall(Id("is_integer", 3), List(arg, lo, hi)) =>
+        // true iff `arg` is an integer in [lo, hi]; throws unless both bounds
+        // are integers. No negative: `arg` may be an integer out of range.
+        val tpArg = testProps(arg, aMap)
+        val tpLo = testProps(lo, aMap)
+        val tpHi = testProps(hi, aMap)
+        val ev = and(List(tpArg.ev, tpLo.ev, objProp(lo, aMap, IntegerType), tpHi.ev, objProp(hi, aMap, IntegerType)))
+        val th = or(List(tpArg.th, thNotInt(lo, tpLo, aMap), thNotInt(hi, tpHi, aMap)))
+        TP(and(List(objProp(arg, aMap, IntegerType), ev)), ev, ev, th, resT = Some(booleanType))
       case TestCall(Id("is_record", 3), List(arg, TestAtom(modName), TestAtom(recName))) =>
         typeTest(arg, nativeRecordTypeFor(modName, recName), aMap)
       case TestCall(Id("is_record", 2), List(arg, TestAtom(recName))) =>

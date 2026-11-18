@@ -36,6 +36,10 @@ EqWAlizer is able to deduce type information from dynamic type checks (`is_atom/
 statements, and if statements. Checks can also be joined with logical connectives such
 as `andalso`, `orelse`, and `not`, and eqWAlizer will deduce information from these.
 
+The range check `is_integer(X, Min, Max)` (OTP 29) narrows `X` to `integer()` when it passes.
+When it fails, `X` keeps its type, because `X` can be an integer outside the range.
+When the check does not raise an exception, `Min` and `Max` also narrow to `integer()`.
+
 The following examples are all equivalent way to use narrowing to type the same
 code in eqWAlizer.
 - Overloaded function with guards:

@@ -1,0 +1,57 @@
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/otp29.erl:25:38
+stdout |    │
+stdout | 25 │ int_range_bounds_else_neg(_, Max) -> Max.
+stdout |    │                                      ^^^ Max.
+stdout | Expression has type:   term()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/otp29.erl:29:26
+stdout |    │
+stdout | 29 │ int_range_else_neg(X) -> X.
+stdout |    │                          ^
+stdout |    │                          │
+stdout |    │                          X.
+stdout | Expression has type:   atom() | integer()
+stdout | Context expected type: atom()
+stdout |    │                          
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: atom()
+stdout |   However the following candidate: integer()
+stdout |   Differs from the expected type:  atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/otp29.erl:32:55
+stdout |    │
+stdout | 32 │ int_range_not_neg(X) when not is_integer(X, 0, 10) -> X;
+stdout |    │                                                       ^
+stdout |    │                                                       │
+stdout |    │                                                       X.
+stdout | Expression has type:   atom() | integer()
+stdout | Context expected type: atom()
+stdout |    │                                                       
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: atom()
+stdout |   However the following candidate: integer()
+stdout |   Differs from the expected type:  atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/otp29.erl:68:22
+stdout |    │
+stdout | 68 │     is_integer(X, 0, infinity).
+stdout |    │                      ^^^^^^^^ 'infinity'.
+stdout | Expression has type:   'infinity'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/otp29.erl:94:37
+stdout |    │
+stdout | 94 │ int_range_bound_else_neg(_, Min) -> Min.
+stdout |    │                                     ^^^ Min.
+stdout | Expression has type:   term()
+stdout | Context expected type: integer()
+stdout |
+stdout | 5 ERRORS
