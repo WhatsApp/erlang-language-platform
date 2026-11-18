@@ -13,7 +13,8 @@
 //! warn on code of the form
 //! lists:foldl(fun(K, Acc) -> Acc#{K => []} end, #{}, List)
 //! and suggest
-//! maps:from_keys(List)
+//! maps:from_keys(List, [])
+//! when the value does not depend on `K` or `Acc`
 //!
 //! warn on code of the form
 //! lists:foldl(fun({K,V}, Acc) -> Acc#{K => V} end, #{}, List)
@@ -33,6 +34,7 @@ use hir::AnyExprId;
 use hir::Body;
 use hir::Expr;
 use hir::Semantic;
+use hir::Var;
 
 use crate::Assist;
 use crate::diagnostics::Linter;
@@ -154,48 +156,49 @@ fn from_list_match_is_valid(sema: &Semantic, m: &Match) -> Option<bool> {
 fn from_keys_match_is_valid(sema: &Semantic, m: &Match) -> Option<bool> {
     let body_arc = m.matched_node_body.get_body(sema)?;
     let body = body_arc.as_ref();
-    let key_matches = m.get_placeholder_matches(KEY_VAR)?;
-    let key = key_matches.first()?;
+    let key = m.get_placeholder_matches(KEY_VAR)?.first()?.is_var(body);
+    let acc = m.get_placeholder_matches(ACC_VAR)?.first()?.is_var(body);
     let value = &m.get_placeholder_match(VALUE_VAR)?;
-    let acc_matches = m.get_placeholder_matches(ACC_VAR)?;
-    let acc = acc_matches.first()?;
-    Some(
-        is_placeholder_a_var_from_body(body, key)
-            && is_placeholder_a_var_from_body(body, acc)
-            && is_pure(body, value),
-    )
+    let (Some(key_var), Some(acc_var)) = (key, acc) else {
+        return Some(false);
+    };
+    Some(is_constant(body, value, &[key_var, acc_var]))
 }
 
-fn is_pure(body: &Body, matched: &PlaceholderMatch) -> bool {
+/// Whether the value is the same for every key, so that the rewrite can
+/// evaluate it once: a literal, a variable that the fold fun does not bind, or
+/// a tuple or list of those. The rewrite removes the fun, so the value must not
+/// refer to `fun_vars`.
+fn is_constant(body: &Body, matched: &PlaceholderMatch, fun_vars: &[Var]) -> bool {
     let Some(code_id) = matched.code_id() else {
         return false;
     };
     match code_id {
         SubId::AnyExprId(AnyExprId::Expr(expr_id)) => {
-            is_pure_expr(body, body.exprs[*expr_id].clone())
+            is_constant_expr(body, body.exprs[*expr_id].clone(), fun_vars)
         }
-        SubId::AnyExprId(AnyExprId::Pat(_)) => true,
-        SubId::Var(_) => true,
+        SubId::Var(var) => !fun_vars.contains(var),
         SubId::Atom(_) => true,
         _ => false,
     }
 }
 
-fn is_pure_expr(body: &Body, expr: Expr) -> bool {
+fn is_constant_expr(body: &Body, expr: Expr, fun_vars: &[Var]) -> bool {
     match expr {
-        Expr::Var(_) => true,
+        Expr::Var(var) => !fun_vars.contains(&var),
         Expr::Literal(_) => true,
         Expr::Tuple { exprs: tuple_elems } => tuple_elems
             .iter()
-            .all(|elem_id| is_pure_expr(body, body.exprs[*elem_id].clone())),
+            .all(|elem_id| is_constant_expr(body, body.exprs[*elem_id].clone(), fun_vars)),
         Expr::List {
             exprs: list_elems,
             tail: list_tail,
         } => {
-            list_tail.is_none_or(|tail_id| is_pure_expr(body, body.exprs[tail_id].clone()))
+            list_tail
+                .is_none_or(|tail_id| is_constant_expr(body, body.exprs[tail_id].clone(), fun_vars))
                 && list_elems
                     .iter()
-                    .all(|elem_id| is_pure_expr(body, body.exprs[*elem_id].clone()))
+                    .all(|elem_id| is_constant_expr(body, body.exprs[*elem_id].clone(), fun_vars))
         }
         _ => false,
     }
@@ -323,6 +326,41 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> lists:foldl(fun(K, Acc) -> Acc#{K + 1 => []} end, #{}, List).
+            "#,
+        )
+    }
+
+    #[test]
+    fn ignores_unnecessary_fold_maps_from_keys_when_value_mentions_fun_variable() {
+        check_diagnostics(
+            r#"
+         //- /src/unneccessary_fold_to_build_map.erl
+         -module(unneccessary_fold_to_build_map).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(List) -> lists:foldl(fun(K, Acc) -> Acc#{K => K} end, #{}, List).
+
+         % elp:ignore W0017 (undefined_function)
+         gn(List) -> lists:foldl(fun(K, Acc) -> Acc#{K => {value, [K]}} end, #{}, List).
+
+         % elp:ignore W0017 (undefined_function)
+         hn(List) -> lists:foldl(fun(K, Acc) -> Acc#{K => Acc} end, #{}, List).
+
+         % elp:ignore W0017 (undefined_function)
+         jn(List) -> lists:foldl(fun(K, Acc) -> Acc#{K => [a | K]} end, #{}, List).
+            "#,
+        )
+    }
+
+    #[test]
+    fn ignores_unnecessary_fold_maps_from_keys_when_fun_variable_shadows_outer_variable() {
+        check_diagnostics(
+            r#"
+         //- /src/unneccessary_fold_to_build_map.erl
+         -module(unneccessary_fold_to_build_map).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(List, K) -> lists:foldl(fun(K, Acc) -> Acc#{K => K} end, #{}, List).
             "#,
         )
     }
