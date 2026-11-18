@@ -125,6 +125,9 @@ jobs:
   reported but do not fail the step. Use the
   [`.elp_lint.toml`](configure-project/elp-lint-toml.md) configuration file to
   enable or disable linters and to change their severity.
+- `elp lint` exits with status 2 when it cannot read or parse the
+  `.elp_lint.toml` file, for example when the file names a linter this version
+  of ELP does not know.
 - `elp eqwalize-all` exits with a zero status even when it reports type errors,
   unless you pass `--bail-on-error`.
 

@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.10.0">
 <title data-rh="true">GitHub Actions | ELP</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://whatsapp.github.io/erlang-language-platform/docs/get-started/github-actions/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="GitHub Actions | ELP"><meta data-rh="true" name="description" content="The erlef/setup-elp action installs ELP"><meta data-rh="true" property="og:description" content="The erlef/setup-elp action installs ELP"><link data-rh="true" rel="icon" href="/erlang-language-platform/img/elp_icon_color.svg"><link data-rh="true" rel="canonical" href="https://whatsapp.github.io/erlang-language-platform/docs/get-started/github-actions/"><link data-rh="true" rel="alternate" href="https://whatsapp.github.io/erlang-language-platform/docs/get-started/github-actions/" hreflang="en"><link data-rh="true" rel="alternate" href="https://whatsapp.github.io/erlang-language-platform/docs/get-started/github-actions/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Get Started","item":"https://whatsapp.github.io/erlang-language-platform/docs/get-started/"},{"@type":"ListItem","position":2,"name":"GitHub Actions","item":"https://whatsapp.github.io/erlang-language-platform/docs/get-started/github-actions"}]}</script><link rel="stylesheet" href="/erlang-language-platform/assets/css/styles.fdd88167.css">
-<script src="/erlang-language-platform/assets/js/runtime~main.447e9093.js" defer="defer"></script>
-<script src="/erlang-language-platform/assets/js/main.5d46ad8c.js" defer="defer"></script>
+<script src="/erlang-language-platform/assets/js/runtime~main.1b8dea59.js" defer="defer"></script>
+<script src="/erlang-language-platform/assets/js/main.04fb13bf.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -72,6 +72,9 @@ diagnostic with <code>error</code> severity. Diagnostics with a lower severity a
 reported but do not fail the step. Use the
 <a class="" href="/erlang-language-platform/docs/get-started/configure-project/elp-lint-toml/"><code>.elp_lint.toml</code></a> configuration file to
 enable or disable linters and to change their severity.</li>
+<li class=""><code>elp lint</code> exits with status 2 when it cannot read or parse the
+<code>.elp_lint.toml</code> file, for example when the file names a linter this version
+of ELP does not know.</li>
 <li class=""><code>elp eqwalize-all</code> exits with a zero status even when it reports type errors,
 unless you pass <code>--bail-on-error</code>.</li>
 </ul>
