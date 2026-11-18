@@ -10,13 +10,14 @@
 
 use std::fmt;
 use std::fs;
+use std::io;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::LazyLock;
 
 use anyhow::Result;
 use anyhow::anyhow;
-use anyhow::bail;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_ide::diagnostics::LintConfig;
@@ -173,35 +174,38 @@ pub fn otp_file_to_ignore(db: &Analysis, file_id: FileId) -> bool {
 
 pub const LINT_CONFIG_FILE: &str = ".elp_lint.toml";
 
-pub fn read_lint_config_file(project: &Path, config_file: Option<&Path>) -> Result<LintConfig> {
-    if let Some(file_path) = config_file {
-        match fs::read_to_string(file_path) {
-            Ok(content) => match toml::from_str::<LintConfig>(&content) {
-                Ok(config) => return Ok(config),
-                Err(err) => bail!("errors parsing {:?}: {err}", file_path),
-            },
-            Err(err) => {
-                bail!("unable to read {:?}: {err}", file_path)
-            }
-        }
-    } else {
-        let mut potential_path = Some(project);
-        while let Some(path) = potential_path {
-            let file_path = path.join(LINT_CONFIG_FILE);
+/// A `.elp_lint.toml` file that exists but cannot be read or parsed.
+#[derive(Debug, thiserror::Error)]
+pub enum LintConfigError {
+    #[error("unable to read {path:?}: {error}")]
+    Read { path: PathBuf, error: io::Error },
+    #[error("errors parsing {path:?}: {error}")]
+    Parse {
+        path: PathBuf,
+        error: toml::de::Error,
+    },
+}
 
-            if !file_path.is_file() {
-                potential_path = path.parent();
-                continue;
-            } else if let Ok(content) = fs::read_to_string(file_path.clone()) {
-                match toml::from_str::<LintConfig>(&content) {
-                    Ok(config) => return Ok(config),
-                    Err(err) => bail!("failed to read {:?}:{err}", file_path),
-                }
-            }
-            break;
-        }
-    }
-    Ok(LintConfig::default())
+pub fn read_lint_config_file(
+    project: &Path,
+    config_file: Option<&Path>,
+) -> Result<LintConfig, LintConfigError> {
+    let path = match config_file {
+        Some(path) => path.to_path_buf(),
+        None => match project
+            .ancestors()
+            .map(|dir| dir.join(LINT_CONFIG_FILE))
+            .find(|path| path.is_file())
+        {
+            Some(path) => path,
+            None => return Ok(LintConfig::default()),
+        },
+    };
+    let content = fs::read_to_string(&path).map_err(|error| LintConfigError::Read {
+        path: path.clone(),
+        error,
+    })?;
+    toml::from_str(&content).map_err(|error| LintConfigError::Parse { path, error })
 }
 
 /// Apply dynamic call patterns from a lint config to the database.

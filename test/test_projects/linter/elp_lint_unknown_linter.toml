@@ -1,0 +1,2 @@
+[linters.not_a_linter]
+severity = "error"

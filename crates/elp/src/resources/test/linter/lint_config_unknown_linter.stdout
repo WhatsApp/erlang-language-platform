@@ -1,0 +1,6 @@
+stderr | errors parsing "{project_path}/elp_lint_unknown_linter.toml": TOML parse error at line 1, column 10
+stderr |   |
+stderr | 1 | [linters.not_a_linter]
+stderr |   |          ^^^^^^^^^^^^
+stderr | Unknown DiagnosticCode: 'not_a_linter'
+stderr |

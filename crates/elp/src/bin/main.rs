@@ -69,6 +69,9 @@ static GLOBAL: Jemalloc = Jemalloc;
 
 static INIT: Once = Once::new();
 
+/// Exit code when the `.elp_lint.toml` file cannot be read or parsed.
+const LINT_CONFIG_ERROR_EXIT_CODE: i32 = 2;
+
 #[cfg(not(unix))]
 const DAEMON_UNSUPPORTED: &str = "ELP daemon mode is not supported on this platform";
 
@@ -215,6 +218,8 @@ fn handle_res(
                 .is_some()
             {
                 1
+            } else if err.chain().any(|cause| cause.is::<elp::LintConfigError>()) {
+                LINT_CONFIG_ERROR_EXIT_CODE
             } else {
                 101
             };
@@ -647,6 +652,22 @@ mod tests {
         assert_eq_expected!(expected_outcome, actual.completed_outcome());
         let expected_stderr = b"Errors found\n".to_vec();
         assert_eq_expected!(expected_stderr, stderr);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn lint_config_error_behind_daemon_unavailable_exits_2() {
+        let mut stderr = Vec::new();
+        let config_error =
+            elp::read_lint_config_file(Path::new("."), Some(Path::new("does_not_exist.toml")))
+                .expect_err("a missing --config-file should not be readable");
+        let error = daemon::DaemonUnavailable::new(config_error.into()).into();
+        let actual = handle_res(Err(error), &mut stderr);
+        let expected = CliRunResult::Failed {
+            process_exit_code: LINT_CONFIG_ERROR_EXIT_CODE,
+        };
+
+        assert_eq_expected!(expected, actual);
     }
 
     #[test]
@@ -1926,7 +1947,7 @@ mod tests {
         let expected_dir = Path::new("lint/lint_recursive");
         LintFixSettings::new(tmp_path, expected_dir, &[])
             .buck(buck)
-            .expect_code(101)
+            .expect_code(LINT_CONFIG_ERROR_EXIT_CODE)
             .check_lint_fix(
                 args_vec![
                     "lint",
@@ -2104,7 +2125,7 @@ mod tests {
         let tmp_path = tmp_dir.path();
         LintFixSettings::new(tmp_path, tmp_path, &[])
             .buck(buck)
-            .expect_code(101)
+            .expect_code(LINT_CONFIG_ERROR_EXIT_CODE)
             .check_lint_fix(
                 args_vec!["lint", "--no-stream", "--experimental"],
                 "linter_bad_config",
@@ -2862,21 +2883,33 @@ mod tests {
     #[test]
     fn lint_ssr_from_bad_config() {
         let config_file = project_path("linter/elp_lint_ssr_adhoc_parse_fail.toml");
-        simple_snapshot_expect_error(
-            args_vec![
-                "lint",
-                "--no-stream",
-                "--config-file",
-                &config_file,
-                "--experimental",
-                "--diagnostic-filter",
-                "ad-hoc:ssr-match",
-            ],
-            "linter",
-            resource_file("linter/ssr_ad_hoc_parse_fail.stdout"),
-            false,
-            None,
-        );
+        SnapshotSettings::default()
+            .expect_code(LINT_CONFIG_ERROR_EXIT_CODE)
+            .run(
+                args_vec![
+                    "lint",
+                    "--no-stream",
+                    "--config-file",
+                    &config_file,
+                    "--experimental",
+                    "--diagnostic-filter",
+                    "ad-hoc:ssr-match",
+                ],
+                "linter",
+                resource_file("linter/ssr_ad_hoc_parse_fail.stdout"),
+            );
+    }
+
+    #[test]
+    fn lint_config_unknown_linter() {
+        let config_file = project_path("linter/elp_lint_unknown_linter.toml");
+        SnapshotSettings::default()
+            .expect_code(LINT_CONFIG_ERROR_EXIT_CODE)
+            .run(
+                args_vec!["lint", "--no-stream", "--config-file", &config_file],
+                "linter",
+                resource_file("linter/lint_config_unknown_linter.stdout"),
+            );
     }
 
     #[test]

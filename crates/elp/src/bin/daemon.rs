@@ -1393,6 +1393,9 @@ where
     let mut operation_timing = DaemonOperationTiming::default();
     let (elp_config, manifest) = load::discover_manifest(connection.project, &conf)?;
     let root = load::project_root_dir(&manifest);
+    // A daemon cannot start with a lint config it cannot read, so report the
+    // config error rather than the failed start.
+    read_lint_config_file(&root, None).map_err(|error| DaemonUnavailable::new(error.into()))?;
     let dir = daemon_dir(&root, connection.profile);
     let endpoint = DaemonEndpoint {
         sock: dir.join("daemon.sock"),
