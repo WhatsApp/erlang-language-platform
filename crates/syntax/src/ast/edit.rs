@@ -15,6 +15,7 @@ use std::fmt;
 use std::iter;
 use std::ops;
 
+use rowan::TextRange;
 use rowan::TextSize;
 
 use crate::NodeOrToken;
@@ -155,6 +156,27 @@ pub fn start_of_line(token: &SyntaxToken) -> TextSize {
     token.text_range().start()
 }
 
+/// Given a token, return the range of its line, from the start of the line
+/// to its last character that is not whitespace.
+pub fn line_range(token: &SyntaxToken) -> TextRange {
+    let start = prev_tokens(token.clone())
+        .skip(1)
+        .filter(|t| t.kind() == WHITESPACE)
+        .find_map(|ws| {
+            let pos = ws.text().rfind('\n')?;
+            Some(ws.text_range().start() + TextSize::from(pos as u32 + 1))
+        })
+        .unwrap_or_default();
+    let end = next_tokens(token.clone())
+        .take_while(|t| !(t.kind() == WHITESPACE && t.text().contains('\n')))
+        .filter(|t| t.kind() != WHITESPACE)
+        .last()
+        .map_or(token.text_range().end(), |t| {
+            t.text_range().start() + TextSize::of(t.text().trim_end())
+        });
+    TextRange::new(start, end)
+}
+
 pub fn next_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
     iter::successors(Some(token), |token| token.next_token())
 }
@@ -202,7 +224,9 @@ mod tests {
 
     use super::AstNodeEdit;
     use super::IndentLevel;
+    use super::line_range;
     use crate::SourceFile;
+    use crate::TextSize;
     use crate::ast::AstNode;
 
     #[test]
@@ -237,5 +261,39 @@ mod tests {
             "#,
             indented.syntax().to_string().as_str()
         );
+    }
+
+    #[track_caller]
+    fn check_line_range(text: &str, token_text: &str, expected: &str) {
+        let source = SourceFile::parse_text(text);
+        let offset = text
+            .find(token_text)
+            .expect("token text should be in the source");
+        let token = source
+            .tree()
+            .syntax()
+            .token_at_offset(TextSize::from(offset as u32))
+            .right_biased()
+            .expect("there should be a token at the offset");
+        assert_eq!(expected, &text[line_range(&token)]);
+    }
+
+    #[test]
+    fn test_line_range_first_line() {
+        check_line_range("-define(A, 1).\n", "define", "-define(A, 1).");
+    }
+
+    #[test]
+    fn test_line_range_below_comments() {
+        check_line_range(
+            "%% Copyright\n\n  -define(A, 1). % Trailing  \r\n-define(B, 2).\n",
+            "A,",
+            "  -define(A, 1). % Trailing",
+        );
+    }
+
+    #[test]
+    fn test_line_range_last_line_without_newline() {
+        check_line_range("-define(A, 1).\n-define(B, 2).  ", "B,", "-define(B, 2).");
     }
 }

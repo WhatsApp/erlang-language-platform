@@ -16,8 +16,11 @@ use elp_ide_db::SearchScope;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FileRange;
+use elp_syntax::AstNode;
+use elp_syntax::Direction;
 use elp_syntax::TextRange;
-use elp_syntax::TextSize;
+use elp_syntax::algo::skip_trivia_token;
+use elp_syntax::ast::edit::line_range;
 use hir::File;
 use hir::InFile;
 use hir::Semantic;
@@ -101,23 +104,12 @@ fn is_included(sema: &Semantic, file_id: FileId) -> bool {
 /// The first line of the header that is neither blank nor a comment, where the
 /// diagnostic is reported, so that an `elp:ignore` comment above it applies.
 fn first_line(sema: &Semantic, file_id: FileId) -> FileRange {
-    let text = sema.db.file(file_id).text(sema.db);
-    let mut offset = 0;
-    let range = text
-        .split_inclusive('\n')
-        .find_map(|line| {
-            let start = offset;
-            offset += line.len();
-            let content = line.trim_end();
-            let code = content.trim_start();
-            (!code.is_empty() && !code.starts_with('%')).then(|| {
-                TextRange::at(
-                    TextSize::new(start as u32),
-                    TextSize::new(content.len() as u32),
-                )
-            })
-        })
-        .unwrap_or_default();
+    let source_file = sema.parse(file_id).value;
+    let range = source_file
+        .syntax()
+        .first_token()
+        .and_then(|token| skip_trivia_token(token, Direction::Next))
+        .map_or_else(TextRange::default, |token| line_range(&token));
     FileRange { file_id, range }
 }
 
