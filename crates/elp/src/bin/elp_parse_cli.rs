@@ -121,8 +121,11 @@ impl ParseAllElp {
         self.format == Format::Human
     }
 
-    pub fn is_format_json(&self) -> bool {
-        matches!(self.format, Format::Json | Format::ImplicitJson)
+    pub fn is_format_machine_readable(&self) -> bool {
+        matches!(
+            self.format,
+            Format::Json | Format::ImplicitJson | Format::Github
+        )
     }
 }
 
@@ -285,7 +288,7 @@ pub fn parse_all(
                 let line_index = db.file_line_index(diags.file_id);
                 combined.sort_by_key(|a| a.range.start());
                 for diag in combined {
-                    if args.is_format_json() {
+                    if args.is_format_machine_readable() {
                         if args.format.diagnostic_counts_as_error(diag.severity) {
                             err_in_diag = true;
                         }
@@ -296,12 +299,13 @@ pub fn parse_all(
                             .unwrap_or_else(|_err| panic!("could not find the project root"))
                             .unwrap_or_else(|| panic!("could not find the project root"));
                         let relative_path = reporting::get_relative_path(root_path, vfs_path);
-                        print_diagnostic_json(
+                        print_diagnostic_line(
                             &diag,
                             &analysis,
                             diags.file_id,
                             relative_path,
                             args.use_cli_severity,
+                            args.format,
                             cli,
                         )?;
                     } else {
@@ -332,24 +336,27 @@ pub fn parse_all(
     }
 }
 
-fn print_diagnostic_json(
+fn print_diagnostic_line(
     diagnostic: &diagnostics::Diagnostic,
     analysis: &Analysis,
     file_id: FileId,
     path: &Path,
     use_cli_severity: bool,
+    format: Format,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
     let line_index = analysis.line_index(file_id)?;
     let converted_diagnostic =
         convert::ide_to_arc_diagnostic(&line_index, path, diagnostic, use_cli_severity);
-    writeln!(
-        cli,
-        "{}",
-        serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| panic!(
-            "print_diagnostics_json failed for '{converted_diagnostic:?}': {err}"
-        ))
-    )?;
+    let line = match format {
+        Format::Github => converted_diagnostic.to_github_workflow_command(),
+        Format::Human | Format::Json | Format::ImplicitJson => {
+            serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| {
+                panic!("print_diagnostics_json failed for '{converted_diagnostic:?}': {err}")
+            })
+        }
+    };
+    writeln!(cli, "{line}")?;
     Ok(())
 }
 

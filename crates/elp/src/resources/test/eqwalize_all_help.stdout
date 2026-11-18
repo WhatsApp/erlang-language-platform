@@ -6,7 +6,7 @@ stdout | Options:
 stdout |       --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
 stdout |       --as <PROFILE>       Rebar3 profile to pickup [default: test]
 stdout |       --format <FORMAT>    Customize the output format (defaults to human-readable) [possible
-stdout |                            values: json]
+stdout |                            values: json, github]
 stdout |       --rebar              Run with rebar
 stdout |       --connect            Use the persistent daemon for fast turnaround (auto-starts if needed)
 stdout |       --no-connect         Disable the persistent daemon and run standalone (no cross-run caching)

@@ -19,7 +19,7 @@ stdout |       --serial               Parse the files serially, not in parallel
 stdout |       --use-cli-severity     If specified, use the provided CLI severity mapping instead of the
 stdout |                              default one
 stdout |       --format <FORMAT>      Customize the output format (defaults to human-readable) [possible
-stdout |                              values: json]
+stdout |                              values: json, github]
 stdout |       --report-system-stats  Report system memory usage and other statistics
 stdout |       --severity <SEVERITY>  Minimum severity level to report [possible values: error, warning,
 stdout |                              weak_warning, information]

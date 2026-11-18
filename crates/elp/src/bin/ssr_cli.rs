@@ -159,8 +159,11 @@ impl Ssr {
         self.format == Format::Human
     }
 
-    pub fn is_format_json(&self) -> bool {
-        matches!(self.format, Format::Json | Format::ImplicitJson)
+    pub fn is_format_machine_readable(&self) -> bool {
+        matches!(
+            self.format,
+            Format::Json | Format::ImplicitJson | Format::Github
+        )
     }
 
     pub fn parse_strategy(&self) -> Result<Strategy> {
@@ -436,7 +439,7 @@ fn print_single_result(
 ) -> Result<()> {
     let (name, file_id, diags) = result;
 
-    if args.is_format_json() {
+    if args.is_format_machine_readable() {
         for diag in diags {
             let vfs_path = &loaded.file_path(*file_id);
             let analysis = loaded.analysis();
@@ -445,7 +448,15 @@ fn print_single_result(
                 .unwrap_or_else(|_err| panic!("could not find the project root"))
                 .unwrap_or_else(|| panic!("could not find the project root"));
             let relative_path = reporting::get_relative_path(root_path, vfs_path);
-            print_diagnostic_json(diag, &analysis, *file_id, relative_path, false, cli)?;
+            print_diagnostic_line(
+                diag,
+                &analysis,
+                *file_id,
+                relative_path,
+                false,
+                args.format,
+                cli,
+            )?;
         }
     } else {
         writeln!(cli, "  {}: {}", name, diags.len())?;
@@ -576,24 +587,27 @@ fn print_diagnostic(
     Ok(())
 }
 
-fn print_diagnostic_json(
+fn print_diagnostic_line(
     diagnostic: &diagnostics::Diagnostic,
     analysis: &Analysis,
     file_id: FileId,
     path: &Path,
     use_cli_severity: bool,
+    format: Format,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
     let line_index = analysis.line_index(file_id)?;
     let converted_diagnostic =
         convert::ide_to_arc_diagnostic(&line_index, path, diagnostic, use_cli_severity);
-    writeln!(
-        cli,
-        "{}",
-        serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| panic!(
-            "print_diagnostics_json failed for '{converted_diagnostic:?}': {err}"
-        ))
-    )?;
+    let line = match format {
+        Format::Github => converted_diagnostic.to_github_workflow_command(),
+        Format::Human | Format::Json | Format::ImplicitJson => {
+            serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| {
+                panic!("print_diagnostics_json failed for '{converted_diagnostic:?}': {err}")
+            })
+        }
+    };
+    writeln!(cli, "{line}")?;
     Ok(())
 }
 

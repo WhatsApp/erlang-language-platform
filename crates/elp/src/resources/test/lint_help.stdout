@@ -25,7 +25,7 @@ stdout |       --include-tests                  Deprecated (no-op): Diagnostics 
 stdout |                                        included
 stdout |       --no-diags                       Do not print the full diagnostics for a file, just the count
 stdout |       --format <FORMAT>                Customize the output format (defaults to human-readable)
-stdout |                                        [possible values: json]
+stdout |                                        [possible values: json, github]
 stdout |       --include-erlc-diagnostics       Include diagnostics produced by erlc
 stdout |       --include-ct-diagnostics         Deprecated (no-op): Common Test diagnostics are now always
 stdout |                                        included

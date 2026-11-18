@@ -306,6 +306,7 @@ pub enum Format {
     #[value(hide = true)]
     Human,
     Json,
+    Github,
     /// JSON selected automatically for non-terminal stdout. Warning-only
     /// diagnostics retain a successful exit status.
     #[value(skip)]
@@ -316,7 +317,7 @@ impl Format {
     /// Whether this format preserves the command's legacy failure semantics
     /// for a diagnostic with the given severity.
     pub(crate) fn diagnostic_counts_as_error(self, severity: DiagnosticSeverity) -> bool {
-        matches!(self, Self::Json) || matches!(severity, DiagnosticSeverity::Error)
+        matches!(self, Self::Json | Self::Github) || matches!(severity, DiagnosticSeverity::Error)
     }
 }
 
@@ -506,6 +507,19 @@ mod tests {
         assert!(
             !Format::ImplicitJson.diagnostic_counts_as_error(DiagnosticSeverity::Warning),
             "implicit JSON should preserve human-format exit semantics"
+        );
+        assert!(
+            Format::Github.diagnostic_counts_as_error(DiagnosticSeverity::Warning),
+            "explicit GitHub output should fail on any diagnostic"
+        );
+    }
+
+    #[test]
+    fn apply_default_format_preserves_explicit_github() {
+        let expected = Format::Github;
+        assert_eq_expected!(
+            expected,
+            parse_format(&["elp", "eqwalize", "--format", "github", "foo"], false)
         );
     }
 

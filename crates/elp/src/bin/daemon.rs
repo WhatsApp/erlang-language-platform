@@ -2656,6 +2656,40 @@ mod tests {
     }
 
     #[test]
+    fn daemon_github_output_writes_a_workflow_command() {
+        let diagnostic = elp::arc_types::Diagnostic::new(
+            Path::new("src/foo.erl"),
+            1,
+            Some(1),
+            elp::arc_types::Severity::Error,
+            "incompatible_types".to_string(),
+            "expected integer".to_string(),
+            None,
+            None,
+        );
+        let expected = format!("{}\n", diagnostic.to_github_workflow_command());
+        let mut cli = elp::cli::Fake::default();
+        {
+            let mut report = Report::for_command(&mut cli, Format::Github);
+            report
+                .write_forwarded_diagnostic(
+                    diagnostic,
+                    Some(RenderedDiagnostic::new(
+                        "human output\n".to_string(),
+                        "ansi output\n".to_string(),
+                    )),
+                )
+                .expect("GitHub output should be written");
+            report
+                .write_error_summary()
+                .expect("error summary should be skipped");
+        }
+        let (stdout, _) = cli.to_strings();
+
+        assert_eq_expected!(expected, stdout);
+    }
+
+    #[test]
     fn connection_unavailability_is_sent_and_stops_daemon() {
         use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 
