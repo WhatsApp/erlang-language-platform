@@ -110,7 +110,7 @@ timeout-readwrite = "0.4.0"
 toml = { version = "1.2.1", features = ["preserve_order"] }
 tracing = { version = "0.1.41", features = ["attributes", "valuable"] }
 tree-sitter = "0.25.0"
-tree-sitter-erlang = "0.21.0"
+tree-sitter-erlang = "0.22.0"
 trie-rs = "0.4.2"
 triple_accel = "0.4.0"
 url = { version = "2.5.8", features = ["serde"] }
