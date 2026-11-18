@@ -139,6 +139,7 @@ mod issue_in_included_file;
 mod lists_map_to_comprehension;
 mod lists_reverse_append;
 mod macro_precedence_suprise;
+mod map_comprehension_to_from_keys;
 mod map_find_to_syntax;
 mod map_insertion_to_syntax;
 mod meck_missing_no_link_in_init_per_suite;
@@ -2294,6 +2295,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &binary_string_to_sigil::LINTER,
     &unnecessary_map_to_list_in_comprehension::LINTER,
     &unnecessary_map_from_list_around_comprehension::LINTER,
+    &map_comprehension_to_from_keys::LINTER,
     &could_be_a_string_literal::LINTER,
     &lists_reverse_append::LINTER,
     &ets_lookup_to_lookup_element::LINTER,
