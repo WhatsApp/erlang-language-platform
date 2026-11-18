@@ -553,47 +553,26 @@ final class Elab(pipelineContext: PipelineContext) {
         val (strictType, _) = elabExpr(cExpr, env)
         val resultType = UnionType(Set(strictType, DynamicType))
         (resultType, env)
-      case LComprehension(template, qualifiers) =>
+      case LComprehension(templates, qualifiers) =>
         val qEnv = elabQualifiers(qualifiers, env)
-        val (tType, _) = elabExpr(template, qEnv)
-        (ListType(tType), env)
+        val tTypes = templates.map(template => elabExpr(template, qEnv)._1)
+        (ListType(subtype.join(tTypes)), env)
       case BComprehension(template, qualifiers) =>
         val qEnv = elabQualifiers(qualifiers, env)
         elabExpr(template, qEnv, BinaryType)
         (BinaryType, env)
-      case MComprehension(kTemplate, vTemplate, List(MGenerate(gk: PatVar, gv: PatVar, gExpr))) =>
-        val (gT, gEnv) = elabExpr(gExpr, env, mapOrIterTy)
-        val mapT = narrow.asMapOrIterTypes(gT)
-        val kvTys = mapT.flatMap(narrow.getKVType)
-        var mapsAcc: Set[MapType] = Set()
-        for (TupleType(List(kTy, vTy)) <- kvTys) {
-          val (_, kPatEnv) = elabPat.elabPat(gk, kTy, gEnv)
-          val (_, vPatEnv) = elabPat.elabPat(gv, vTy, kPatEnv)
-          val (kType, _) = elabExpr(kTemplate, vPatEnv)
-          val (vType, _) = elabExpr(vTemplate, vPatEnv)
-          val mapTy = MapType(Map(), kType, vType)
-          mapsAcc = mapsAcc + mapTy
-        }
-        (narrow.joinAndMergeMaps(mapsAcc), env)
-      case MComprehension(kTemplate, vTemplate, List(MGenerateStrict(gk: PatVar, gv: PatVar, gExpr))) =>
-        val (gT, gEnv) = elabExpr(gExpr, env, mapOrIterTy)
-        val mapT = narrow.asMapOrIterTypes(gT)
-        val kvTys = mapT.flatMap(narrow.getKVType)
-        var mapsAcc: Set[MapType] = Set()
-        for (TupleType(List(kTy, vTy)) <- kvTys) {
-          val (_, kPatEnv) = elabPat.elabPat(gk, kTy, gEnv)
-          val (_, vPatEnv) = elabPat.elabPat(gv, vTy, kPatEnv)
-          val (kType, _) = elabExpr(kTemplate, vPatEnv)
-          val (vType, _) = elabExpr(vTemplate, vPatEnv)
-          val mapTy = MapType(Map(), kType, vType)
-          mapsAcc = mapsAcc + mapTy
-        }
-        (narrow.joinAndMergeMaps(mapsAcc), env)
-      case MComprehension(kTemplate, vTemplate, qualifiers) =>
+      case MComprehension(templates, List(MGenerate(gk: PatVar, gv: PatVar, gExpr))) =>
+        (elabMapGenComprehension(templates, gk, gv, gExpr, env), env)
+      case MComprehension(templates, List(MGenerateStrict(gk: PatVar, gv: PatVar, gExpr))) =>
+        (elabMapGenComprehension(templates, gk, gv, gExpr, env), env)
+      case MComprehension(templates, qualifiers) =>
         val qEnv = elabQualifiers(qualifiers, env)
-        val (kType, _) = elabExpr(kTemplate, qEnv)
-        val (vType, _) = elabExpr(vTemplate, qEnv)
-        (MapType(Map(), kType, vType), env)
+        val (kTypes, vTypes) = templates.map { case (kTemplate, vTemplate) =>
+          val (kType, _) = elabExpr(kTemplate, qEnv)
+          val (vType, _) = elabExpr(vTemplate, qEnv)
+          (kType, vType)
+        }.unzip
+        (MapType(Map(), subtype.join(kTypes), subtype.join(vTypes)), env)
       case rCreate: RecordCreate =>
         elabRecordCreate(rCreate, env)
       case rUpdate: RecordUpdate =>
@@ -984,6 +963,30 @@ final class Elab(pipelineContext: PipelineContext) {
         }
     }
   }
+
+  private def elabMapGenComprehension(
+      templates: List[(Expr, Expr)],
+      gk: PatVar,
+      gv: PatVar,
+      gExpr: Expr,
+      env: Env,
+  ): Type = {
+    val (gT, gEnv) = elabExpr(gExpr, env, mapOrIterTy)
+    val mapT = narrow.asMapOrIterTypes(gT)
+    val kvTys = mapT.flatMap(narrow.getKVType)
+    var mapsAcc: Set[MapType] = Set()
+    for (TupleType(List(kTy, vTy)) <- kvTys) {
+      val (_, kPatEnv) = elabPat.elabPat(gk, kTy, gEnv)
+      val (_, vPatEnv) = elabPat.elabPat(gv, vTy, kPatEnv)
+      for ((kTemplate, vTemplate) <- templates) {
+        val (kType, _) = elabExpr(kTemplate, vPatEnv)
+        val (vType, _) = elabExpr(vTemplate, vPatEnv)
+        mapsAcc = mapsAcc + MapType(Map(), kType, vType)
+      }
+    }
+    narrow.joinAndMergeMaps(mapsAcc)
+  }
+
   private def elabQualifiers(qualifiers: List[Qualifier], env: Env): Env = {
     var envAcc = env
     qualifiers.foreach {

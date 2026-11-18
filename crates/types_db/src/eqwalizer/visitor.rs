@@ -192,7 +192,7 @@ pub fn walk_expr<'a, T, V: Visitor<'a, T>>(visitor: &mut V, e: &'a Expr) -> Resu
             visitor.visit_expr(&o.arg_2)
         }
         Expr::LComprehension(c) => {
-            visitor.visit_expr(&c.template)?;
+            c.templates.iter().try_for_each(|t| visitor.visit_expr(t))?;
             c.qualifiers
                 .iter()
                 .try_for_each(|q| visitor.visit_qualifier(q))
@@ -204,8 +204,9 @@ pub fn walk_expr<'a, T, V: Visitor<'a, T>>(visitor: &mut V, e: &'a Expr) -> Resu
                 .try_for_each(|q| visitor.visit_qualifier(q))
         }
         Expr::MComprehension(c) => {
-            visitor.visit_expr(&c.k_template)?;
-            visitor.visit_expr(&c.v_template)?;
+            c.templates.iter().try_for_each(|(k, v)| {
+                visitor.visit_expr(k).and_then(|()| visitor.visit_expr(v))
+            })?;
             c.qualifiers
                 .iter()
                 .try_for_each(|q| visitor.visit_qualifier(q))

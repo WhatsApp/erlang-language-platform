@@ -388,7 +388,11 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
         })),
         Expr::LComprehension(c) => Ok(Expr::LComprehension(LComprehension {
             pos: c.pos,
-            template: Box::new(transformer.transform_expr(*c.template)?),
+            templates: c
+                .templates
+                .into_iter()
+                .map(|t| transformer.transform_expr(t))
+                .collect::<Result<Vec<_>, _>>()?,
             qualifiers: c
                 .qualifiers
                 .into_iter()
@@ -406,8 +410,17 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
         })),
         Expr::MComprehension(c) => Ok(Expr::MComprehension(MComprehension {
             pos: c.pos,
-            k_template: Box::new(transformer.transform_expr(*c.k_template)?),
-            v_template: Box::new(transformer.transform_expr(*c.v_template)?),
+            templates: c
+                .templates
+                .into_iter()
+                .map(|(k, v)| {
+                    transformer.transform_expr(k).and_then(|k_trans| {
+                        transformer
+                            .transform_expr(v)
+                            .map(|v_trans| (k_trans, v_trans))
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?,
             qualifiers: c
                 .qualifiers
                 .into_iter()

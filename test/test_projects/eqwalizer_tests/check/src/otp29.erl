@@ -101,3 +101,45 @@ int_range_match(X) ->
 -spec int_range_qualified(term()) -> integer().
 int_range_qualified(X) when erlang:is_integer(X, 0, 10) -> X;
 int_range_qualified(_) -> 0.
+
+-spec mv_list([{atom(), integer()}]) -> [atom() | integer()].
+mv_list(L) -> [K, V || {K, V} <- L].
+
+-spec mv_list_neg([{atom(), integer()}]) -> [atom()].
+mv_list_neg(L) -> [K, V || {K, V} <- L].
+
+-spec mv_list_filter([term()]) -> [integer()].
+mv_list_filter(L) -> [X, -X || X <- L, is_integer(X)].
+
+-spec mv_list_elab_neg([{atom(), atom()}]) -> [atom() | number()].
+mv_list_elab_neg(L) -> [K, V + 1 || {K, V} <- L].
+
+-spec mv_list_zip([atom()], [integer()]) -> [atom() | integer()].
+mv_list_zip(As, Is) -> [A, I || A <:- As && I <:- Is].
+
+-spec mv_map([{atom(), integer()}]) -> #{atom() | integer() => atom() | integer()}.
+mv_map(L) -> #{K => V, V => K || {K, V} <- L}.
+
+-spec mv_map_neg([{atom(), integer()}]) -> #{atom() => integer()}.
+mv_map_neg(L) -> #{K => V, V => K || {K, V} <- L}.
+
+-spec mv_map_elab_neg([{atom(), atom()}]) -> #{atom() => atom() | number()}.
+mv_map_elab_neg(L) -> #{K => V, V => V + 1 || {K, V} <- L}.
+
+-spec mv_map_gen(#{atom() => integer()}) -> #{atom() | integer() => atom() | integer()}.
+mv_map_gen(M) -> #{K => V, V => K || K := V <- M}.
+
+-spec mv_map_gen_neg(#{atom() => integer()}) -> #{atom() => integer()}.
+mv_map_gen_neg(M) -> #{K => V, V => K || K := V <- M}.
+
+-spec mv_map_gen_strict(#{atom() => integer()}) -> #{atom() | integer() => atom() | integer()}.
+mv_map_gen_strict(M) -> #{K => V, V => K || K := V <:- M}.
+
+-spec mv_map_gen_strict_neg(#{atom() => integer()}) -> #{atom() => integer()}.
+mv_map_gen_strict_neg(M) -> #{K => V, V => K || K := V <:- M}.
+
+-spec mv_map_gen_elab_neg(#{atom() => atom()}) -> #{atom() => atom() | number()}.
+mv_map_gen_elab_neg(M) -> #{K => V, V => V + 1 || K := V <- M}.
+
+-spec mv_map_gen_filter(#{atom() | binary() => integer()}) -> #{atom() | integer() => atom() | integer()}.
+mv_map_gen_filter(M) -> #{K => V, V => K || K := V <- M, is_atom(K)}.

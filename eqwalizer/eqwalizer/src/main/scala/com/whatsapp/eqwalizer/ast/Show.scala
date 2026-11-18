@@ -329,7 +329,7 @@ object Show {
       "[ || ]"
     case BComprehension(_, _) =>
       "<< || >>"
-    case MComprehension(_, _, _) =>
+    case MComprehension(_, _) =>
       "#{ || }"
     case RecordCreate(recName, _) =>
       s"#$recName{...}"

@@ -51,9 +51,9 @@ object Exprs {
   case class UnOp(op: String, arg: Expr)(val pos: Pos) extends Expr
   case class BinOp(op: String, arg1: Expr, arg2: Expr)(val pos: Pos) extends Expr
 
-  case class LComprehension(template: Expr, qualifiers: List[Qualifier])(val pos: Pos) extends Expr
+  case class LComprehension(templates: List[Expr], qualifiers: List[Qualifier])(val pos: Pos) extends Expr
   case class BComprehension(template: Expr, qualifiers: List[Qualifier])(val pos: Pos) extends Expr
-  case class MComprehension(kTemplate: Expr, vTemplate: Expr, qualifiers: List[Qualifier])(val pos: Pos) extends Expr
+  case class MComprehension(templates: List[(Expr, Expr)], qualifiers: List[Qualifier])(val pos: Pos) extends Expr
   case class Binary(elems: List[BinaryElem])(val pos: Pos) extends Expr
   case class Catch(expr: Expr)(val pos: Pos) extends Expr
   case class TryCatchExpr(tryBody: Body, catchClauses: List[Clause], afterBody: Option[Body])(val pos: Pos) extends Expr

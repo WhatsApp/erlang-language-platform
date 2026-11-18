@@ -54,4 +54,100 @@ stdout |    │                                     ^^^ Min.
 stdout | Expression has type:   term()
 stdout | Context expected type: integer()
 stdout |
-stdout | 5 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/otp29.erl:109:19
+stdout |     │
+stdout | 109 │ mv_list_neg(L) -> [K, V || {K, V} <- L].
+stdout |     │                   ^^^^^^^^^^^^^^^^^^^^^
+stdout |     │                   │
+stdout |     │                   [ || ].
+stdout | Expression has type:   [atom() | integer()]
+stdout | Context expected type: [atom()]
+stdout |     │                   
+stdout |
+stdout | Because in the expression's type:
+stdout |   [
+stdout |     Here the type is a union type with some valid candidates: atom()
+stdout |     However the following candidate: integer()
+stdout |     Differs from the expected type:  atom()
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/otp29.erl:115:28
+stdout |     │
+stdout | 115 │ mv_list_elab_neg(L) -> [K, V + 1 || {K, V} <- L].
+stdout |     │                            ^ V.
+stdout | Expression has type:   atom()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/otp29.erl:124:18
+stdout |     │
+stdout | 124 │ mv_map_neg(L) -> #{K => V, V => K || {K, V} <- L}.
+stdout |     │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |     │                  │
+stdout |     │                  #{ || }.
+stdout | Expression has type:   #{atom() | integer() => atom() | integer()}
+stdout | Context expected type: #{atom() => integer()}
+stdout |     │                  
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ map domains are incompatible:
+stdout |     Here the type is a union type with some valid candidates: atom()
+stdout |     However the following candidate: integer()
+stdout |     Differs from the expected type:  atom()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/otp29.erl:127:38
+stdout |     │
+stdout | 127 │ mv_map_elab_neg(L) -> #{K => V, V => V + 1 || {K, V} <- L}.
+stdout |     │                                      ^ V.
+stdout | Expression has type:   atom()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/otp29.erl:133:22
+stdout |     │
+stdout | 133 │ mv_map_gen_neg(M) -> #{K => V, V => K || K := V <- M}.
+stdout |     │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |     │                      │
+stdout |     │                      #{ || }.
+stdout | Expression has type:   #{atom() | integer() => atom() | integer()}
+stdout | Context expected type: #{atom() => integer()}
+stdout |     │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ map domains are incompatible:
+stdout |     Here the type is a union type with some valid candidates: atom()
+stdout |     However the following candidate: integer()
+stdout |     Differs from the expected type:  atom()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/otp29.erl:139:29
+stdout |     │
+stdout | 139 │ mv_map_gen_strict_neg(M) -> #{K => V, V => K || K := V <:- M}.
+stdout |     │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |     │                             │
+stdout |     │                             #{ || }.
+stdout | Expression has type:   #{atom() | integer() => atom() | integer()}
+stdout | Context expected type: #{atom() => integer()}
+stdout |     │                             
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ map domains are incompatible:
+stdout |     Here the type is a union type with some valid candidates: atom()
+stdout |     However the following candidate: integer()
+stdout |     Differs from the expected type:  atom()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/otp29.erl:142:42
+stdout |     │
+stdout | 142 │ mv_map_gen_elab_neg(M) -> #{K => V, V => V + 1 || K := V <- M}.
+stdout |     │                                          ^ V.
+stdout | Expression has type:   atom()
+stdout | Context expected type: number()
+stdout |
+stdout | 12 ERRORS

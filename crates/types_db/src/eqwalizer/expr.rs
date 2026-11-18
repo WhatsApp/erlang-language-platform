@@ -242,7 +242,8 @@ pub struct BinOp {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LComprehension {
     pub pos: Pos,
-    pub template: Box<Expr>,
+    /// More than one for a multi-valued comprehension (EEP 78): `[K, V || {K, V} <- L]`.
+    pub templates: Vec<Expr>,
     #[serde(default)]
     pub qualifiers: Vec<Qualifier>,
 }
@@ -258,8 +259,8 @@ pub struct BComprehension {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MComprehension {
     pub pos: Pos,
-    pub k_template: Box<Expr>,
-    pub v_template: Box<Expr>,
+    /// More than one for a multi-valued comprehension (EEP 78): `#{K => V, V => K || K := V <- M}`.
+    pub templates: Vec<(Expr, Expr)>,
     #[serde(default)]
     pub qualifiers: Vec<Qualifier>,
 }

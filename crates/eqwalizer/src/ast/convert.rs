@@ -216,6 +216,17 @@ fn get_specifier(name: &str) -> Option<Specifier> {
     }
 }
 
+/// A multi-valued comprehension (EEP 78) has a list of templates instead of one.
+fn convert_templates<T>(
+    template: &eetf::Term,
+    convert: impl Fn(&eetf::Term) -> Result<T, ConversionError>,
+) -> Result<Vec<T>, ConversionError> {
+    match template {
+        Term::List(templates) => templates.elements.iter().map(convert).collect(),
+        template => Ok(vec![convert(template)?]),
+    }
+}
+
 impl Converter {
     fn make_pos(&self, start: u32, end: u32) -> ast::Pos {
         if self.from_beam {
@@ -1067,7 +1078,7 @@ impl Converter {
                 ("lc", [template, Term::List(qualifiers)]) => {
                     return Ok(Expr::LComprehension(LComprehension {
                         pos,
-                        template: Box::new(self.convert_expr(template)?),
+                        templates: convert_templates(template, |t| self.convert_expr(t))?,
                         qualifiers: qualifiers
                             .elements
                             .iter()
@@ -1087,11 +1098,9 @@ impl Converter {
                     }));
                 }
                 ("mc", [template, Term::List(qualifiers)]) => {
-                    let (k_template, v_template) = self.convert_create_kv(template)?;
                     return Ok(Expr::MComprehension(MComprehension {
                         pos,
-                        k_template: Box::new(k_template),
-                        v_template: Box::new(v_template),
+                        templates: convert_templates(template, |kv| self.convert_create_kv(kv))?,
                         qualifiers: qualifiers
                             .elements
                             .iter()
