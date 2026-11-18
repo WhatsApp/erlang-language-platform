@@ -1,0 +1,31 @@
+stdout | error: unbound_native_record (See https://fb.me/eqwalizer_errors#unbound_native_record)
+stdout |    ┌─ check/src/native_records_neg.erl:13:14
+stdout |    │
+stdout | 13 │ unbound() -> #native_records_def:missing{a = 1}.
+stdout |    │              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unbound native record: #native_records_def:missing{}
+stdout |
+stdout | error: undefined_native_record_field (See https://fb.me/eqwalizer_errors#undefined_native_record_field)
+stdout |    ┌─ check/src/native_records_neg.erl:16:57
+stdout |    │
+stdout | 16 │ undefined_field() -> #native_records_def:pub{a = 1, c = 2}.
+stdout |    │                                                         ^ #native_records_def:pub{}: field c is not defined
+stdout |
+stdout | error: missing_required_native_record_field (See https://fb.me/eqwalizer_errors#missing_required_native_record_field)
+stdout |    ┌─ check/src/native_records_neg.erl:19:23
+stdout |    │
+stdout | 19 │ missing_required() -> #native_records_def:pub{b = 1}.
+stdout |    │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ #native_records_def:pub{}: required field a has no value and no default
+stdout |
+stdout | error: non_exported_native_record (See https://fb.me/eqwalizer_errors#non_exported_native_record)
+stdout |    ┌─ check/src/native_records_neg.erl:22:19
+stdout |    │
+stdout | 22 │ non_exported() -> #native_records_def:priv{a = 1}.
+stdout |    │                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Native record native_records_def:priv is not exported (no -export_record directive)
+stdout |
+stdout | error: undefined_anon_native_record_field (See https://fb.me/eqwalizer_errors#undefined_anon_native_record_field)
+stdout |    ┌─ check/src/native_records_neg.erl:25:31
+stdout |    │
+stdout | 25 │ undefined_anon_field(#_{zzz = Z}) -> Z.
+stdout |    │                               ^ #_{...}: field zzz is not defined on any of the possible native records
+stdout |
+stdout | 5 ERRORS

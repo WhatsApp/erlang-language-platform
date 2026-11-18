@@ -23,7 +23,12 @@ pub enum TypeError {
     LambdaArityMismatch(LambdaArityMismatch),
     IndexOutOfBounds(IndexOutOfBounds),
     UndefinedField(UndefinedField),
+    UndefinedAnonNativeRecordField(UndefinedAnonNativeRecordField),
     UnboundVar(UnboundVar),
+    UnboundNativeRecord(UnboundNativeRecord),
+    UndefinedNativeRecordField(UndefinedNativeRecordField),
+    MissingRequiredNativeRecordField(MissingRequiredNativeRecordField),
+    NonExportedNativeRecord(NonExportedNativeRecord),
     NonexistentBehaviour(NonexistentBehaviour),
     MissingCallback(MissingCallback),
     IncorrectCallbackReturn(IncorrectCallbackReturn),
@@ -84,9 +89,45 @@ pub struct UndefinedField {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct UndefinedAnonNativeRecordField {
+    pub pos: eqwalizer::Pos,
+    pub field_name: SmolStr,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnboundVar {
     pub pos: eqwalizer::Pos,
     pub n: SmolStr,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct UnboundNativeRecord {
+    pub pos: eqwalizer::Pos,
+    pub module: SmolStr,
+    pub name: SmolStr,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct UndefinedNativeRecordField {
+    pub pos: eqwalizer::Pos,
+    pub module: SmolStr,
+    pub name: SmolStr,
+    pub field_name: SmolStr,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct MissingRequiredNativeRecordField {
+    pub pos: eqwalizer::Pos,
+    pub module: SmolStr,
+    pub name: SmolStr,
+    pub field_name: SmolStr,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NonExportedNativeRecord {
+    pub pos: eqwalizer::Pos,
+    pub module: SmolStr,
+    pub name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
