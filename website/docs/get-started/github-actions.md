@@ -118,6 +118,34 @@ jobs:
         run: rebar3 do eunit, ct
 ```
 
+## Annotating Pull Requests
+
+Pass `--format github` to `elp lint` or `elp eqwalize-all` to print each
+diagnostic as a GitHub Actions
+[workflow command](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands).
+GitHub shows them as annotations in the workflow run summary and on the
+affected lines of the pull request, titled with the diagnostic code (for
+example `W0016 (deprecated_function)` or `eqWAlizer: incompatible_types`) and
+carrying the full message:
+
+```yaml
+      - name: ELP lint
+        run: elp lint --no-connect --format github
+
+      - name: eqWAlizer
+        run: elp eqwalize-all --no-connect --format github --bail-on-error
+```
+
+ELP diagnostics with `error` severity become error annotations, `warning`
+diagnostics become warning annotations, and `weak_warning` and `information`
+diagnostics become notices. File paths are relative to the project root, so run
+ELP from the root of the repository for the annotations to point at the right
+files.
+
+With `--format github`, `elp lint` exits with a non-zero status when it reports
+any diagnostic, whatever its severity. Pass
+`--severity error` to report, and fail on, errors only.
+
 ## Failing the Build
 
 - `elp lint` exits with a non-zero status when it reports at least one

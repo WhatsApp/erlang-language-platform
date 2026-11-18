@@ -60,6 +60,7 @@ use crate::daemon_protocol::RenderedDiagnostic;
 enum Encoding {
     Human,
     Json,
+    Github,
     #[cfg(unix)]
     Daemon,
 }
@@ -84,6 +85,10 @@ impl Backend<'_> {
                 format: Format::Json | Format::ImplicitJson,
                 ..
             } => Encoding::Json,
+            Self::Command {
+                format: Format::Github,
+                ..
+            } => Encoding::Github,
             #[cfg(unix)]
             Self::Daemon(_) => Encoding::Daemon,
         }
@@ -398,6 +403,11 @@ impl<'a> Report<'a> {
                 "{}",
                 serde_json::to_string(&diagnostic)?
             )?,
+            Encoding::Github => writeln!(
+                self.backend.cli_mut(),
+                "{}",
+                diagnostic.to_github_workflow_command()
+            )?,
             #[cfg(unix)]
             Encoding::Daemon => {
                 bail!("forwarded diagnostic cannot be written to daemon transport")
@@ -430,7 +440,7 @@ impl<'a> Report<'a> {
     ) -> Result<Option<ReportingData>> {
         match self.backend.encoding() {
             Encoding::Human => Ok(Some(get_reporting_data(analysis, file_id, relative_path)?)),
-            Encoding::Json => Ok(None),
+            Encoding::Json | Encoding::Github => Ok(None),
             #[cfg(unix)]
             Encoding::Daemon => Ok(get_reporting_data(analysis, file_id, relative_path)
                 .inspect_err(|error| {
@@ -458,6 +468,13 @@ impl<'a> Report<'a> {
             } => {
                 let diagnostic = diagnostic()?;
                 writeln!(cli, "{}", serde_json::to_string(&diagnostic)?)?;
+            }
+            Backend::Command {
+                cli,
+                format: Format::Github,
+            } => {
+                let diagnostic = diagnostic()?;
+                writeln!(cli, "{}", diagnostic.to_github_workflow_command())?;
             }
             #[cfg(unix)]
             Backend::Daemon(cli) => {
@@ -887,6 +904,11 @@ mod tests {
         {
             let report = Report::for_command(&mut cli, Format::ImplicitJson);
             assert!(matches!(report.backend.encoding(), Encoding::Json));
+        }
+
+        {
+            let report = Report::for_command(&mut cli, Format::Github);
+            assert!(matches!(report.backend.encoding(), Encoding::Github));
         }
 
         #[cfg(unix)]

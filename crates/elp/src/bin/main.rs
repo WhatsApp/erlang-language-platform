@@ -1152,6 +1152,18 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn eqwalize_all_diagnostics_match_snapshot_github(buck: bool) {
+        simple_snapshot(
+            args_vec!["eqwalize-all", "--format", "github"],
+            "standard",
+            resource_file("standard/eqwalize_all_diagnostics.github"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_jsonl_gen(buck: bool) {
         simple_snapshot(
             args_vec!["eqwalize-all", "--format", "json"],
@@ -2182,6 +2194,25 @@ mod tests {
             ],
             "linter",
             resource_file("linter/parse_elp_no_lint_specified_json_output.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_no_diagnostics_filter_all_enabled_github(buck: bool) {
+        simple_snapshot_expect_error_sorted(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--format",
+                "github",
+                "--config-file",
+                project_path("linter/elp_lint_empty.toml")
+            ],
+            "linter",
+            resource_file("linter/parse_elp_no_lint_specified_github_output.stdout"),
             buck,
             None,
         );

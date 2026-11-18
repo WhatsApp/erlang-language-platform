@@ -282,7 +282,11 @@ impl Lint {
     }
 
     fn uses_cli_severity(&self) -> bool {
-        self.use_cli_severity && matches!(self.format, Format::Json | Format::ImplicitJson)
+        self.use_cli_severity
+            && matches!(
+                self.format,
+                Format::Json | Format::ImplicitJson | Format::Github
+            )
     }
 }
 

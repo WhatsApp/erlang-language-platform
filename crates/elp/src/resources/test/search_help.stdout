@@ -18,7 +18,7 @@ stdout |       --as <PROFILE>           Rebar3 profile to pickup [default: test]
 stdout |       --include-generated      Also generate diagnostics for generated files
 stdout |       --include-tests          Deprecated: has no effect, will be removed in future
 stdout |       --format <FORMAT>        Customize the output format (defaults to human-readable) [possible
-stdout |                                values: json]
+stdout |                                values: json, github]
 stdout |       --macros <STRATEGY>      Macro expansion strategy (default: expand) [possible values: expand,
 stdout |                                no-expand, visible-expand]
 stdout |       --parens                 Explicitly match parentheses. If omitted, they are ignored
