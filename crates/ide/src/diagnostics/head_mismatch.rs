@@ -122,16 +122,15 @@ fn head_mismatch_semantic(
     let def_map = sema.def_map_local(file_id);
     let head_info = def_map
         .get_function_clauses()
-        .filter_map(|(_idx, def)| {
+        .map(|(_idx, def)| {
             let ast_fun = def.source(sema.db.upcast());
-            if let Some(clause) = match ast_fun.clause() {
-                Some(ast::FunctionOrMacroClause::FunctionClause(clause)) => Some(clause),
+            let head_info = match ast_fun.clause() {
+                Some(ast::FunctionOrMacroClause::FunctionClause(clause)) => {
+                    clause_head_info(clause)
+                }
                 _ => None,
-            } {
-                Some((clause_head_info(clause)?, ast_fun.separator()))
-            } else {
-                None
-            }
+            };
+            (head_info, ast_fun.separator())
         })
         .collect::<Vec<_>>();
     let heads = partition_to_funs(&head_info);
@@ -148,7 +147,10 @@ fn head_mismatch_semantic(
 // If a separator is missing, treat it as the end of the current
 // function.
 fn partition_to_funs(
-    heads: &[(HeadInfo, Option<(ast::ClauseSeparator, SyntaxToken)>)],
+    heads: &[(
+        Option<HeadInfo>,
+        Option<(ast::ClauseSeparator, SyntaxToken)>,
+    )],
 ) -> Vec<Vec<HeadInfo>> {
     let mut res = Vec::default();
     let mut current = Vec::default();
@@ -157,10 +159,10 @@ fn partition_to_funs(
         if let Some((separator, _)) = separator {
             match separator {
                 ClauseSeparator::Semi => {
-                    current.push(head_info.clone());
+                    current.extend(head_info.clone());
                 }
                 ClauseSeparator::Dot => {
-                    current.push(head_info.clone());
+                    current.extend(head_info.clone());
                     res.push(std::mem::take(&mut current));
                 }
                 ClauseSeparator::Missing => {
@@ -610,6 +612,81 @@ mod tests {
 %%  ^^^ error: P1700: head mismatch 'boo' vs 'foo'
 %%    | Related info: 1:52-55 Mismatched clause name
 %%    | 💡 Fix head mismatch
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_no_head_mismatch_after_macro_last_clause() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([f/1, g/0]).
+    -define(CLAUSE, f(X) -> X).
+    f(a) -> a;
+    ?CLAUSE.
+    g() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_no_head_mismatch_after_parameterized_macro_last_clause() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([f/1, g/0]).
+    -define(CLAUSE(Name, Arg), Name(Arg) -> Arg).
+    f(a) -> a;
+    ?CLAUSE(f, X).
+    g() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_no_head_mismatch_after_consecutive_macro_clauses() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([f/1, g/0]).
+    -define(B, f(b) -> b).
+    -define(C, f(c) -> c).
+    f(a) -> a;
+    ?B;
+    ?C.
+    g() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_no_head_mismatch_after_macro_named_last_clause() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([f/1, g/0]).
+    -define(NAME, f).
+    f(a) -> a;
+    ?NAME(X) -> X.
+    g() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_head_mismatch_across_macro_clause() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([f/1, g/1]).
+    -define(CLAUSE, f(X) -> X).
+    f(a) -> a;
+    ?CLAUSE;
+    g(b) -> b.
+ %% ^ error: P1700: head mismatch 'g' vs 'f'
+ %% | Related info: 0:76-77 Mismatched clause name
+ %% | 💡 Fix head mismatch
             "#,
         );
     }
