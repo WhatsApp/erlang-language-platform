@@ -120,16 +120,21 @@ jobs:
 
 ## Annotating Pull Requests
 
-In a GitHub Actions step, `elp lint` and `elp eqwalize-all` print each
+Pass `--format github` to `elp lint` or `elp eqwalize-all` to print each
 diagnostic as a GitHub Actions
-[workflow command](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands),
-with no extra arguments. GitHub shows them as annotations in the workflow run
-summary and on the affected lines of the pull request, titled with the
-diagnostic code (for example `W0016 (deprecated_function)` or
-`eqWAlizer: incompatible_types`) and carrying the full message. ELP detects
-GitHub Actions from the `GITHUB_ACTIONS=true` environment variable the runner
-sets, when standard output is not a terminal and neither `--format json` nor
-`--format github` is given; pass `--format json` to get JSON instead.
+[workflow command](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands).
+GitHub shows them as annotations in the workflow run summary and on the
+affected lines of the pull request, titled with the diagnostic code (for
+example `W0016 (deprecated_function)` or `eqWAlizer: incompatible_types`) and
+carrying the full message:
+
+```yaml
+      - name: ELP lint
+        run: elp lint --no-connect --format github
+
+      - name: eqWAlizer
+        run: elp eqwalize-all --no-connect --format github --bail-on-error
+```
 
 ELP diagnostics with `error` severity become error annotations, `warning`
 diagnostics become warning annotations, and `weak_warning` and `information`
@@ -137,19 +142,14 @@ diagnostics become notices. File paths are relative to the project root, so run
 ELP from the root of the repository for the annotations to point at the right
 files.
 
-Pass `--format github` to print workflow commands anywhere. In GitHub Actions,
-and with `--format github`, `elp lint` exits with a non-zero status when it
-reports any diagnostic, whatever its severity. Pass `--severity error` to
-report, and fail on, errors only.
+With `--format github`, `elp lint` exits with a non-zero status when it reports
+any diagnostic, whatever its severity. Pass
+`--severity error` to report, and fail on, errors only.
 
 ## Failing the Build
 
-- When it prints workflow commands, in GitHub Actions or with `--format github`
-  (see [Annotating Pull Requests](#annotating-pull-requests)), `elp lint` exits
-  with a non-zero status when it reports any diagnostic, so warnings fail the
-  step too. Pass `--severity error` to fail on errors only.
-- Elsewhere, `elp lint` exits with a non-zero status when it reports at least
-  one diagnostic with `error` severity. Diagnostics with a lower severity are
+- `elp lint` exits with a non-zero status when it reports at least one
+  diagnostic with `error` severity. Diagnostics with a lower severity are
   reported but do not fail the step. Use the
   [`.elp_lint.toml`](configure-project/elp-lint-toml.md) configuration file to
   enable or disable linters and to change their severity.

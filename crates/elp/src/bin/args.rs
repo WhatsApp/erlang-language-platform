@@ -242,34 +242,25 @@ impl Command {
 
     /// Select an effective output format for commands that emit diagnostics.
     /// A terminal keeps human-readable output; a pipe or redirect switches the
-    /// default to implicit JSON, or, for `lint` and the `eqwalize` commands in
-    /// a GitHub Actions step, to GitHub workflow commands. An explicit
-    /// `--format json` or `--format github` is never changed. `Format::Human`
-    /// is also the value of an omitted `--format`, so the hidden
-    /// `--format human` cannot be told apart from it and is switched as well.
+    /// default to implicit JSON. An explicit `--format json` is never changed.
     /// Call after [`normalize`].
-    pub fn apply_default_format(&mut self, stdout: Stdout) {
-        if stdout == Stdout::Terminal {
+    pub fn apply_default_format(&mut self, stdout_is_tty: bool) {
+        if stdout_is_tty {
             return;
         }
-        let (format, annotates) = match self {
-            Command::Eqwalize(args) => (&mut args.format, true),
-            Command::EqwalizeAll(args) => (&mut args.format, true),
-            Command::EqwalizeApp(args) => (&mut args.format, true),
-            Command::EqwalizeTarget(args) => (&mut args.format, true),
-            Command::Lint(args) => (&mut args.format, true),
-            Command::ParseAllElp(args) => (&mut args.format, false),
-            Command::Search(args) | Command::Ssr(args) => (&mut args.format, false),
+        let format = match self {
+            Command::Eqwalize(args) => &mut args.format,
+            Command::EqwalizeAll(args) => &mut args.format,
+            Command::EqwalizeApp(args) => &mut args.format,
+            Command::EqwalizeTarget(args) => &mut args.format,
+            Command::Lint(args) => &mut args.format,
+            Command::ParseAllElp(args) => &mut args.format,
+            Command::Search(args) | Command::Ssr(args) => &mut args.format,
             _ => return,
         };
-        if *format != Format::Human {
-            return;
+        if *format == Format::Human {
+            *format = Format::ImplicitJson;
         }
-        *format = if annotates && stdout == Stdout::GithubActions {
-            Format::Github
-        } else {
-            Format::ImplicitJson
-        };
     }
 
     /// Test helper: opt out of the daemon (now the default) so integration tests
@@ -287,34 +278,6 @@ impl Command {
             _ => return,
         };
         *no_connect = true;
-    }
-}
-
-/// Where standard output goes, which decides the default output format.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Stdout {
-    Terminal,
-    /// A pipe or a redirect.
-    Pipe,
-    /// A pipe or a redirect in a GitHub Actions step, where the runner sets
-    /// `GITHUB_ACTIONS=true`.
-    GithubActions,
-}
-
-impl Stdout {
-    pub fn detect() -> Self {
-        let github_actions = env::var("GITHUB_ACTIONS").ok();
-        Self::new(std::io::stdout().is_terminal(), github_actions.as_deref())
-    }
-
-    /// `github_actions` is the value of the `GITHUB_ACTIONS` environment
-    /// variable, if set.
-    fn new(is_terminal: bool, github_actions: Option<&str>) -> Self {
-        match (is_terminal, github_actions) {
-            (true, _) => Stdout::Terminal,
-            (false, Some("true")) => Stdout::GithubActions,
-            (false, _) => Stdout::Pipe,
-        }
     }
 }
 
@@ -473,19 +436,18 @@ mod tests {
     use super::Command;
     use super::DiagnosticSeverity;
     use super::Format;
-    use super::Stdout;
 
     #[test]
     fn check_options() {
         Args::command().debug_assert();
     }
 
-    fn parse_format(cli_args: &[&str], stdout: Stdout) -> Format {
+    fn parse_format(cli_args: &[&str], stdout_is_tty: bool) -> Format {
         let mut command = Args::try_parse_from(cli_args)
             .expect("args should parse")
             .command
             .expect("a subcommand should be present");
-        command.apply_default_format(stdout);
+        command.apply_default_format(stdout_is_tty);
         match command {
             Command::Eqwalize(args) => args.format,
             Command::Ssr(args) | Command::Search(args) => args.format,
@@ -497,19 +459,13 @@ mod tests {
     fn apply_default_format_defaults_pipe_to_json() {
         // Not a TTY (piped/redirected): default to JSON for machine consumers.
         let expected = Format::ImplicitJson;
-        assert_eq_expected!(
-            expected,
-            parse_format(&["elp", "eqwalize", "foo"], Stdout::Pipe)
-        );
+        assert_eq_expected!(expected, parse_format(&["elp", "eqwalize", "foo"], false));
     }
 
     #[test]
     fn apply_default_format_keeps_tty_human_readable() {
         let expected = Format::Human;
-        assert_eq_expected!(
-            expected,
-            parse_format(&["elp", "eqwalize", "foo"], Stdout::Terminal)
-        );
+        assert_eq_expected!(expected, parse_format(&["elp", "eqwalize", "foo"], true));
     }
 
     #[test]
@@ -518,10 +474,7 @@ mod tests {
         let expected = Format::Json;
         assert_eq_expected!(
             expected,
-            parse_format(
-                &["elp", "eqwalize", "--format", "json", "foo"],
-                Stdout::Terminal
-            )
+            parse_format(&["elp", "eqwalize", "--format", "json", "foo"], true)
         );
     }
 
@@ -533,7 +486,7 @@ mod tests {
         let expected = Format::ImplicitJson;
         assert_eq_expected!(
             expected,
-            parse_format(&["elp", "ssr", "foo(_@Args)"], Stdout::Pipe)
+            parse_format(&["elp", "ssr", "foo(_@Args)"], false)
         );
     }
 
@@ -566,53 +519,7 @@ mod tests {
         let expected = Format::Github;
         assert_eq_expected!(
             expected,
-            parse_format(
-                &["elp", "eqwalize", "--format", "github", "foo"],
-                Stdout::Pipe
-            )
-        );
-    }
-
-    #[test]
-    fn stdout_detects_github_actions_from_its_environment_variable() {
-        assert_eq_expected!(Stdout::GithubActions, Stdout::new(false, Some("true")));
-        assert_eq_expected!(Stdout::Pipe, Stdout::new(false, Some("false")));
-        assert_eq_expected!(Stdout::Pipe, Stdout::new(false, None));
-        assert_eq_expected!(
-            Stdout::Terminal,
-            Stdout::new(true, Some("true")),
-            "a terminal keeps human-readable output, even in GitHub Actions"
-        );
-    }
-
-    #[test]
-    fn apply_default_format_defaults_github_actions_to_github() {
-        let expected = Format::Github;
-        assert_eq_expected!(
-            expected,
-            parse_format(&["elp", "eqwalize", "foo"], Stdout::GithubActions)
-        );
-    }
-
-    #[test]
-    fn apply_default_format_keeps_json_for_ssr_in_github_actions() {
-        // `ssr` and `search` keep their JSONL fields in GitHub Actions.
-        let expected = Format::ImplicitJson;
-        assert_eq_expected!(
-            expected,
-            parse_format(&["elp", "ssr", "foo(_@Args)"], Stdout::GithubActions)
-        );
-    }
-
-    #[test]
-    fn apply_default_format_preserves_explicit_json_in_github_actions() {
-        let expected = Format::Json;
-        assert_eq_expected!(
-            expected,
-            parse_format(
-                &["elp", "eqwalize", "--format", "json", "foo"],
-                Stdout::GithubActions
-            )
+            parse_format(&["elp", "eqwalize", "--format", "github", "foo"], false)
         );
     }
 

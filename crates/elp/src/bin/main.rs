@@ -10,6 +10,7 @@
 
 use std::env;
 use std::fs;
+use std::io::IsTerminal;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
@@ -61,7 +62,6 @@ mod test_utils;
 use tikv_jemallocator::Jemalloc;
 
 use crate::args::Args;
-use crate::args::Stdout;
 
 #[cfg(all(not(buck_build), not(any(target_env = "msvc", target_os = "openbsd"))))]
 #[global_allocator]
@@ -185,7 +185,7 @@ fn run_cli(args: Args) -> CliRunResult<CommandOutcome> {
     } else {
         Box::new(cli::NoColor::default())
     };
-    let res = try_main(&mut *cli, args, Stdout::detect());
+    let res = try_main(&mut *cli, args, std::io::stdout().is_terminal());
     handle_res(res, cli.err())
 }
 
@@ -256,7 +256,7 @@ fn setup_cli_telemetry(args: &Args) {
     }
 }
 
-fn try_main(cli: &mut dyn Cli, args: Args, stdout: Stdout) -> Result<CommandOutcome> {
+fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<CommandOutcome> {
     let logger = setup_logging(&args.log_file, args.no_log_buffering)?;
     setup_cli_telemetry(&args);
 
@@ -274,10 +274,9 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout: Stdout) -> Result<CommandOutc
     };
 
     command.normalize();
-    // Default the output format from where stdout goes (terminal → rich text,
-    // pipe → JSON, pipe in GitHub Actions → workflow commands) unless the user
-    // passed `--format json` or `--format github`.
-    command.apply_default_format(stdout);
+    // Default the output format from whether stdout is a terminal (human → rich
+    // text, pipe → JSON) unless the user set `--format` explicitly.
+    command.apply_default_format(stdout_is_tty);
     let mut command_outcome = CommandOutcome::NotApplicable;
     match &command {
         args::Command::RunServer(_) => run_server(logger)?,
@@ -767,22 +766,22 @@ mod tests {
     use crate::test_utils::resource_file;
 
     fn elp(args: Vec<OsString>) -> (String, String, i32) {
-        elp_with_stdout(args, Stdout::Terminal)
+        elp_with_stdout_tty(args, true)
     }
 
-    fn elp_with_stdout(args: Vec<OsString>, stdout: Stdout) -> (String, String, i32) {
-        let (cli, code) = run_elp(args, stdout);
+    fn elp_with_stdout_tty(args: Vec<OsString>, stdout_is_tty: bool) -> (String, String, i32) {
+        let (cli, code) = run_elp(args, stdout_is_tty);
         let (stdout, stderr) = cli.to_strings();
         (stdout, stderr, code)
     }
 
     fn elp_with_tagged_output(args: Vec<OsString>) -> (String, String, String, i32) {
-        let (cli, code) = run_elp(args, Stdout::Terminal);
+        let (cli, code) = run_elp(args, true);
         let (stdout, stderr, tagged) = cli.to_strings_with_tagged();
         (stdout, stderr, tagged, code)
     }
 
-    fn run_elp(args: Vec<OsString>, stdout: Stdout) -> (Fake, i32) {
+    fn run_elp(args: Vec<OsString>, stdout_is_tty: bool) -> (Fake, i32) {
         // Enable manifest caching for tests — the config files in test
         // fixtures never change, and this avoids re-spawning rebar3/erl
         // subprocesses for every test case (~25× faster for ::rebar tests).
@@ -798,7 +797,7 @@ mod tests {
         if let Some(command) = args.command.as_mut() {
             command.disable_daemon();
         }
-        let res = try_main(&mut cli, args, stdout);
+        let res = try_main(&mut cli, args, stdout_is_tty);
         let result = handle_res(res, cli.err());
         let code = result.process_exit_code();
         (cli, code)
@@ -807,7 +806,7 @@ mod tests {
     #[test]
     fn piped_warning_only_diagnostics_exit_successfully() {
         let diagnostics_project = project_path("diagnostics");
-        let (stdout, stderr, code) = elp_with_stdout(
+        let (stdout, stderr, code) = elp_with_stdout_tty(
             args_vec![
                 "parse-elp",
                 "--project",
@@ -815,14 +814,14 @@ mod tests {
                 "--file",
                 diagnostics_project.join("app_a/src/diagnostics_warnings.escript"),
             ],
-            Stdout::Pipe,
+            false,
         );
         assert_eq_expected!(0, code);
         assert!(stdout.contains("\"severity\":\"warning\""), "got: {stdout}");
         assert!(stderr.is_empty(), "got: {stderr}");
 
         let linter_project = project_path("linter");
-        let (stdout, stderr, code) = elp_with_stdout(
+        let (stdout, stderr, code) = elp_with_stdout_tty(
             args_vec![
                 "lint",
                 "--no-stream",
@@ -834,38 +833,11 @@ mod tests {
                 "--project",
                 &linter_project,
             ],
-            Stdout::Pipe,
+            false,
         );
         assert_eq_expected!(0, code);
         assert!(stdout.contains("\"severity\":\"warning\""), "got: {stdout}");
         assert!(stderr.is_empty(), "got: {stderr}");
-    }
-
-    #[test]
-    fn github_actions_default_matches_explicit_github_format() {
-        let linter_project = project_path("linter");
-        let lint = |extra_args: &[&str], stdout| {
-            let mut args = args_vec![
-                "lint",
-                "--no-stream",
-                "--experimental",
-                "--diagnostic-ignore",
-                "W0011",
-                "--config-file",
-                linter_project.join("elp_lint_test_ignore.toml"),
-                "--project",
-                &linter_project,
-            ];
-            args.extend(extra_args.iter().map(OsString::from));
-            elp_with_stdout(args, stdout)
-        };
-        let (stdout, stderr, code) = lint(&[], Stdout::GithubActions);
-        assert!(stdout.starts_with("::warning file="), "got: {stdout}");
-        assert_eq!(
-            lint(&["--format", "github"], Stdout::Pipe),
-            (stdout, stderr, code),
-            "in GitHub Actions, omitting --format should behave like --format github"
-        );
     }
 
     fn make_tmp_dir() -> TempDir {
