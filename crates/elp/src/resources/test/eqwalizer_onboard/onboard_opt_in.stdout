@@ -1,0 +1,9 @@
+stdout | Modules that type check (3):
+stdout |   app_a/src/app_a.erl
+stdout |   app_a/test/app_a_SUITE.erl
+stdout |   app_b/src/app_b.erl
+stdout | Modules with errors (3):
+stdout |   app_a/src/app_a_one_error.erl: 1 error
+stdout |   app_a/src/app_a_two_errors.erl: 2 errors
+stdout |   app_a/src/app_a_parse_error.erl: parse errors
+stderr | Added `-typing([eqwalizer]).` to 3 module(s).

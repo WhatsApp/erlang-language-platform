@@ -38,6 +38,7 @@ use crate::eqwalizer_cli::EqwalizeAll;
 use crate::eqwalizer_cli::EqwalizeApp;
 use crate::eqwalizer_cli::EqwalizeStats;
 use crate::eqwalizer_cli::EqwalizeTarget;
+use crate::eqwalizer_onboard_cli::Onboard;
 use crate::erlang_service_cli::ParseAll;
 use crate::explain_cli::Explain;
 use crate::glean::Glean;
@@ -111,6 +112,9 @@ pub enum Command {
     /// Return statistics about code quality for eqWAlizer
     #[command(name = "eqwalize-stats", hide = true)]
     EqwalizeStats(EqwalizeStats),
+    /// Find the modules that are ready to opt in to eqWAlizer
+    #[command(name = "eqwalizer-onboard")]
+    EqwalizerOnboard(Onboard),
     /// Run Dialyzer on the whole project by shelling out to a `dialyzer-run` tool on the path to do the legwork.
     #[command(name = "dialyze-all", hide = true)]
     DialyzeAll(DialyzeAll),

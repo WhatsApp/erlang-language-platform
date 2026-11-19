@@ -47,6 +47,7 @@ Available commands:
     eqwalize-all          Eqwalize all opted-in modules in a project
     eqwalize-app          Eqwalize all opted-in modules in specified application
     eqwalize-target       Eqwalize all opted-in modules in specified buck target
+    eqwalizer-onboard     Find the modules that are ready to opt in to eqWAlizer
     lint                  Parse files in project and emit diagnostics, optionally apply fixes.
     server                Run lsp server
     generate-completions  Generate shell completions
@@ -84,6 +85,27 @@ Run the _eqWAlizer_ typechecker against all _src_ modules in a project.
 ```
 $ elp eqwalize-all
 ```
+
+## `elp eqwalizer-onboard`
+
+List the modules that _eqWAlizer_ does not check yet, because they are not
+opted in, split into the ones that already type check and the ones with errors,
+fewest errors first. Modules opted out with `-eqwalizer(ignore).` or
+`ignore_modules` and generated modules are left out.
+
+```
+$ elp eqwalizer-onboard
+Modules that type check (2):
+  src/my_app_config.erl
+  src/my_app_sup.erl
+Modules with errors (2):
+  src/my_app_server.erl: 4 errors
+  src/my_app_parser.erl: 37 errors
+```
+
+Pass `--opt-in` to add the `-typing([eqwalizer]).` attribute to the modules
+that type check. Pass `--app <APP>`, or `--target <TARGET>` in a Buck project,
+to onboard one application or target at a time.
 
 ## `elp shell`
 

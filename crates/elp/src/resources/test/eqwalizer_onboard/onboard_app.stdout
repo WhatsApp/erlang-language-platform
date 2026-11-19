@@ -1,0 +1,4 @@
+stdout | Modules that type check (1):
+stdout |   app_b/src/app_b.erl
+stdout | Modules with errors (0):
+stderr | Run the same command with `--opt-in` to add `-typing([eqwalizer]).` to the 1 module(s) that type check.

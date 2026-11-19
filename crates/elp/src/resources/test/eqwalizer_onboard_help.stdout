@@ -1,0 +1,20 @@
+stdout | Find the modules that are ready to opt in to eqWAlizer
+stdout |
+stdout | Usage: elp eqwalizer-onboard [OPTIONS]
+stdout |
+stdout | Options:
+stdout |       --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
+stdout |       --as <PROFILE>       Rebar3 profile to pickup [default: test]
+stdout |       --rebar              Run with rebar
+stdout |       --app <APP>          Only consider the modules of this application
+stdout |       --target <TARGET>    Only consider the modules of this Buck target
+stdout |       --opt-in             Add `-typing([eqwalizer]).` to the modules that type check
+stdout |   -h, --help               Print help
+stdout |
+stdout | Global options:
+stdout |       --log-file <LOG_FILE>  
+stdout |       --erl <ERL>            
+stdout |       --escript <ESCRIPT>    
+stdout |       --no-log-buffering     
+stdout |       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+stdout |                              auto]

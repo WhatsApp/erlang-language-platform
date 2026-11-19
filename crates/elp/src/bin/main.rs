@@ -41,6 +41,7 @@ mod daemon_protocol;
 mod dialyzer_cli;
 mod elp_parse_cli;
 mod eqwalizer_cli;
+mod eqwalizer_onboard_cli;
 mod erlang_service_cli;
 mod explain_cli;
 mod glean;
@@ -373,6 +374,9 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
             }
         }
         args::Command::EqwalizeApp(args) => eqwalizer_cli::eqwalize_app(args, cli, &query_config)?,
+        args::Command::EqwalizerOnboard(args) => {
+            eqwalizer_onboard_cli::onboard(args, cli, &query_config)?
+        }
         args::Command::EqwalizeStats(args) => {
             eqwalizer_cli::eqwalize_stats(args, cli, &query_config)?
         }
@@ -3285,6 +3289,65 @@ mod tests {
         );
     }
 
+    #[test]
+    fn eqwalizer_onboard() {
+        // `--opt-in` changes files in the source tree, so the rebar and buck
+        // runs share one test and no other test uses this project.
+        do_eqwalizer_onboard(false);
+        do_eqwalizer_onboard(true);
+    }
+
+    fn do_eqwalizer_onboard(buck: bool) {
+        let project = "eqwalizer_onboard";
+        let opted_in = [
+            "app_a/src/app_a.erl",
+            "app_a/test/app_a_SUITE.erl",
+            "app_b/src/app_b.erl",
+        ];
+        let _backup = BackupFiles::save_files(project, &opted_in).unwrap();
+        simple_snapshot(
+            args_vec!["eqwalizer-onboard"],
+            project,
+            resource_file("eqwalizer_onboard/onboard.stdout"),
+            buck,
+            None,
+        );
+        simple_snapshot(
+            args_vec!["eqwalizer-onboard", "--app", "app_b"],
+            project,
+            resource_file("eqwalizer_onboard/onboard_app.stdout"),
+            buck,
+            None,
+        );
+        if buck {
+            simple_snapshot(
+                args_vec!["eqwalizer-onboard", "--target", "//eqwalizer_onboard:app_b"],
+                project,
+                resource_file("eqwalizer_onboard/onboard_app.stdout"),
+                buck,
+                None,
+            );
+        }
+        simple_snapshot(
+            args_vec!["eqwalizer-onboard", "--opt-in"],
+            project,
+            resource_file("eqwalizer_onboard/onboard_opt_in.stdout"),
+            buck,
+            None,
+        );
+        for file in opted_in {
+            let text = fs::read_to_string(project_path(project).join(file)).unwrap();
+            assert_eq_expected!(Some("-typing([eqwalizer])."), text.lines().nth(1));
+        }
+        simple_snapshot(
+            args_vec!["eqwalizer-onboard"],
+            project,
+            resource_file("eqwalizer_onboard/onboard_after_opt_in.stdout"),
+            buck,
+            None,
+        );
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_with_color_vs_no_color(buck: bool) {
@@ -3447,6 +3510,12 @@ mod tests {
     fn eqwalize_app_help() {
         let expected = resource_file("eqwalize_app.stdout");
         expected.assert_eq(&get_help_text(&["eqwalize-app", "--help"]));
+    }
+
+    #[test]
+    fn eqwalizer_onboard_help() {
+        let expected = resource_file("eqwalizer_onboard_help.stdout");
+        expected.assert_eq(&get_help_text(&["eqwalizer-onboard", "--help"]));
     }
 
     #[test]

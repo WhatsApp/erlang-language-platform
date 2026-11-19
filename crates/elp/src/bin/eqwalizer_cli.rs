@@ -47,6 +47,7 @@ use elp_project_model::ProjectBuildData;
 use elp_project_model::buck::BuckQueryConfig;
 use fxhash::FxHashMap;
 use indicatif::ParallelProgressIterator;
+use indicatif::ProgressBar;
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -591,6 +592,23 @@ fn target_file_ids(
     analysis: &Analysis,
     loaded: &LoadResult,
 ) -> Result<Vec<FileId>> {
+    let file_ids = target_src_file_ids(requested_target, loaded)?
+        .into_iter()
+        .filter(|file_id| {
+            analysis.should_eqwalize(*file_id).unwrap() && !otp_file_to_ignore(analysis, *file_id)
+        })
+        .collect::<Vec<_>>();
+    if file_ids.is_empty() {
+        bail!("Eqwalizer is disabled for all source files in given target")
+    }
+    Ok(file_ids)
+}
+
+/// The source files of the Buck targets that `requested_target` names.
+pub(crate) fn target_src_file_ids(
+    requested_target: &str,
+    loaded: &LoadResult,
+) -> Result<Vec<FileId>> {
     let buck = match &loaded.project.project_build_data {
         ProjectBuildData::Buck(buck) => buck,
         _ => bail!("only buck project supported"),
@@ -601,7 +619,6 @@ fn target_file_ids(
     let buck_target = target.strip_suffix("/...").unwrap_or(target);
     let buck_target = buck_target.strip_suffix(':').unwrap_or(buck_target);
 
-    let mut at_least_one_found = false;
     let exact_match = buck_target.contains(':');
     let file_ids = buck
         .target_info
@@ -616,20 +633,11 @@ fn target_file_ids(
             }
         })
         .flat_map(|(_, target)| &target.src_files)
-        .filter_map(|src| {
-            let vfs_path = VfsPath::from(src.clone());
-            loaded.file_id(&vfs_path).inspect(|_file_id| {
-                at_least_one_found = true;
-            })
-        })
-        .filter(|file_id| {
-            analysis.should_eqwalize(*file_id).unwrap() && !otp_file_to_ignore(analysis, *file_id)
-        })
+        .filter_map(|src| loaded.file_id(&VfsPath::from(src.clone())))
         .collect::<Vec<_>>();
 
-    match (file_ids.is_empty(), at_least_one_found) {
-        (true, true) => bail!("Eqwalizer is disabled for all source files in given target"),
-        (true, false) => bail!(
+    if file_ids.is_empty() {
+        bail!(
             r###"Can't find any source files for given target.
 You can verify your target with: buck2 targets {0}
 Examples of valid targets:
@@ -639,9 +647,9 @@ elp eqwalize-target //erl/chatd:chatd #concrete target: buck2 targets waserver//
 elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell completion
             "###,
             requested_target
-        ),
-        _ => Ok(file_ids),
+        )
     }
+    Ok(file_ids)
 }
 
 pub fn eqwalize_stats(
@@ -751,26 +759,7 @@ fn eqwalize(
 
     let files_count = file_ids.len();
     let pb = report.progress(files_count as u64, "EqWAlizing");
-    let output = loaded.with_eqwalizer_progress_bar(pb.clone(), move |analysis| {
-        let project = loaded.project_input;
-        let max_tasks = loaded.project.eqwalizer_config.max_tasks;
-        // Round-robin distribute sorted files across chunks for balanced workload
-        let chunks = elp_ide::distribute_round_robin(file_ids, max_tasks.min(files_count));
-        chunks
-            .into_iter()
-            .par_bridge()
-            .map_with(analysis, move |analysis, chunk| {
-                analysis
-                    .eqwalizer_diagnostics(project, chunk)
-                    .expect("cancelled")
-            })
-            .fold(EqwalizerDiagnostics::default, |acc, output| {
-                acc.combine((*output).clone())
-            })
-            .reduce(EqwalizerDiagnostics::default, |acc, other| {
-                acc.combine(other)
-            })
-    });
+    let output = typecheck(loaded, file_ids, pb.clone());
     let eqwalized = pb.position();
     pb.finish();
     let mut has_errors = false;
@@ -870,7 +859,47 @@ fn eqwalize(
     }
 }
 
-fn set_eqwalizer_config(loaded: &mut LoadResult) {
+/// Type checks `file_ids` with up to `max_tasks` eqWAlizer processes in parallel,
+/// reporting progress on `pb`.
+pub(crate) fn typecheck(
+    loaded: &LoadResult,
+    file_ids: Vec<FileId>,
+    pb: ProgressBar,
+) -> EqwalizerDiagnostics {
+    let files_count = file_ids.len();
+    let max_tasks = loaded.project.eqwalizer_config.max_tasks;
+    // Round-robin distribute sorted files across chunks for balanced workload
+    let chunks = elp_ide::distribute_round_robin(file_ids, max_tasks.min(files_count));
+    typecheck_chunks(loaded, chunks, pb)
+        .into_iter()
+        .fold(EqwalizerDiagnostics::default(), |acc, (_chunk, output)| {
+            acc.combine((*output).clone())
+        })
+}
+
+/// Type checks each of `chunks` with its own eqWAlizer process, in parallel,
+/// reporting progress on `pb`.
+pub(crate) fn typecheck_chunks(
+    loaded: &LoadResult,
+    chunks: Vec<Vec<FileId>>,
+    pb: ProgressBar,
+) -> Vec<(Vec<FileId>, Arc<EqwalizerDiagnostics>)> {
+    loaded.with_eqwalizer_progress_bar(pb, move |analysis| {
+        let project = loaded.project_input;
+        chunks
+            .into_iter()
+            .par_bridge()
+            .map_with(analysis, move |analysis, chunk| {
+                let output = analysis
+                    .eqwalizer_diagnostics(project, chunk.clone())
+                    .expect("cancelled");
+                (chunk, output)
+            })
+            .collect()
+    })
+}
+
+pub(crate) fn set_eqwalizer_config(loaded: &mut LoadResult) {
     let config = EqwalizerConfig::default();
     let db = loaded.analysis_host.raw_database_mut();
     if config != *db.eqwalizer_config() {

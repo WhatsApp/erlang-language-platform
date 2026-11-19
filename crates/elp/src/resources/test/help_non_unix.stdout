@@ -7,6 +7,7 @@ stdout |   eqwalize              Eqwalize specified modules
 stdout |   eqwalize-all          Eqwalize all opted-in modules in a project
 stdout |   eqwalize-target       Eqwalize all opted-in modules in specified buck target
 stdout |   eqwalize-app          Eqwalize all opted-in modules in specified application
+stdout |   eqwalizer-onboard     Find the modules that are ready to opt in to eqWAlizer
 stdout |   build-info            Generate build info JSON file
 stdout |   generate-completions  Generate shell completions
 stdout |   server                Run lsp server

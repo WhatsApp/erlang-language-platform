@@ -1,0 +1,9 @@
+[buck]
+enabled = true
+build_deps = false
+included_targets = [ "root//eqwalizer_onboard/..." ]
+source_root = "eqwalizer_onboard"
+
+[eqwalizer]
+enable_all = false
+ignore_modules = ["app_a_ignored_in_config"]
