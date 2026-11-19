@@ -106,6 +106,8 @@ Modules with errors (2):
 Pass `--opt-in` to add the `-typing([eqwalizer]).` attribute to the modules
 that type check. Pass `--app <APP>`, or `--target <TARGET>` in a Buck project,
 to onboard one application or target at a time.
+See [Adopting eqWAlizer Incrementally](adopt-eqwalizer-incrementally.md) for
+how to use it to adopt eqWAlizer one module at a time.
 
 ## `elp shell`
 

@@ -32,7 +32,7 @@ jobs:
           otp-version: "28.5"
           rebar3-version: "3"
 
-      - uses: erlef/setup-elp@main
+      - uses: erlef/setup-elp@v1
         with:
           elp-version: "2026-10-14"
 
@@ -74,8 +74,9 @@ release has no such build. For this reason:
   time, so a new ELP release can introduce new diagnostics or change the set of
   Erlang/OTP builds without any change in your repository. Bump the tag
   deliberately instead.
-- To make the workflow fully reproducible, reference the action by commit SHA
-  rather than by branch: `erlef/setup-elp@<commit-sha> # main`.
+- `erlef/setup-elp@v1` follows the latest `1.x` release of the action. To make
+  the workflow fully reproducible, reference a release by commit SHA instead:
+  `erlef/setup-elp@<commit-sha> # v1.0.0`.
 
 ## Running ELP in a Matrix
 
@@ -104,7 +105,7 @@ jobs:
       - name: Compile
         run: rebar3 do clean, compile
 
-      - uses: erlef/setup-elp@main
+      - uses: erlef/setup-elp@v1
         with:
           elp-version: ${{env.ELP_VERSION}}
 
@@ -167,3 +168,6 @@ steps non-blocking until the findings are fixed:
         run: elp lint --no-connect
         continue-on-error: true
 ```
+
+To adopt eqWAlizer one module at a time instead, with a blocking check, see
+[Adopting eqWAlizer Incrementally](adopt-eqwalizer-incrementally.md).
