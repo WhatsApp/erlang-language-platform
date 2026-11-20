@@ -72,17 +72,19 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout erlang-language-platform
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v6"
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '17'
+          # 17.0.12 is the last Oracle GraalVM for JDK 17 under the GFTC;
+          # asking for '17' resolves to it with a warning.
+          java-version: '17.0.12'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up SBT
-        uses: olafurpg/setup-scala@v14
+        uses: sbt/setup-sbt@v1
         with:
-          java-version: '17'
+          sbt-runner-version: 1.10.10
       - name: Set up rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -185,25 +187,25 @@ jobs:
         run: '"$env:GITHUB_WORKSPACE\target\${{ matrix.target }}\release" | Out-File -FilePath "$env:GITHUB_PATH" -Append'
       - name: Upload elp binary (No Windows)
         if: matrix.os != 'windows'
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v6"
         with:
           name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: target/${{ matrix.target }}/release/elp
       - name: Upload elp binary (Windows Only)
         if: matrix.os == 'windows'
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v6"
         with:
           name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: target\${{ matrix.target }}\release\elp.exe
       - name: Upload eqwalizer native binary (No Windows)
         if: matrix.os != 'windows'
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v6"
         with:
           name: eqwalizer-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: ./eqwalizer/eqwalizer/eqwalizer
       - name: Upload eqwalizer native binary (Windows Only)
         if: matrix.os == 'windows'
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v6"
         with:
           name: eqwalizer-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: .\eqwalizer\eqwalizer\eqwalizer.exe
@@ -220,13 +222,13 @@ jobs:
       # actions/upload-release-asset did with a 422 Validation Failed.
       - name: Upload release elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz
         if: ${{ github.event_name == 'release' }}
-        uses: "softprops/action-gh-release@v2"
+        uses: "softprops/action-gh-release@v3"
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz
           fail_on_unmatched_files: true
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
       - name: Install VSCE
@@ -312,13 +314,13 @@ jobs:
         run: unzip -Z1 erlang-language-platform.vsix | grep -qx 'extension/bin/erlfmt'
       - name: Upload Extension (No Windows)
         if: matrix.os != 'windows'
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v6"
         with:
           name: elp-${{ matrix.os}}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
           path: editors/code/erlang-language-platform.vsix
       - name: Upload Extension (Windows Only)
         if: matrix.os == 'windows'
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v6"
         with:
           name: elp-${{ matrix.os}}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
           path: editors\code\erlang-language-platform.vsix
@@ -332,7 +334,7 @@ jobs:
         run: 'cp erlang-language-platform.vsix elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix'
       - name: Upload Extension Package
         if: ${{ github.event_name == 'release' }}
-        uses: "softprops/action-gh-release@v2"
+        uses: "softprops/action-gh-release@v3"
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: editors/code/elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
