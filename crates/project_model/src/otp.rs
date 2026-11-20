@@ -247,6 +247,13 @@ impl Otp {
         Self::version().map(|v| v < "28").unwrap_or(true)
     }
 
+    /// OTP 29 added the `is_integer/3` guard BIF.
+    pub fn supports_is_integer_3() -> bool {
+        Self::version()
+            .and_then(|v| v.parse::<u32>().ok())
+            .is_some_and(|v| v >= 29)
+    }
+
     pub fn epp_has_function_arity_bug() -> bool {
         Self::version().map(|v| v < "29").unwrap_or(true)
     }

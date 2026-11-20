@@ -139,6 +139,7 @@ mod issue_in_included_file;
 mod lists_map_to_comprehension;
 mod lists_reverse_append;
 mod macro_precedence_suprise;
+mod manual_integer_range_check;
 mod map_comprehension_to_from_keys;
 mod map_find_to_syntax;
 mod map_insertion_to_syntax;
@@ -2373,6 +2374,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &unused_header::LINTER,
     &redundant_ct_callback::LINTER,
     &used_ignored_variable::LINTER,
+    &manual_integer_range_check::LINTER,
 ];
 
 /// Unified registry for all types of linters, initialized once and reused.

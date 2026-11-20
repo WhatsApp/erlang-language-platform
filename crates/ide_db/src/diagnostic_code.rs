@@ -243,6 +243,8 @@ pub enum DiagnosticCode {
     UsedIgnoredVariable,
     #[strum(props(code = "W0096"))]
     MapComprehensionToFromKeys,
+    #[strum(props(code = "W0097"))]
+    ManualIntegerRangeCheck,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
