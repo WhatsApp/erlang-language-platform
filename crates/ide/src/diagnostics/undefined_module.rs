@@ -210,9 +210,21 @@ mod tests {
     spawn_opt(undefined_mod, f, [], []),
 %%            ^^^^^^^^^^^^^ warning: W0089: Module 'undefined_mod' is undefined.
 %%                        | 💡 <suppression>
-    rpc:call(Node, undefined_mod, F, A).
+    rpc:call(Node, undefined_mod, F, A),
 %%                 ^^^^^^^^^^^^^ warning: W0089: Module 'undefined_mod' is undefined.
 %%                             | 💡 <suppression>
+    proc_lib:start_link(undefined_mod, f, []),
+%%                      ^^^^^^^^^^^^^ warning: W0089: Module 'undefined_mod' is undefined.
+%%                                  | 💡 <suppression>
+    timer:apply_after(1000, undefined_mod, f, []),
+%%                          ^^^^^^^^^^^^^ warning: W0089: Module 'undefined_mod' is undefined.
+%%                                      | 💡 <suppression>
+    spawn_request(undefined_mod, f, [], [monitor]),
+%%                ^^^^^^^^^^^^^ warning: W0089: Module 'undefined_mod' is undefined.
+%%                            | 💡 <suppression>
+    erlang:spawn_request(undefined_mod, f, [], [monitor]).
+%%                       ^^^^^^^^^^^^^ warning: W0089: Module 'undefined_mod' is undefined.
+%%                                   | 💡 <suppression>
 //- /src/dependency.erl
   -module(dependency).
             "#,
