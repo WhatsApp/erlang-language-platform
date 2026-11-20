@@ -125,15 +125,18 @@ fn erl_flags(port_limit: u32, schedulers: Option<NonZeroU32>) -> String {
 /// the minimum the emulator accepts.
 const PROBE_TABLE_LIMIT: u32 = 1024;
 
-/// Run `erl` once to collect the OTP root dir, release, and system version.
-fn query_erl_system_info() -> Result<ErlSystemInfo> {
+/// Run `cmd`, an `erl` command, once to collect the OTP root dir, release, and
+/// system version.
+///
+/// The root dir is written as the raw bytes of its native file name, so it
+/// survives any character set and any locale: `io:format/2` fails on
+/// characters above 255 and escapes them on a Latin-1 device.
+fn query_erl_system_info(mut cmd: Command) -> Result<ErlSystemInfo> {
     let _timer = timeit!("query erl system info");
     let eval = format!(
-        "io:format(\"~s{sep}~s{sep}~s\", [code:root_dir(), erlang:system_info(otp_release), erlang:system_info(system_version)])",
+        "ok = io:setopts([{{encoding, latin1}}]), ok = file:write(standard_io, [unicode:characters_to_binary(code:root_dir(), unicode, file:native_name_encoding()), \"{sep}\", erlang:system_info(otp_release), \"{sep}\", erlang:system_info(system_version)])",
         sep = ERL_FIELD_SEP
     );
-    let erl = ERL.read().unwrap();
-    let mut cmd = Command::new(&*erl);
     let output = configure_erl_env(&mut cmd, PROBE_TABLE_LIMIT, None)
         // Speed up startup on loaded machines: a single scheduler, no async
         // threads, and minimal code loading.
@@ -226,7 +229,7 @@ impl Otp {
     /// so accessors can degrade gracefully rather than panicking.
     fn system_info() -> Result<&'static ErlSystemInfo> {
         static ERL_SYSTEM_INFO: LazyLock<Result<ErlSystemInfo>> =
-            LazyLock::new(query_erl_system_info);
+            LazyLock::new(|| query_erl_system_info(Command::new(&*ERL.read().unwrap())));
         ERL_SYSTEM_INFO
             .as_ref()
             .map_err(|err| anyhow::anyhow!("{err:#}"))
@@ -372,6 +375,56 @@ mod tests {
     #[test]
     fn erl_flags_with_schedulers() {
         assert_eq_expected!("+Q 1024 +S 16", erl_flags(1024, NonZeroU32::new(16)));
+    }
+
+    /// Relocate OTP under a root dir with characters above 255 and check that
+    /// it is found with either file name encoding, with `standard_io` on a
+    /// Latin-1 locale.
+    #[cfg(unix)]
+    #[test]
+    fn query_erl_system_info_non_latin1_root_dir() {
+        use std::os::unix::fs::symlink;
+
+        let otp_lib = Otp::find_otp().expect("tests should always be able to find OTP");
+        let otp_root = otp_lib.parent().expect("the OTP lib dir has a parent");
+
+        // `lib` is a real directory, so its canonical path stays under `root`.
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path().join("Erlang ∅⊤℞");
+        let lib = root.join("lib");
+        fs::create_dir_all(&lib).unwrap();
+        let link = |entry: fs::DirEntry, dir: &Path| {
+            symlink(entry.path(), dir.join(entry.file_name())).unwrap()
+        };
+        fs::read_dir(otp_root)
+            .unwrap()
+            .map(Result::unwrap)
+            .filter(|entry| entry.file_name() != "lib")
+            .for_each(|entry| link(entry, &root));
+        fs::read_dir(otp_lib)
+            .unwrap()
+            .map(Result::unwrap)
+            .for_each(|entry| link(entry, &lib));
+        let expected_lib_dir = dunce::canonicalize(&lib).unwrap();
+
+        for encoding_flag in ["+fnu", "+fnl"] {
+            let mut cmd = Command::new(&*ERL.read().unwrap());
+            cmd.env("ERL_ROOTDIR", &root)
+                .env("LC_ALL", "C")
+                .arg(encoding_flag);
+            let info = query_erl_system_info(cmd)
+                .unwrap_or_else(|err| panic!("erl {encoding_flag}: {err:#}"));
+            assert_eq_expected!(
+                expected_lib_dir.as_path(),
+                info.lib_dir.as_std_path(),
+                "erl {encoding_flag}"
+            );
+            assert_eq_expected!(
+                Otp::version(),
+                Some(info.otp_release.as_str()),
+                "erl {encoding_flag}"
+            );
+        }
     }
 
     #[test]
