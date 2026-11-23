@@ -71,6 +71,12 @@ export function registerCommands(context: vscode.ExtensionContext, client: Langu
             },
         ),
         vscode.commands.registerCommand(
+            'elp.openUri',
+            async (uri: string) => {
+                await vscode.env.openExternal(vscode.Uri.parse(uri));
+            },
+        ),
+        vscode.commands.registerCommand(
             'elp.restartServer',
             async () => {
                 await client.restart();
