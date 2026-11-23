@@ -155,7 +155,7 @@ impl Var {
     }
 }
 
-#[salsa::interned(no_lifetime)]
+#[salsa::interned(unsafe(no_lifetime), revisions = usize::MAX)]
 pub struct SsrSource {
     #[returns(clone)]
     pub source: Arc<str>,

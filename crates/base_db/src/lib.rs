@@ -409,7 +409,7 @@ impl ExtraDynamicCallPatternsInput {
 /// unwrap via `interned.file_id(db)`.
 ///
 /// See `QUERY_GROUP_MIGRATION_PLAN.md` Phase 1 / PR 1.1.
-#[salsa::interned(no_lifetime)]
+#[salsa::interned(unsafe(no_lifetime), revisions = usize::MAX)]
 pub struct InternedFileId {
     #[returns(clone)]
     pub file_id: FileId,
