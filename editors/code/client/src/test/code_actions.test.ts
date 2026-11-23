@@ -40,4 +40,15 @@ suite('Code actions', () => {
 			assert.ok(document.getText().includes('new_function_name(Application) ->'), document.getText());
 		});
 	});
+
+	test('add -doc attribute', async () => {
+		const document = await openWorkspaceFile('assist_examples/src/add_doc.erl');
+
+		await restoringContent(document, async () => {
+			// `version() -> undefined.`
+			const action = await codeAction(document, new vscode.Range(4, 0, 4, 0), 'Add -doc attribute');
+			await vscode.workspace.applyEdit(action.edit!);
+			assert.ok(document.getText().includes('-doc'), document.getText());
+		});
+	});
 });
