@@ -21,4 +21,13 @@ suite('Diagnostics', () => {
 		assert.strictEqual(diagnostic.range.start.line, 2);
 		assert.strictEqual(diagnostic.severity, vscode.DiagnosticSeverity.Warning);
 	});
+
+	test('head mismatch is reported', async () => {
+		const document = await openWorkspaceFile('assist_examples/src/head_mismatch.erl');
+
+		const diagnostic = await waitForDiagnostic(document, diagnostic => diagnostic.message.includes('head mismatch'));
+		// `foo(X) -> X.`
+		assert.strictEqual(diagnostic.range.start.line, 5);
+		assert.strictEqual(diagnostic.severity, vscode.DiagnosticSeverity.Error);
+	});
 });
