@@ -14,6 +14,7 @@ import { activateDebugger } from './debugger';
 import { registerCommands } from './commands';
 import { pathWithErlangInstallation } from './erlang';
 import { registerFormatter } from './formatting';
+import { provideHover } from './hover';
 import { outputChannel } from './logging';
 import { registerServerStatus, ServerStatus } from './status';
 import * as path from 'path';
@@ -63,6 +64,7 @@ export function activate(context: vscode.ExtensionContext): ElpExtensionApi {
 			fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
 		},
 		middleware: {
+			provideHover: (document, position, token) => provideHover(client, document, position, token),
 			// Used to intercept "rename" requests, allowing the user to provide a custom new name
 			resolveCodeAction: async (action: vscode.CodeAction, token: vscode.CancellationToken, next: ResolveCodeActionSignature): Promise<vscode.CodeAction> => {
 				// The VS Code type definitions still do not take `data` into account, even if that's part of LSP 3.17
