@@ -13,6 +13,7 @@ import { pathWithErlangInstallation } from './erlang';
 import * as edbDebugger from './debugger';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { outputChannel } from './logging';
+import { expandMacro } from './macro';
 
 export type Runnable = {
     label: string;
@@ -68,6 +69,12 @@ export function registerCommands(context: vscode.ExtensionContext, client: Langu
             'elp.runInteractive',
             async (runnable: Runnable) => {
                 await runInteractive(runnable);
+            },
+        ),
+        vscode.commands.registerCommand(
+            'elp.expandMacro',
+            async () => {
+                await expandMacro(client);
             },
         ),
         vscode.commands.registerCommand(
