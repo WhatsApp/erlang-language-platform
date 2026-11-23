@@ -12,6 +12,7 @@ import * as vscode from 'vscode';
 import { pathWithErlangInstallation } from './erlang';
 import * as edbDebugger from './debugger';
 import { LanguageClient } from 'vscode-languageclient/node';
+import { openExternalDocs } from './docs';
 import { outputChannel } from './logging';
 import { expandMacro } from './macro';
 
@@ -75,6 +76,12 @@ export function registerCommands(context: vscode.ExtensionContext, client: Langu
             'elp.expandMacro',
             async () => {
                 await expandMacro(client);
+            },
+        ),
+        vscode.commands.registerCommand(
+            'elp.externalDocs',
+            async () => {
+                await openExternalDocs(client);
             },
         ),
         vscode.commands.registerCommand(
