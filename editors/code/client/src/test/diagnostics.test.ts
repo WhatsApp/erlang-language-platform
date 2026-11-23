@@ -85,4 +85,16 @@ suite('Diagnostics', () => {
 		// `    green.`
 		assert.strictEqual(diagnostic.range.start.line, 7);
 	});
+
+	test('eqWAlizer diagnostics are updated on save', async () => {
+		const document = await openWorkspaceFile('single_errors/src/spec_mismatch.erl');
+		await waitForDiagnostic(document, diagnostic => diagnostic.message.includes("Expression has type:   'green'"));
+
+		await restoringContent(document, async () => {
+			// `    green.` becomes `    green1.`
+			await replaceText(document, new vscode.Range(7, 9, 7, 9), '1');
+			await document.save();
+			await waitForDiagnostic(document, diagnostic => diagnostic.message.includes("Expression has type:   'green1'"));
+		});
+	});
 });
