@@ -54,8 +54,13 @@ impl Linter for UnavailableFunctionLinter {
 pub struct Context {
     function_label: String,
     defining_app: String,
-    referencing_app: String,
-    referencing_target: String,
+    referencing_apps: Vec<ReferencingApp>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+struct ReferencingApp {
+    name: String,
+    target: String,
 }
 
 impl FunctionCallLinter for UnavailableFunctionLinter {
@@ -72,12 +77,15 @@ impl FunctionCallLinter for UnavailableFunctionLinter {
     }
 
     fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
+        let referencing_apps = context
+            .referencing_apps
+            .iter()
+            .map(|app| format!("'{}' (defined in '{}')", app.name, app.target))
+            .collect::<Vec<_>>()
+            .join(", ");
         Cow::Owned(format!(
-            "The function '{}' is defined in application '{}', but the application is not a dependency of '{}' (defined in '{}').",
-            context.function_label,
-            context.defining_app,
-            context.referencing_app,
-            context.referencing_target
+            "The function '{}' is defined in application '{}', but the application is not a dependency of {referencing_apps}.",
+            context.function_label, context.defining_app,
         ))
     }
 
@@ -91,8 +99,13 @@ impl FunctionCallLinter for UnavailableFunctionLinter {
         let file_id = def_fb.file_id();
         let arity = context.args.arity();
 
-        let referencing_app = sema.db.file_app(file_id)?;
-        let referencing_target = referencing_app.buck_target_name(sema.db).as_ref()?;
+        // A file compiled into several targets is linked into each of them,
+        // so every one of those apps must be able to load the callee.
+        let primary_app = sema.db.file_app(file_id)?;
+        let mut owners = sema.db.file_apps(primary_app.project(sema.db), file_id);
+        if owners.is_empty() {
+            owners.push(primary_app);
+        }
 
         // A call we cannot resolve is either undefined (W0017's job) or
         // dynamic. Either way there is no target app to check.
@@ -101,25 +114,32 @@ impl FunctionCallLinter for UnavailableFunctionLinter {
             .resolve_call(arity, sema, file_id, &def_fb.body())?;
         let defining_app = sema.db.file_app(function_def.file.file_id)?;
 
-        let referencing_app_name = referencing_app.name(sema.db);
-        let defining_app_name = defining_app.name(sema.db);
-
         // A call is a runtime edge, so the callee's beam must be loadable in
         // this VM: an application only reached over the network will not do.
-        if is_any_owner_reachable(
-            sema.db.upcast(),
-            referencing_app,
-            function_def.file.file_id,
-            DepKind::Runtime,
-        ) {
+        let referencing_apps: Vec<ReferencingApp> = owners
+            .into_iter()
+            .filter_map(|app| {
+                let target = app.buck_target_name(sema.db).as_ref()?;
+                (!is_any_owner_reachable(
+                    sema.db.upcast(),
+                    app,
+                    function_def.file.file_id,
+                    DepKind::Runtime,
+                ))
+                .then(|| ReferencingApp {
+                    name: app.name(sema.db).to_string(),
+                    target: target.to_string(),
+                })
+            })
+            .collect();
+        if referencing_apps.is_empty() {
             return None;
         }
 
         Some(Context {
             function_label: context.target.label(arity, &def_fb.body())?.to_string(),
-            defining_app: defining_app_name.to_string(),
-            referencing_app: referencing_app_name.to_string(),
-            referencing_target: referencing_target.to_string(),
+            defining_app: defining_app.name(sema.db).to_string(),
+            referencing_apps,
         })
     }
 }
@@ -397,6 +417,64 @@ mod tests {
   -module(app_b).
   -compile(export_all).
   exists() -> ok.
+//- /app_c/src/app_c.erl app:app_c buck_target:cell//app_c:lib
+  -module(app_c).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn call_from_shared_file_into_dep_of_one_owner_only_is_reported() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/shared.erl app:app_a buck_target:cell//app_a:lib deps:app_c also_app:app_b
+  -module(shared).
+  main() ->
+    app_c:exists().
+%%  ^^^^^^^^^^^^ warning: W0085: The function 'app_c:exists/0' is defined in application 'app_c', but the application is not a dependency of 'app_b' (defined in 'cell//app_b:lib').
+%%             | 💡 <suppression>
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
+  -module(app_b).
+//- /app_c/src/app_c.erl app:app_c buck_target:cell//app_c:lib
+  -module(app_c).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn call_from_shared_file_lists_every_owner_missing_the_dep() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/shared.erl app:app_a buck_target:cell//app_a:lib also_app:app_b
+  -module(shared).
+  main() ->
+    app_c:exists().
+%%  ^^^^^^^^^^^^ warning: W0085: The function 'app_c:exists/0' is defined in application 'app_c', but the application is not a dependency of 'app_a' (defined in 'cell//app_a:lib'), 'app_b' (defined in 'cell//app_b:lib').
+%%             | 💡 <suppression>
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
+  -module(app_b).
+//- /app_c/src/app_c.erl app:app_c buck_target:cell//app_c:lib
+  -module(app_c).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn call_from_shared_file_into_dep_of_every_owner_is_ok() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/shared.erl app:app_a buck_target:cell//app_a:lib deps:app_c also_app:app_b
+  -module(shared).
+  main() ->
+    app_c:exists().
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib deps:app_c
+  -module(app_b).
 //- /app_c/src/app_c.erl app:app_c buck_target:cell//app_c:lib
   -module(app_c).
   -compile(export_all).
