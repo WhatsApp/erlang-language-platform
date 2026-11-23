@@ -37,4 +37,10 @@ suite('Commands', () => {
 		// The page is under the `base_url` the test workspace sets in `.elp.toml`.
 		assert.deepStrictEqual(uris.map(uri => uri.toString(true)), ['https://docs.example.com/docs.html#my_function/0']);
 	});
+
+	test('Ping Language Server returns the answer of the server', async () => {
+		await openWorkspaceFile('hover/src/doc_examples.erl');
+
+		assert.strictEqual(await vscode.commands.executeCommand('elp.ping'), 'pong');
+	});
 });

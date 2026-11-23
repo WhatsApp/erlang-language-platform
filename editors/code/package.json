@@ -78,6 +78,16 @@
         "command": "elp.externalDocs",
         "title": "Open docs under cursor",
         "category": "Erlang"
+      },
+      {
+        "command": "elp.ping",
+        "title": "Ping Language Server",
+        "category": "Erlang"
+      },
+      {
+        "command": "elp.pingAndShow",
+        "title": "Ping Language Server and Show Results",
+        "category": "Erlang"
       }
     ],
     "debuggers": [

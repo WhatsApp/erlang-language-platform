@@ -15,6 +15,7 @@ import { LanguageClient } from 'vscode-languageclient/node';
 import { openExternalDocs } from './docs';
 import { outputChannel } from './logging';
 import { expandMacro } from './macro';
+import { ping, pingAndShow } from './ping';
 
 export type Runnable = {
     label: string;
@@ -88,6 +89,16 @@ export function registerCommands(context: vscode.ExtensionContext, client: Langu
             'elp.openUri',
             async (uri: string) => {
                 await vscode.env.openExternal(vscode.Uri.parse(uri));
+            },
+        ),
+        vscode.commands.registerCommand(
+            'elp.ping',
+            () => ping(client),
+        ),
+        vscode.commands.registerCommand(
+            'elp.pingAndShow',
+            async () => {
+                await pingAndShow(client);
             },
         ),
         vscode.commands.registerCommand(
