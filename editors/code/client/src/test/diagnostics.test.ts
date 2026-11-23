@@ -40,4 +40,14 @@ suite('Diagnostics', () => {
 			await waitForDiagnostic(document, diagnostic => diagnostic.message.includes("'baz' vs 'bar'"));
 		});
 	});
+
+	test('syntax errors are reported as you type', async () => {
+		const document = await openWorkspaceFile('single_errors/src/as_you_type.erl');
+
+		await restoringContent(document, async () => {
+			await replaceText(document, new vscode.Range(1, 0, 1, 0), 'this');
+			const diagnostic = await waitForDiagnostic(document, diagnostic => diagnosticCode(diagnostic) === 'P1711');
+			assert.strictEqual(diagnostic.range.start.line, 1);
+		});
+	});
 });
