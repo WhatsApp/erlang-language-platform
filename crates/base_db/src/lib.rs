@@ -417,18 +417,15 @@ pub struct InternedFileId {
 
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in ELP is derived from these queries.
-#[ra_ap_query_group_macro::query_group]
+#[salsa::db]
 pub trait RootQueryDb: SourceDatabase + salsa::Database {
     /// The apps of `project` that list the file, the primary owner first. A
     /// query about one file depends on this rather than on the project's whole
     /// index, so it runs again only when that file's owners change.
-    #[salsa::invoke(ownership::file_apps)]
     fn file_apps(&self, project: Project, file_id: FileId) -> SmallVec<[App; 1]>;
 
     /// The primary owner of the file: in the first project whose apps list
     /// it, else the app of its source root.
-    #[salsa::transparent]
-    #[salsa::invoke(ownership::file_app)]
     fn file_app(&self, file_id: FileId) -> Option<App>;
 
     fn include_file_id(&self, project: Project, path: VfsPath) -> Option<FileId>;
@@ -458,8 +455,6 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     ///
     /// Stored pre-indexed by `(module, function, arity)` so look-ups are
     /// O(1) (mirroring the built-in pattern index).
-    #[salsa::transparent]
-    #[salsa::invoke(extra_dynamic_call_patterns)]
     fn extra_dynamic_call_patterns(&self) -> Arc<FxHashMap<PatternKey, DynamicCallPatternInput>>;
 
     /// Returns a map from module name to FileId of the containing file.
@@ -474,117 +469,261 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn include_file_index(&self, project: Project) -> Arc<IncludeFileIndex>;
 
     /// Parse the file_id to AST
-    #[salsa::transparent]
-    #[salsa::invoke(parse_dispatch)]
     fn parse(&self, file_id: FileId) -> Parse<SourceFile>;
 
     /// Salsa-tracked sibling of `parse` that takes the `InternedFileId` wrapper
     /// directly. The non-interned `parse` is a transparent dispatch that wraps
     /// the `FileId` and forwards here; this is the cached path.
-    #[salsa::invoke(parse_inner)]
     fn parse_interned(&self, fid: InternedFileId) -> Parse<SourceFile>;
 
     /// Returns the generation status of the file.
     /// - `Generated`: File has `generated` marker (no manual sections)
     /// - `PartiallyGenerated`: File has `partially-generated` marker
     /// - `Regular`: No generation markers
-    #[salsa::transparent]
-    #[salsa::invoke(generated_status_dispatch)]
     fn generated_status(&self, file_id: FileId) -> GeneratedStatus;
 
-    #[salsa::invoke(generated_status_inner)]
     fn generated_status_interned(&self, fid: InternedFileId) -> GeneratedStatus;
 
     /// Returns the ranges of manual sections in a partially-generated file.
     /// Manual sections are delimited by `% BEGIN MANUAL SECTION` and
     /// `% END MANUAL SECTION` comment markers.
-    #[salsa::transparent]
-    #[salsa::invoke(manual_section_ranges_dispatch)]
     fn manual_section_ranges(&self, file_id: FileId) -> Arc<Vec<TextRange>>;
 
-    #[salsa::invoke(manual_section_ranges_inner)]
     fn manual_section_ranges_interned(&self, fid: InternedFileId) -> Arc<Vec<TextRange>>;
 
     /// The top level items are expressions, not forms.  Typically
     /// when parsing e.g. a `rebar.config` file.
-    #[salsa::transparent]
-    #[salsa::invoke(is_erlang_config_file_dispatch)]
     fn is_erlang_config_file(&self, file_id: FileId) -> bool;
 
-    #[salsa::invoke(is_erlang_config_file_inner)]
     fn is_erlang_config_file_interned(&self, fid: InternedFileId) -> bool;
 
-    #[salsa::transparent]
-    #[salsa::invoke(is_otp_dispatch)]
     fn is_otp(&self, file_id: FileId) -> Option<bool>;
 
-    #[salsa::invoke(is_otp_inner)]
     fn is_otp_interned(&self, fid: InternedFileId) -> Option<bool>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(is_test_suite_or_test_helper_dispatch)]
     fn is_test_suite_or_test_helper(&self, file_id: FileId) -> Option<bool>;
 
-    #[salsa::invoke(is_test_suite_or_test_helper_inner)]
     fn is_test_suite_or_test_helper_interned(&self, fid: InternedFileId) -> Option<bool>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(file_app_type_dispatch)]
     fn file_app_type(&self, file_id: FileId) -> Option<AppType>;
 
-    #[salsa::invoke(file_app_type_inner)]
     fn file_app_type_interned(&self, fid: InternedFileId) -> Option<AppType>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(file_app_name_dispatch)]
     fn file_app_name(&self, file_id: FileId) -> Option<AppName>;
 
-    #[salsa::invoke(file_app_name_inner)]
     fn file_app_name_interned(&self, fid: InternedFileId) -> Option<AppName>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(file_project_dispatch)]
     fn file_project(&self, file_id: FileId) -> Option<Project>;
 
-    #[salsa::invoke(file_project_inner)]
     fn file_project_interned(&self, fid: InternedFileId) -> Option<Project>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(file_kind_dispatch)]
     fn file_kind(&self, file_id: FileId) -> FileKind;
 
-    #[salsa::invoke(file_kind_inner)]
     fn file_kind_interned(&self, fid: InternedFileId) -> FileKind;
 
     /// When we get a range from the client, limit it to what is in the source file
-    #[salsa::transparent]
-    #[salsa::invoke(clamp_range_dispatch)]
     fn clamp_range(&self, file_id: FileId, range: TextRange) -> TextRange;
 
-    #[salsa::invoke(clamp_range_inner)]
     fn clamp_range_interned(&self, fid: InternedFileId, range: TextRange) -> TextRange;
 
-    #[salsa::transparent]
-    #[salsa::invoke(clamp_offset_dispatch)]
     fn clamp_offset(&self, file_id: FileId, offset: TextSize) -> TextSize;
 
-    #[salsa::invoke(clamp_offset_inner)]
     fn clamp_offset_interned(&self, fid: InternedFileId, offset: TextSize) -> TextSize;
 
-    #[salsa::transparent]
-    #[salsa::invoke(IncludeCtx::resolve_local_dispatch)]
     fn resolve_local(&self, file_id: FileId, path: SmolStr) -> Option<FileId>;
 
-    #[salsa::invoke(IncludeCtx::resolve_local_inner)]
     fn resolve_local_interned(&self, fid: InternedFileId, path: SmolStr) -> Option<FileId>;
 
-    #[salsa::invoke(IncludeCtx::resolve_remote_query)]
     fn resolve_remote(
         &self,
         orig_app: Option<App>,
         current_file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId>;
+}
+
+#[salsa::db]
+impl<DB> RootQueryDb for DB
+where
+    DB: SourceDatabase + salsa::Database,
+{
+    fn file_apps(&self, project: Project, file_id: FileId) -> SmallVec<[App; 1]> {
+        ownership::file_apps(self, project, file_id)
+    }
+
+    fn file_app(&self, file_id: FileId) -> Option<App> {
+        ownership::file_app(self, file_id)
+    }
+
+    fn include_file_id(&self, project: Project, path: VfsPath) -> Option<FileId> {
+        include_file_id(self, project, path)
+    }
+
+    fn mapped_include_file(
+        &self,
+        project: Project,
+        scope: IncludeMappingScope,
+        path: SmolStr,
+    ) -> Option<FileId> {
+        mapped_include_file(self, project, scope, path)
+    }
+
+    fn reachable_targets(
+        &self,
+        project: Project,
+        source: TargetFullName,
+        dep_kind: DepKind,
+    ) -> Option<Arc<ReachableTargets>> {
+        reachable_targets(self, project, source, dep_kind)
+    }
+
+    fn extra_dynamic_call_patterns(&self) -> Arc<FxHashMap<PatternKey, DynamicCallPatternInput>> {
+        extra_dynamic_call_patterns(self)
+    }
+
+    fn module_index(&self, project: Project) -> Arc<ModuleIndex> {
+        module_index_query(self, project)
+    }
+
+    fn module_mentions(&self, project: Project) -> Arc<FxHashMap<ModuleName, Vec<FileId>>> {
+        module_mentions(self, project)
+    }
+
+    fn include_file_index(&self, project: Project) -> Arc<IncludeFileIndex> {
+        include_file_index(self, project)
+    }
+
+    fn parse(&self, file_id: FileId) -> Parse<SourceFile> {
+        parse_dispatch(self, file_id)
+    }
+
+    fn parse_interned(&self, fid: InternedFileId) -> Parse<SourceFile> {
+        parse_inner(self, fid)
+    }
+
+    fn generated_status(&self, file_id: FileId) -> GeneratedStatus {
+        generated_status_dispatch(self, file_id)
+    }
+
+    fn generated_status_interned(&self, fid: InternedFileId) -> GeneratedStatus {
+        generated_status_inner(self, fid)
+    }
+
+    fn manual_section_ranges(&self, file_id: FileId) -> Arc<Vec<TextRange>> {
+        manual_section_ranges_dispatch(self, file_id)
+    }
+
+    fn manual_section_ranges_interned(&self, fid: InternedFileId) -> Arc<Vec<TextRange>> {
+        manual_section_ranges_inner(self, fid)
+    }
+
+    fn is_erlang_config_file(&self, file_id: FileId) -> bool {
+        is_erlang_config_file_dispatch(self, file_id)
+    }
+
+    fn is_erlang_config_file_interned(&self, fid: InternedFileId) -> bool {
+        is_erlang_config_file_inner(self, fid)
+    }
+
+    fn is_otp(&self, file_id: FileId) -> Option<bool> {
+        is_otp_dispatch(self, file_id)
+    }
+
+    fn is_otp_interned(&self, fid: InternedFileId) -> Option<bool> {
+        is_otp_inner(self, fid)
+    }
+
+    fn is_test_suite_or_test_helper(&self, file_id: FileId) -> Option<bool> {
+        is_test_suite_or_test_helper_dispatch(self, file_id)
+    }
+
+    fn is_test_suite_or_test_helper_interned(&self, fid: InternedFileId) -> Option<bool> {
+        is_test_suite_or_test_helper_inner(self, fid)
+    }
+
+    fn file_app_type(&self, file_id: FileId) -> Option<AppType> {
+        file_app_type_dispatch(self, file_id)
+    }
+
+    fn file_app_type_interned(&self, fid: InternedFileId) -> Option<AppType> {
+        file_app_type_inner(self, fid)
+    }
+
+    fn file_app_name(&self, file_id: FileId) -> Option<AppName> {
+        file_app_name_dispatch(self, file_id)
+    }
+
+    fn file_app_name_interned(&self, fid: InternedFileId) -> Option<AppName> {
+        file_app_name_inner(self, fid)
+    }
+
+    fn file_project(&self, file_id: FileId) -> Option<Project> {
+        file_project_dispatch(self, file_id)
+    }
+
+    fn file_project_interned(&self, fid: InternedFileId) -> Option<Project> {
+        file_project_inner(self, fid)
+    }
+
+    fn file_kind(&self, file_id: FileId) -> FileKind {
+        file_kind_dispatch(self, file_id)
+    }
+
+    fn file_kind_interned(&self, fid: InternedFileId) -> FileKind {
+        file_kind_inner(self, fid)
+    }
+
+    fn clamp_range(&self, file_id: FileId, range: TextRange) -> TextRange {
+        clamp_range_dispatch(self, file_id, range)
+    }
+
+    fn clamp_range_interned(&self, fid: InternedFileId, range: TextRange) -> TextRange {
+        clamp_range_inner(self, fid, range)
+    }
+
+    fn clamp_offset(&self, file_id: FileId, offset: TextSize) -> TextSize {
+        clamp_offset_dispatch(self, file_id, offset)
+    }
+
+    fn clamp_offset_interned(&self, fid: InternedFileId, offset: TextSize) -> TextSize {
+        clamp_offset_inner(self, fid, offset)
+    }
+
+    fn resolve_local(&self, file_id: FileId, path: SmolStr) -> Option<FileId> {
+        IncludeCtx::resolve_local_dispatch(self, file_id, path)
+    }
+
+    fn resolve_local_interned(&self, fid: InternedFileId, path: SmolStr) -> Option<FileId> {
+        resolve_local_interned_tracked(self, fid, path)
+    }
+
+    fn resolve_remote(
+        &self,
+        orig_app: Option<App>,
+        current_file_id: FileId,
+        path: SmolStr,
+    ) -> Option<FileId> {
+        resolve_remote_tracked(self, orig_app, current_file_id, path)
+    }
+}
+
+#[salsa::tracked(returns(clone))]
+fn resolve_local_interned_tracked(
+    db: &dyn RootQueryDb,
+    fid: InternedFileId,
+    path: SmolStr,
+) -> Option<FileId> {
+    IncludeCtx::resolve_local_inner(db, fid, path)
+}
+
+#[salsa::tracked(returns(clone))]
+fn resolve_remote_tracked(
+    db: &dyn RootQueryDb,
+    orig_app: Option<App>,
+    current_file_id: FileId,
+    path: SmolStr,
+) -> Option<FileId> {
+    IncludeCtx::resolve_remote_query(db, orig_app, current_file_id, path)
 }
 
 #[salsa::db]
@@ -616,7 +755,8 @@ fn extra_dynamic_call_patterns(
     ExtraDynamicCallPatternsInput::get(db).patterns(db)
 }
 
-fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
+#[salsa::tracked(returns(clone))]
+fn module_index_query(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
     let mut builder = ModuleIndex::builder();
 
     for &source_root_id in project.source_roots(db).iter() {
@@ -642,6 +782,7 @@ fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
     builder.build()
 }
 
+#[salsa::tracked(returns(clone))]
 fn module_mentions(
     db: &dyn RootQueryDb,
     project: Project,
@@ -709,6 +850,7 @@ pub fn is_app_reachable(
         })
 }
 
+#[salsa::tracked(returns(clone))]
 fn reachable_targets(
     db: &dyn RootQueryDb,
     project: Project,
@@ -779,6 +921,7 @@ impl IncludeFileIndex {
     }
 }
 
+#[salsa::tracked(returns(clone))]
 fn include_file_index(db: &dyn RootQueryDb, project: Project) -> Arc<IncludeFileIndex> {
     let mut include_file_index = IncludeFileIndex::default();
     build_include_file_index(db, project, &mut include_file_index);
@@ -809,11 +952,13 @@ fn build_include_file_index(
     }
 }
 
+#[salsa::tracked(returns(clone))]
 fn include_file_id(db: &dyn RootQueryDb, project: Project, path: VfsPath) -> Option<FileId> {
     let include_file_index = db.include_file_index(project);
     include_file_index.path_to_file_id.get(&path).copied()
 }
 
+#[salsa::tracked(returns(clone))]
 fn mapped_include_file(
     db: &dyn RootQueryDb,
     project: Project,
@@ -832,6 +977,7 @@ fn parse_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Parse<SourceFile> {
     db.parse_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn parse_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Parse<SourceFile> {
     let file_id = fid.file_id(db);
     let text = db.file(file_id).text(db);
@@ -842,6 +988,7 @@ fn generated_status_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Generated
     db.generated_status_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn generated_status_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> GeneratedStatus {
     let file_id = fid.file_id(db);
 
@@ -874,6 +1021,7 @@ fn manual_section_ranges_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Arc<
     db.manual_section_ranges_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn manual_section_ranges_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Arc<Vec<TextRange>> {
     let file_id = fid.file_id(db);
 
@@ -935,6 +1083,7 @@ fn is_erlang_config_file_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> bool
     db.is_erlang_config_file_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn is_erlang_config_file_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> bool {
     let file_id = fid.file_id(db);
     let parse = db.parse(file_id);
@@ -945,6 +1094,7 @@ fn is_otp_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<bool> {
     db.is_otp_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn is_otp_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<bool> {
     let file_id = fid.file_id(db);
     let project = db.file_app(file_id)?.project(db);
@@ -955,6 +1105,7 @@ fn is_test_suite_or_test_helper_dispatch(db: &dyn RootQueryDb, file_id: FileId) 
     db.is_test_suite_or_test_helper_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn is_test_suite_or_test_helper_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<bool> {
     let file_id = fid.file_id(db);
     // Context for T171541590
@@ -972,6 +1123,7 @@ fn file_app_type_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppTy
     db.file_app_type_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn file_app_type_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<AppType> {
     let file_id = fid.file_id(db);
     // Context for T171541590
@@ -983,6 +1135,7 @@ fn file_app_name_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppNa
     db.file_app_name_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn file_app_name_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<AppName> {
     let file_id = fid.file_id(db);
     // Context for T171541590
@@ -994,6 +1147,7 @@ fn file_project_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<Projec
     db.file_project_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn file_project_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<Project> {
     let file_id = fid.file_id(db);
     // Context for T171541590
@@ -1027,6 +1181,7 @@ fn file_kind_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> FileKind {
     db.file_kind_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn file_kind_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> FileKind {
     let file_id = fid.file_id(db);
     // Context for T171541590
@@ -1070,6 +1225,7 @@ fn clamp_range_dispatch(db: &dyn RootQueryDb, file_id: FileId, range: TextRange)
     db.clamp_range_interned(InternedFileId::new(db, file_id), range)
 }
 
+#[salsa::tracked(returns(clone))]
 fn clamp_range_inner(db: &dyn RootQueryDb, fid: InternedFileId, range: TextRange) -> TextRange {
     let file_id = fid.file_id(db);
     let source_file = db.parse(file_id).tree();
@@ -1086,6 +1242,7 @@ fn clamp_offset_dispatch(db: &dyn RootQueryDb, file_id: FileId, offset: TextSize
     db.clamp_offset_interned(InternedFileId::new(db, file_id), offset)
 }
 
+#[salsa::tracked(returns(clone))]
 fn clamp_offset_inner(db: &dyn RootQueryDb, fid: InternedFileId, offset: TextSize) -> TextSize {
     let file_id = fid.file_id(db);
     let source_file = db.parse(file_id).tree();

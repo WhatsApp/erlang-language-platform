@@ -59,6 +59,7 @@ fn sort_owners(db: &dyn RootQueryDb, path: &VfsPath, apps: &mut [App]) {
     });
 }
 
+#[salsa::tracked(returns(clone))]
 pub(crate) fn file_apps(
     db: &dyn RootQueryDb,
     project: Project,
