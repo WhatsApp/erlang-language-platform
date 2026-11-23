@@ -76,4 +76,13 @@ suite('Diagnostics', () => {
 			assert.strictEqual(diagnostic.range.start.line, 3);
 		});
 	});
+
+	test('eqWAlizer reports a spec mismatch', async () => {
+		const document = await openWorkspaceFile('single_errors/src/spec_mismatch.erl');
+
+		const diagnostic = await waitForDiagnostic(
+			document, diagnostic => diagnostic.message.includes("Context expected type: 'ok'"));
+		// `    green.`
+		assert.strictEqual(diagnostic.range.start.line, 7);
+	});
 });
