@@ -9,18 +9,21 @@
  */
 
 import { defineConfig } from '@vscode/test-cli';
-import { cpSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const testProject = join(import.meta.dirname, '../../test/test_projects/end_to_end');
-const apps = ['assist_examples', 'definitions', 'hover'];
+const apps = ['assist_examples', 'definitions', 'hover', 'single_errors'];
+const settings = { 'elp.typesOnHover.enable': true };
 
 // `end_to_end` is configured as a Buck project. The copy lists its apps
 // instead, so that ELP loads them as a single project without Buck.
 const workspaceFolder = mkdtempSync(join(tmpdir(), 'elp-vscode-test-'));
 cpSync(testProject, workspaceFolder, { recursive: true });
 writeFileSync(join(workspaceFolder, '.elp.toml'), `[build_info]\napps = ${JSON.stringify(apps)}\n`);
+mkdirSync(join(workspaceFolder, '.vscode'));
+writeFileSync(join(workspaceFolder, '.vscode', 'settings.json'), JSON.stringify(settings));
 
 export default defineConfig({
 	files: 'client/out/test/**/*.test.js',

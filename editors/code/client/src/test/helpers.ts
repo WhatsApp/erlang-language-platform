@@ -45,3 +45,22 @@ export async function hoverText(document: vscode.TextDocument, position: vscode.
 		.map(content => typeof content === 'string' ? content : content.value)
 		.join('\n');
 }
+
+// Resolves with the first diagnostic of the document that matches, as soon as
+// ELP publishes one.
+export function waitForDiagnostic(
+	document: vscode.TextDocument,
+	matches: (diagnostic: vscode.Diagnostic) => boolean,
+): Promise<vscode.Diagnostic> {
+	return new Promise(resolve => {
+		const check = () => {
+			const diagnostic = vscode.languages.getDiagnostics(document.uri).find(matches);
+			if (diagnostic) {
+				listener.dispose();
+				resolve(diagnostic);
+			}
+		};
+		const listener = vscode.languages.onDidChangeDiagnostics(check);
+		check();
+	});
+}
