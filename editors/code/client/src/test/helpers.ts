@@ -36,3 +36,12 @@ async function waitForServerRunning(): Promise<void> {
 		});
 	});
 }
+
+export async function hoverText(document: vscode.TextDocument, position: vscode.Position): Promise<string> {
+	const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+		'vscode.executeHoverProvider', document.uri, position);
+	return hovers
+		.flatMap(hover => hover.contents)
+		.map(content => typeof content === 'string' ? content : content.value)
+		.join('\n');
+}

@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const testProject = join(import.meta.dirname, '../../test/test_projects/end_to_end');
-const apps = ['assist_examples', 'definitions'];
+const apps = ['assist_examples', 'definitions', 'hover'];
 
 // `end_to_end` is configured as a Buck project. The copy lists its apps
 // instead, so that ELP loads them as a single project without Buck.
