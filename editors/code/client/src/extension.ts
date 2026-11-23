@@ -56,6 +56,8 @@ export function activate(context: vscode.ExtensionContext): ElpExtensionApi {
 	const clientOptions: LanguageClientOptions = {
 		// Register the server for plain text documents
 		documentSelector: [{ scheme: 'file', language: 'erlang' }],
+		// ELP otherwise only asks for its settings once the project is loaded.
+		initializationOptions: () => vscode.workspace.getConfiguration('elp'),
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
