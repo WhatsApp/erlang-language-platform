@@ -46,6 +46,10 @@ export async function hoverText(document: vscode.TextDocument, position: vscode.
 		.join('\n');
 }
 
+export function diagnosticCode(diagnostic: vscode.Diagnostic): string | number | undefined {
+	return typeof diagnostic.code === 'object' ? diagnostic.code.value : diagnostic.code;
+}
+
 // Resolves with the first diagnostic of the document that matches, as soon as
 // ELP publishes one.
 export function waitForDiagnostic(
