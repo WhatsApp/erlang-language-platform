@@ -10,7 +10,7 @@
 
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { hoverText, openWorkspaceFile } from './helpers';
+import { hoverText, openWorkspaceFile, waitForDiagnostic } from './helpers';
 
 suite('Hover', () => {
 	test('shows the documentation of a remote function', async () => {
@@ -19,5 +19,15 @@ suite('Hover', () => {
 		// `reverse` in `lists:reverse(L)`
 		const text = await hoverText(document, new vscode.Position(15, 11));
 		assert.ok(text.includes('in `List1` in reverse order'), text);
+	});
+
+	test('shows the type of a variable', async () => {
+		const document = await openWorkspaceFile('single_errors/src/types_on_hover.erl');
+		// Types come from eqWAlizer, which reports on this module too.
+		await waitForDiagnostic(document, diagnostic => diagnostic.source === 'eqWAlizer');
+
+		// `Value` in `foo(Value) -> Value.`
+		const text = await hoverText(document, new vscode.Position(7, 4));
+		assert.ok(text.includes('Value :: my_type'), text);
 	});
 });
