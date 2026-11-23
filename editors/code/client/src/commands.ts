@@ -86,6 +86,10 @@ export function registerCommands(context: vscode.ExtensionContext, client: Langu
             },
         ),
         vscode.commands.registerCommand(
+            'elp.openExtensionLogs',
+            () => log.show(),
+        ),
+        vscode.commands.registerCommand(
             'elp.openUri',
             async (uri: string) => {
                 await vscode.env.openExternal(vscode.Uri.parse(uri));
