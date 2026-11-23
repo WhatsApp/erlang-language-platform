@@ -88,6 +88,11 @@
         "command": "elp.pingAndShow",
         "title": "Ping Language Server and Show Results",
         "category": "Erlang"
+      },
+      {
+        "command": "elp.openExtensionLogs",
+        "title": "Open Extension Logs",
+        "category": "Erlang"
       }
     ],
     "debuggers": [
