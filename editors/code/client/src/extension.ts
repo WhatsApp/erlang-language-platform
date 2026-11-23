@@ -15,6 +15,7 @@ import { registerCommands } from './commands';
 import { pathWithErlangInstallation } from './erlang';
 import { registerFormatter } from './formatting';
 import { outputChannel } from './logging';
+import { registerServerStatus } from './status';
 import * as path from 'path';
 
 import {
@@ -76,6 +77,8 @@ export function activate(context: vscode.ExtensionContext) {
 		serverOptions,
 		clientOptions
 	);
+
+	registerServerStatus(context, client);
 
 	log.appendLine('Registering commands');
 	registerCommands(context, client);
