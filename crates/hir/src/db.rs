@@ -65,299 +65,210 @@ use crate::preprocessor::MacroEnvironment;
 use crate::preprocessor::PreprocessorAnalysis;
 use crate::preprocessor::PreprocessorMacroDefs;
 
-#[ra_ap_query_group_macro::query_group]
+#[salsa::db]
 pub trait DefDatabase:
     InternDatabase + Upcast<dyn InternDatabase> + RootQueryDb + Upcast<dyn RootQueryDb> + TypedSemantic
 {
-    #[salsa::transparent]
-    #[salsa::invoke(FormList::file_form_list_dispatch)]
     fn file_form_list(&self, file_id: FileId) -> Arc<FormList>;
 
-    #[salsa::invoke(FormList::file_form_list_inner)]
     fn file_form_list_interned(&self, fid: InternedFileId) -> Arc<FormList>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(FunctionBody::function_body_with_source_dispatch)]
     fn function_body_with_source(
         &self,
         function_id: InFile<FunctionDefId>,
     ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>);
 
-    #[salsa::invoke(FunctionBody::function_body_with_source_inner)]
     fn function_body_with_source_interned(
         &self,
         fid: crate::InternedInFileFunctionDef,
     ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>);
 
-    #[salsa::transparent]
-    #[salsa::invoke(FunctionClauseBody::function_clause_body_with_source_dispatch)]
     fn function_clause_body_with_source(
         &self,
         function_clause_id: InFile<FunctionClauseId>,
     ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(FunctionClauseBody::function_clause_body_with_source_inner)]
     fn function_clause_body_with_source_interned(
         &self,
         fid: crate::InternedInFileFunctionClause,
     ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>);
 
-    #[salsa::transparent]
-    #[salsa::invoke(RecordBody::record_body_with_source_dispatch)]
     fn record_body_with_source(
         &self,
         record_id: InFile<RecordId>,
     ) -> (Arc<RecordBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(RecordBody::record_body_with_source_inner)]
     fn record_body_with_source_interned(
         &self,
         fid: crate::InternedInFileRecord,
     ) -> (Arc<RecordBody>, Arc<BodySourceMap>);
 
-    #[salsa::transparent]
-    #[salsa::invoke(SpecBody::spec_body_with_source_dispatch)]
     fn spec_body_with_source(&self, spec_id: InFile<SpecId>)
     -> (Arc<SpecBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(SpecBody::spec_body_with_source_inner)]
     fn spec_body_with_source_interned(
         &self,
         fid: crate::InternedInFileSpec,
     ) -> (Arc<SpecBody>, Arc<BodySourceMap>);
 
-    #[salsa::transparent]
-    #[salsa::invoke(SpecBody::callback_body_with_source_dispatch)]
     fn callback_body_with_source(
         &self,
         callback_id: InFile<CallbackId>,
     ) -> (Arc<SpecBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(SpecBody::callback_body_with_source_inner)]
     fn callback_body_with_source_interned(
         &self,
         fid: crate::InternedInFileCallback,
     ) -> (Arc<SpecBody>, Arc<BodySourceMap>);
 
-    #[salsa::transparent]
-    #[salsa::invoke(TypeBody::type_body_with_source_dispatch)]
     fn type_body_with_source(
         &self,
         type_alias_id: InFile<TypeAliasId>,
     ) -> (Arc<TypeBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(TypeBody::type_body_with_source_inner)]
     fn type_body_with_source_interned(
         &self,
         fid: crate::InternedInFileTypeAlias,
     ) -> (Arc<TypeBody>, Arc<BodySourceMap>);
 
-    #[salsa::transparent]
-    #[salsa::invoke(AttributeBody::attribute_body_with_source_dispatch)]
     fn attribute_body_with_source(
         &self,
         attribute_id: InFile<AttributeId>,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(AttributeBody::attribute_body_with_source_inner)]
     fn attribute_body_with_source_interned(
         &self,
         fid: crate::InternedInFileAttribute,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>);
 
-    #[salsa::transparent]
-    #[salsa::invoke(AttributeBody::compile_body_with_source_dispatch)]
     fn compile_body_with_source(
         &self,
         attribute_id: InFile<CompileOptionId>,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(AttributeBody::compile_body_with_source_inner)]
     fn compile_body_with_source_interned(
         &self,
         fid: crate::InternedInFileCompileOption,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>);
 
-    #[salsa::transparent]
-    #[salsa::invoke(DefineBody::define_body_with_source_dispatch)]
     fn define_body_with_source(
         &self,
         define_id: InFile<DefineId>,
     ) -> (Arc<DefineBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(DefineBody::define_body_with_source_inner)]
     fn define_body_with_source_interned(
         &self,
         fid: crate::InternedInFileDefine,
     ) -> (Arc<DefineBody>, Arc<BodySourceMap>);
 
-    #[salsa::transparent]
-    #[salsa::invoke(ConditionBody::condition_body_with_source_dispatch)]
     fn condition_body_with_source(
         &self,
         cond_id: InFile<PPConditionId>,
     ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)>;
 
-    #[salsa::invoke(ConditionBody::condition_body_with_source_inner)]
     fn condition_body_with_source_interned(
         &self,
         fid: crate::InternedInFilePPCondition,
     ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)>;
 
-    // SsrSource is already a #[salsa::interned] struct, so use invoke (not invoke_interned)
-    #[salsa::invoke(SsrBody::ssr_body_with_source_query)]
     fn ssr_body_with_source(
         &self,
         ssr_source: SsrSource,
     ) -> Option<(Arc<SsrBody>, Arc<BodySourceMap>)>;
 
     // Projection queries to stop recomputation if structure didn't change, even if positions did
-    #[salsa::transparent]
-    #[salsa::invoke(function_body_dispatch)]
     fn function_body(&self, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody>;
 
-    #[salsa::invoke(function_body_inner)]
     fn function_body_interned(&self, fid: crate::InternedInFileFunctionDef) -> Arc<FunctionBody>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(function_clause_body_dispatch)]
     fn function_clause_body(
         &self,
         function_clause_id: InFile<FunctionClauseId>,
     ) -> Arc<FunctionClauseBody>;
 
-    #[salsa::invoke(function_clause_body_inner)]
     fn function_clause_body_interned(
         &self,
         fid: crate::InternedInFileFunctionClause,
     ) -> Arc<FunctionClauseBody>;
-    #[salsa::transparent]
-    #[salsa::invoke(type_body_dispatch)]
     fn type_body(&self, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody>;
-    #[salsa::invoke(type_body_inner)]
     fn type_body_interned(&self, fid: crate::InternedInFileTypeAlias) -> Arc<TypeBody>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(spec_body_dispatch)]
     fn spec_body(&self, spec_id: InFile<SpecId>) -> Arc<SpecBody>;
-    #[salsa::invoke(spec_body_inner)]
     fn spec_body_interned(&self, fid: crate::InternedInFileSpec) -> Arc<SpecBody>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(callback_body_dispatch)]
     fn callback_body(&self, callback_id: InFile<CallbackId>) -> Arc<SpecBody>;
-    #[salsa::invoke(callback_body_inner)]
     fn callback_body_interned(&self, fid: crate::InternedInFileCallback) -> Arc<SpecBody>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(record_body_dispatch)]
     fn record_body(&self, record_id: InFile<RecordId>) -> Arc<RecordBody>;
-    #[salsa::invoke(record_body_inner)]
     fn record_body_interned(&self, fid: crate::InternedInFileRecord) -> Arc<RecordBody>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(attribute_body_dispatch)]
     fn attribute_body(&self, attribute_id: InFile<AttributeId>) -> Arc<AttributeBody>;
-    #[salsa::invoke(attribute_body_inner)]
     fn attribute_body_interned(&self, fid: crate::InternedInFileAttribute) -> Arc<AttributeBody>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(compile_body_dispatch)]
     fn compile_body(&self, attribute_id: InFile<CompileOptionId>) -> Arc<AttributeBody>;
-    #[salsa::invoke(compile_body_inner)]
     fn compile_body_interned(&self, fid: crate::InternedInFileCompileOption) -> Arc<AttributeBody>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(define_body_dispatch)]
     fn define_body(&self, define_id: InFile<DefineId>) -> Arc<DefineBody>;
-    #[salsa::invoke(define_body_inner)]
     fn define_body_interned(&self, fid: crate::InternedInFileDefine) -> Arc<DefineBody>;
-    // SsrSource is already a #[salsa::interned] struct, so use invoke (not invoke_interned)
-    #[salsa::invoke(ssr_body)]
     fn ssr_body(&self, ssr_source: SsrSource) -> Option<Arc<SsrBody>>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(crate::sema::implicit_calls::function_clause_implicit_calls_dispatch)]
     fn function_clause_implicit_calls(
         &self,
         clause: InFile<FunctionClauseId>,
     ) -> Arc<Vec<ImplicitCall>>;
 
-    #[salsa::invoke(crate::sema::implicit_calls::function_clause_implicit_calls_inner)]
     fn function_clause_implicit_calls_interned(
         &self,
         fid: crate::InternedInFileFunctionClause,
     ) -> Arc<Vec<ImplicitCall>>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(FunctionScopes::function_scopes_dispatch)]
     fn function_scopes(&self, fun: InFile<FunctionDefId>) -> Arc<FunctionScopes>;
 
-    #[salsa::invoke(FunctionScopes::function_scopes_inner)]
     fn function_scopes_interned(
         &self,
         fid: crate::InternedInFileFunctionDef,
     ) -> Arc<FunctionScopes>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(FunctionScopes::function_clause_scopes_dispatch)]
     fn function_clause_scopes(&self, clause: InFile<FunctionClauseId>) -> Arc<ExprScopes>;
 
-    #[salsa::invoke(FunctionScopes::function_clause_scopes_inner)]
     fn function_clause_scopes_interned(
         &self,
         fid: crate::InternedInFileFunctionClause,
     ) -> Arc<ExprScopes>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(include::resolve_dispatch)]
     fn resolve_include(
         &self,
         orig_app: Option<App>,
         include_id: InFile<IncludeAttributeId>,
     ) -> Option<FileId>;
 
-    #[salsa::invoke(include::resolve_inner)]
     fn resolve_include_interned(&self, key: crate::InternedResolveInclude) -> Option<FileId>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(macro_exp::resolve_dispatch)]
     fn resolve_macro(&self, file_id: FileId, name: MacroName) -> Option<ResolvedMacro>;
 
-    #[salsa::invoke(macro_exp::resolve_inner)]
     fn resolve_macro_interned(&self, fid: InternedFileId, name: MacroName)
     -> Option<ResolvedMacro>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(edoc::file_edoc_comments_dispatch)]
     fn file_edoc_comments(
         &self,
         file_id: FileId,
     ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>>;
 
-    #[salsa::invoke(edoc::file_edoc_comments_inner)]
     fn file_edoc_comments_interned(
         &self,
         fid: InternedFileId,
     ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(macro_exp::project_macro_environment_dispatch)]
     fn project_macro_environment(&self, file_id: FileId) -> Arc<MacroEnvironment>;
 
-    #[salsa::invoke(macro_exp::project_macro_environment_inner)]
     fn project_macro_environment_interned(&self, fid: InternedFileId) -> Arc<MacroEnvironment>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(preprocessor::file_preprocessor_analysis_with_diagnostics_dispatch)]
     fn file_preprocessor_analysis_with_diagnostics(
         &self,
         file_id: FileId,
         env: Arc<MacroEnvironment>,
     ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>);
 
-    #[salsa::transparent]
-    #[salsa::invoke(file_preprocessor_analysis_with_diagnostics_interned_tracked)]
     fn file_preprocessor_analysis_with_diagnostics_interned(
         &self,
         fid: InternedFileId,
@@ -365,16 +276,12 @@ pub trait DefDatabase:
     ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>);
 
     // Projection query - just returns analysis without diagnostics
-    #[salsa::transparent]
-    #[salsa::invoke(preprocessor::file_preprocessor_analysis_dispatch)]
     fn file_preprocessor_analysis(
         &self,
         file_id: FileId,
         env: Arc<MacroEnvironment>,
     ) -> Arc<PreprocessorAnalysis>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(file_preprocessor_analysis_interned_tracked)]
     fn file_preprocessor_analysis_interned(
         &self,
         fid: InternedFileId,
@@ -384,16 +291,12 @@ pub trait DefDatabase:
     /// Point-in-time macro definition snapshots for a file, keyed on its macro
     /// environment. Collects the `env_macro_defs` and `condition_macro_defs`
     /// maps by running the preprocessor pass with `compute_macro_defs = true`.
-    #[salsa::transparent]
-    #[salsa::invoke(preprocessor::file_macro_defs_dispatch)]
     fn file_macro_defs(
         &self,
         file_id: FileId,
         env: Arc<MacroEnvironment>,
     ) -> Arc<PreprocessorMacroDefs>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(file_macro_defs_interned_tracked)]
     fn file_macro_defs_interned(
         &self,
         fid: InternedFileId,
@@ -401,29 +304,17 @@ pub trait DefDatabase:
     ) -> Arc<PreprocessorMacroDefs>;
 
     // Helper query to run the recursive resolution algorithm
-    #[salsa::transparent]
-    #[salsa::invoke(macro_exp::local_resolve_dispatch)]
     fn local_resolve_macro(&self, file_id: FileId, name: MacroName) -> MacroResolution;
 
-    #[salsa::transparent]
-    #[salsa::invoke(local_resolve_macro_interned_tracked)]
     fn local_resolve_macro_interned(&self, fid: InternedFileId, name: MacroName)
     -> MacroResolution;
 
-    #[salsa::transparent]
-    #[salsa::invoke(DefMap::def_map_dispatch)]
     fn def_map(&self, file_id: FileId) -> Arc<DefMap>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(def_map_interned_tracked)]
     fn def_map_interned(&self, fid: InternedFileId) -> Arc<DefMap>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(DefMap::def_map_with_env_dispatch)]
     fn def_map_with_env(&self, file_id: FileId, env: Arc<MacroEnvironment>) -> Arc<DefMap>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(def_map_with_env_interned_tracked)]
     fn def_map_with_env_interned(
         &self,
         fid: InternedFileId,
@@ -432,21 +323,554 @@ pub trait DefDatabase:
 
     // Helper query to compute only local data, avoids recomputation of header data,
     // if only local information changed
-    #[salsa::transparent]
-    #[salsa::invoke(DefMap::def_map_local_dispatch)]
     fn def_map_local(&self, file_id: FileId) -> Arc<DefMap>;
 
-    #[salsa::invoke(DefMap::def_map_local_inner)]
     fn def_map_local_interned(&self, fid: InternedFileId) -> Arc<DefMap>;
 
     /// Returns the macro names defined externally (e.g., via `-D` command line flags)
     /// for a given file, based on its application's configuration.
-    #[salsa::transparent]
-    #[salsa::invoke(file_external_defines_dispatch)]
     fn file_external_defines(&self, file_id: FileId) -> Arc<Vec<Name>>;
 
-    #[salsa::invoke(file_external_defines_inner)]
     fn file_external_defines_interned(&self, fid: InternedFileId) -> Arc<Vec<Name>>;
+}
+
+#[salsa::db]
+impl<DB> DefDatabase for DB
+where
+    DB: InternDatabase
+        + Upcast<dyn InternDatabase>
+        + RootQueryDb
+        + Upcast<dyn RootQueryDb>
+        + TypedSemantic,
+{
+    fn file_form_list(&self, file_id: FileId) -> Arc<FormList> {
+        FormList::file_form_list_dispatch(self, file_id)
+    }
+
+    fn file_form_list_interned(&self, fid: InternedFileId) -> Arc<FormList> {
+        file_form_list_interned_tracked(self, fid)
+    }
+
+    fn function_body_with_source(
+        &self,
+        function_id: InFile<FunctionDefId>,
+    ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>) {
+        FunctionBody::function_body_with_source_dispatch(self, function_id)
+    }
+
+    fn function_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileFunctionDef,
+    ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>) {
+        function_body_with_source_interned_tracked(self, fid)
+    }
+
+    fn function_clause_body_with_source(
+        &self,
+        function_clause_id: InFile<FunctionClauseId>,
+    ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
+        FunctionClauseBody::function_clause_body_with_source_dispatch(self, function_clause_id)
+    }
+
+    fn function_clause_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileFunctionClause,
+    ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
+        function_clause_body_with_source_interned_tracked(self, fid)
+    }
+
+    fn record_body_with_source(
+        &self,
+        record_id: InFile<RecordId>,
+    ) -> (Arc<RecordBody>, Arc<BodySourceMap>) {
+        RecordBody::record_body_with_source_dispatch(self, record_id)
+    }
+
+    fn record_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileRecord,
+    ) -> (Arc<RecordBody>, Arc<BodySourceMap>) {
+        record_body_with_source_interned_tracked(self, fid)
+    }
+
+    fn spec_body_with_source(
+        &self,
+        spec_id: InFile<SpecId>,
+    ) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
+        SpecBody::spec_body_with_source_dispatch(self, spec_id)
+    }
+
+    fn spec_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileSpec,
+    ) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
+        spec_body_with_source_interned_tracked(self, fid)
+    }
+
+    fn callback_body_with_source(
+        &self,
+        callback_id: InFile<CallbackId>,
+    ) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
+        SpecBody::callback_body_with_source_dispatch(self, callback_id)
+    }
+
+    fn callback_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileCallback,
+    ) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
+        callback_body_with_source_interned_tracked(self, fid)
+    }
+
+    fn type_body_with_source(
+        &self,
+        type_alias_id: InFile<TypeAliasId>,
+    ) -> (Arc<TypeBody>, Arc<BodySourceMap>) {
+        TypeBody::type_body_with_source_dispatch(self, type_alias_id)
+    }
+
+    fn type_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileTypeAlias,
+    ) -> (Arc<TypeBody>, Arc<BodySourceMap>) {
+        type_body_with_source_interned_tracked(self, fid)
+    }
+
+    fn attribute_body_with_source(
+        &self,
+        attribute_id: InFile<AttributeId>,
+    ) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
+        AttributeBody::attribute_body_with_source_dispatch(self, attribute_id)
+    }
+
+    fn attribute_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileAttribute,
+    ) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
+        attribute_body_with_source_interned_tracked(self, fid)
+    }
+
+    fn compile_body_with_source(
+        &self,
+        attribute_id: InFile<CompileOptionId>,
+    ) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
+        AttributeBody::compile_body_with_source_dispatch(self, attribute_id)
+    }
+
+    fn compile_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileCompileOption,
+    ) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
+        compile_body_with_source_interned_tracked(self, fid)
+    }
+
+    fn define_body_with_source(
+        &self,
+        define_id: InFile<DefineId>,
+    ) -> (Arc<DefineBody>, Arc<BodySourceMap>) {
+        DefineBody::define_body_with_source_dispatch(self, define_id)
+    }
+
+    fn define_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileDefine,
+    ) -> (Arc<DefineBody>, Arc<BodySourceMap>) {
+        define_body_with_source_interned_tracked(self, fid)
+    }
+
+    fn condition_body_with_source(
+        &self,
+        cond_id: InFile<PPConditionId>,
+    ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)> {
+        ConditionBody::condition_body_with_source_dispatch(self, cond_id)
+    }
+
+    fn condition_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFilePPCondition,
+    ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)> {
+        condition_body_with_source_interned_tracked(self, fid)
+    }
+
+    fn ssr_body_with_source(
+        &self,
+        ssr_source: SsrSource,
+    ) -> Option<(Arc<SsrBody>, Arc<BodySourceMap>)> {
+        ssr_body_with_source_tracked(self, ssr_source)
+    }
+
+    fn function_body(&self, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody> {
+        function_body_dispatch(self, function_id)
+    }
+
+    fn function_body_interned(&self, fid: crate::InternedInFileFunctionDef) -> Arc<FunctionBody> {
+        function_body_inner(self, fid)
+    }
+
+    fn function_clause_body(
+        &self,
+        function_clause_id: InFile<FunctionClauseId>,
+    ) -> Arc<FunctionClauseBody> {
+        function_clause_body_dispatch(self, function_clause_id)
+    }
+
+    fn function_clause_body_interned(
+        &self,
+        fid: crate::InternedInFileFunctionClause,
+    ) -> Arc<FunctionClauseBody> {
+        function_clause_body_inner(self, fid)
+    }
+
+    fn type_body(&self, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody> {
+        type_body_dispatch(self, type_alias_id)
+    }
+
+    fn type_body_interned(&self, fid: crate::InternedInFileTypeAlias) -> Arc<TypeBody> {
+        type_body_inner(self, fid)
+    }
+
+    fn spec_body(&self, spec_id: InFile<SpecId>) -> Arc<SpecBody> {
+        spec_body_dispatch(self, spec_id)
+    }
+
+    fn spec_body_interned(&self, fid: crate::InternedInFileSpec) -> Arc<SpecBody> {
+        spec_body_inner(self, fid)
+    }
+
+    fn callback_body(&self, callback_id: InFile<CallbackId>) -> Arc<SpecBody> {
+        callback_body_dispatch(self, callback_id)
+    }
+
+    fn callback_body_interned(&self, fid: crate::InternedInFileCallback) -> Arc<SpecBody> {
+        callback_body_inner(self, fid)
+    }
+
+    fn record_body(&self, record_id: InFile<RecordId>) -> Arc<RecordBody> {
+        record_body_dispatch(self, record_id)
+    }
+
+    fn record_body_interned(&self, fid: crate::InternedInFileRecord) -> Arc<RecordBody> {
+        record_body_inner(self, fid)
+    }
+
+    fn attribute_body(&self, attribute_id: InFile<AttributeId>) -> Arc<AttributeBody> {
+        attribute_body_dispatch(self, attribute_id)
+    }
+
+    fn attribute_body_interned(&self, fid: crate::InternedInFileAttribute) -> Arc<AttributeBody> {
+        attribute_body_inner(self, fid)
+    }
+
+    fn compile_body(&self, attribute_id: InFile<CompileOptionId>) -> Arc<AttributeBody> {
+        compile_body_dispatch(self, attribute_id)
+    }
+
+    fn compile_body_interned(&self, fid: crate::InternedInFileCompileOption) -> Arc<AttributeBody> {
+        compile_body_inner(self, fid)
+    }
+
+    fn define_body(&self, define_id: InFile<DefineId>) -> Arc<DefineBody> {
+        define_body_dispatch(self, define_id)
+    }
+
+    fn define_body_interned(&self, fid: crate::InternedInFileDefine) -> Arc<DefineBody> {
+        define_body_inner(self, fid)
+    }
+
+    fn ssr_body(&self, ssr_source: SsrSource) -> Option<Arc<SsrBody>> {
+        ssr_body(self, ssr_source)
+    }
+
+    fn function_clause_implicit_calls(
+        &self,
+        clause: InFile<FunctionClauseId>,
+    ) -> Arc<Vec<ImplicitCall>> {
+        crate::sema::implicit_calls::function_clause_implicit_calls_dispatch(self, clause)
+    }
+
+    fn function_clause_implicit_calls_interned(
+        &self,
+        fid: crate::InternedInFileFunctionClause,
+    ) -> Arc<Vec<ImplicitCall>> {
+        crate::sema::implicit_calls::function_clause_implicit_calls_inner(self, fid)
+    }
+
+    fn function_scopes(&self, fun: InFile<FunctionDefId>) -> Arc<FunctionScopes> {
+        FunctionScopes::function_scopes_dispatch(self, fun)
+    }
+
+    fn function_scopes_interned(
+        &self,
+        fid: crate::InternedInFileFunctionDef,
+    ) -> Arc<FunctionScopes> {
+        function_scopes_interned_tracked(self, fid)
+    }
+
+    fn function_clause_scopes(&self, clause: InFile<FunctionClauseId>) -> Arc<ExprScopes> {
+        FunctionScopes::function_clause_scopes_dispatch(self, clause)
+    }
+
+    fn function_clause_scopes_interned(
+        &self,
+        fid: crate::InternedInFileFunctionClause,
+    ) -> Arc<ExprScopes> {
+        function_clause_scopes_interned_tracked(self, fid)
+    }
+
+    fn resolve_include(
+        &self,
+        orig_app: Option<App>,
+        include_id: InFile<IncludeAttributeId>,
+    ) -> Option<FileId> {
+        include::resolve_dispatch(self, orig_app, include_id)
+    }
+
+    fn resolve_include_interned(&self, key: crate::InternedResolveInclude) -> Option<FileId> {
+        include::resolve_inner(self, key)
+    }
+
+    fn resolve_macro(&self, file_id: FileId, name: MacroName) -> Option<ResolvedMacro> {
+        macro_exp::resolve_dispatch(self, file_id, name)
+    }
+
+    fn resolve_macro_interned(
+        &self,
+        fid: InternedFileId,
+        name: MacroName,
+    ) -> Option<ResolvedMacro> {
+        macro_exp::resolve_inner(self, fid, name)
+    }
+
+    fn file_edoc_comments(
+        &self,
+        file_id: FileId,
+    ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>> {
+        edoc::file_edoc_comments_dispatch(self, file_id)
+    }
+
+    fn file_edoc_comments_interned(
+        &self,
+        fid: InternedFileId,
+    ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>> {
+        edoc::file_edoc_comments_inner(self, fid)
+    }
+
+    fn project_macro_environment(&self, file_id: FileId) -> Arc<MacroEnvironment> {
+        macro_exp::project_macro_environment_dispatch(self, file_id)
+    }
+
+    fn project_macro_environment_interned(&self, fid: InternedFileId) -> Arc<MacroEnvironment> {
+        macro_exp::project_macro_environment_inner(self, fid)
+    }
+
+    fn file_preprocessor_analysis_with_diagnostics(
+        &self,
+        file_id: FileId,
+        env: Arc<MacroEnvironment>,
+    ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>) {
+        preprocessor::file_preprocessor_analysis_with_diagnostics_dispatch(self, file_id, env)
+    }
+
+    fn file_preprocessor_analysis_with_diagnostics_interned(
+        &self,
+        fid: InternedFileId,
+        env: Arc<MacroEnvironment>,
+    ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>) {
+        file_preprocessor_analysis_with_diagnostics_interned_tracked(self, fid, env)
+    }
+
+    fn file_preprocessor_analysis(
+        &self,
+        file_id: FileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<PreprocessorAnalysis> {
+        preprocessor::file_preprocessor_analysis_dispatch(self, file_id, env)
+    }
+
+    fn file_preprocessor_analysis_interned(
+        &self,
+        fid: InternedFileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<PreprocessorAnalysis> {
+        file_preprocessor_analysis_interned_tracked(self, fid, env)
+    }
+
+    fn file_macro_defs(
+        &self,
+        file_id: FileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<PreprocessorMacroDefs> {
+        preprocessor::file_macro_defs_dispatch(self, file_id, env)
+    }
+
+    fn file_macro_defs_interned(
+        &self,
+        fid: InternedFileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<PreprocessorMacroDefs> {
+        file_macro_defs_interned_tracked(self, fid, env)
+    }
+
+    fn local_resolve_macro(&self, file_id: FileId, name: MacroName) -> MacroResolution {
+        macro_exp::local_resolve_dispatch(self, file_id, name)
+    }
+
+    fn local_resolve_macro_interned(
+        &self,
+        fid: InternedFileId,
+        name: MacroName,
+    ) -> MacroResolution {
+        local_resolve_macro_interned_tracked(self, fid, name)
+    }
+
+    fn def_map(&self, file_id: FileId) -> Arc<DefMap> {
+        DefMap::def_map_dispatch(self, file_id)
+    }
+
+    fn def_map_interned(&self, fid: InternedFileId) -> Arc<DefMap> {
+        def_map_interned_tracked(self, fid)
+    }
+
+    fn def_map_with_env(&self, file_id: FileId, env: Arc<MacroEnvironment>) -> Arc<DefMap> {
+        DefMap::def_map_with_env_dispatch(self, file_id, env)
+    }
+
+    fn def_map_with_env_interned(
+        &self,
+        fid: InternedFileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<DefMap> {
+        def_map_with_env_interned_tracked(self, fid, env)
+    }
+
+    fn def_map_local(&self, file_id: FileId) -> Arc<DefMap> {
+        DefMap::def_map_local_dispatch(self, file_id)
+    }
+
+    fn def_map_local_interned(&self, fid: InternedFileId) -> Arc<DefMap> {
+        def_map_local_interned_tracked(self, fid)
+    }
+
+    fn file_external_defines(&self, file_id: FileId) -> Arc<Vec<Name>> {
+        file_external_defines_dispatch(self, file_id)
+    }
+
+    fn file_external_defines_interned(&self, fid: InternedFileId) -> Arc<Vec<Name>> {
+        file_external_defines_inner(self, fid)
+    }
+}
+
+#[salsa::tracked(returns(clone))]
+fn file_form_list_interned_tracked(db: &dyn DefDatabase, fid: InternedFileId) -> Arc<FormList> {
+    FormList::file_form_list_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn function_body_with_source_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileFunctionDef,
+) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>) {
+    FunctionBody::function_body_with_source_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn function_clause_body_with_source_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileFunctionClause,
+) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
+    FunctionClauseBody::function_clause_body_with_source_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn record_body_with_source_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileRecord,
+) -> (Arc<RecordBody>, Arc<BodySourceMap>) {
+    RecordBody::record_body_with_source_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn spec_body_with_source_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileSpec,
+) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
+    SpecBody::spec_body_with_source_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn callback_body_with_source_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileCallback,
+) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
+    SpecBody::callback_body_with_source_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn type_body_with_source_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileTypeAlias,
+) -> (Arc<TypeBody>, Arc<BodySourceMap>) {
+    TypeBody::type_body_with_source_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn attribute_body_with_source_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileAttribute,
+) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
+    AttributeBody::attribute_body_with_source_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn compile_body_with_source_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileCompileOption,
+) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
+    AttributeBody::compile_body_with_source_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn define_body_with_source_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileDefine,
+) -> (Arc<DefineBody>, Arc<BodySourceMap>) {
+    DefineBody::define_body_with_source_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn condition_body_with_source_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFilePPCondition,
+) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)> {
+    ConditionBody::condition_body_with_source_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn ssr_body_with_source_tracked(
+    db: &dyn DefDatabase,
+    ssr_source: SsrSource,
+) -> Option<(Arc<SsrBody>, Arc<BodySourceMap>)> {
+    SsrBody::ssr_body_with_source_query(db, ssr_source)
+}
+
+#[salsa::tracked(returns(clone))]
+fn function_scopes_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileFunctionDef,
+) -> Arc<FunctionScopes> {
+    FunctionScopes::function_scopes_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn function_clause_scopes_interned_tracked(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileFunctionClause,
+) -> Arc<ExprScopes> {
+    FunctionScopes::function_clause_scopes_inner(db, fid)
+}
+
+#[salsa::tracked(returns(clone))]
+fn def_map_local_interned_tracked(db: &dyn DefDatabase, fid: InternedFileId) -> Arc<DefMap> {
+    DefMap::def_map_local_inner(db, fid)
 }
 
 #[salsa::tracked(returns(clone), cycle_result = preprocessor::recover_cycle_with_diagnostics)]
@@ -506,6 +930,7 @@ fn function_body_dispatch(
     db.function_body_interned(crate::InternedInFileFunctionDef::new(db, function_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn function_body_inner(
     db: &dyn DefDatabase,
     fid: crate::InternedInFileFunctionDef,
@@ -524,6 +949,7 @@ fn function_clause_body_dispatch(
     ))
 }
 
+#[salsa::tracked(returns(clone))]
 fn function_clause_body_inner(
     db: &dyn DefDatabase,
     fid: crate::InternedInFileFunctionClause,
@@ -535,6 +961,7 @@ fn function_clause_body_inner(
 fn type_body_dispatch(db: &dyn DefDatabase, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody> {
     db.type_body_interned(crate::InternedInFileTypeAlias::new(db, type_alias_id))
 }
+#[salsa::tracked(returns(clone))]
 fn type_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileTypeAlias) -> Arc<TypeBody> {
     db.type_body_with_source(fid.value(db)).0
 }
@@ -542,6 +969,7 @@ fn type_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileTypeAlias) ->
 fn spec_body_dispatch(db: &dyn DefDatabase, spec_id: InFile<SpecId>) -> Arc<SpecBody> {
     db.spec_body_interned(crate::InternedInFileSpec::new(db, spec_id))
 }
+#[salsa::tracked(returns(clone))]
 fn spec_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileSpec) -> Arc<SpecBody> {
     db.spec_body_with_source(fid.value(db)).0
 }
@@ -549,6 +977,7 @@ fn spec_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileSpec) -> Arc<
 fn callback_body_dispatch(db: &dyn DefDatabase, callback_id: InFile<CallbackId>) -> Arc<SpecBody> {
     db.callback_body_interned(crate::InternedInFileCallback::new(db, callback_id))
 }
+#[salsa::tracked(returns(clone))]
 fn callback_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileCallback) -> Arc<SpecBody> {
     db.callback_body_with_source(fid.value(db)).0
 }
@@ -556,6 +985,7 @@ fn callback_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileCallback)
 fn record_body_dispatch(db: &dyn DefDatabase, record_id: InFile<RecordId>) -> Arc<RecordBody> {
     db.record_body_interned(crate::InternedInFileRecord::new(db, record_id))
 }
+#[salsa::tracked(returns(clone))]
 fn record_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileRecord) -> Arc<RecordBody> {
     db.record_body_with_source(fid.value(db)).0
 }
@@ -566,6 +996,7 @@ fn attribute_body_dispatch(
 ) -> Arc<AttributeBody> {
     db.attribute_body_interned(crate::InternedInFileAttribute::new(db, attribute_id))
 }
+#[salsa::tracked(returns(clone))]
 fn attribute_body_inner(
     db: &dyn DefDatabase,
     fid: crate::InternedInFileAttribute,
@@ -579,6 +1010,7 @@ fn compile_body_dispatch(
 ) -> Arc<AttributeBody> {
     db.compile_body_interned(crate::InternedInFileCompileOption::new(db, attribute_id))
 }
+#[salsa::tracked(returns(clone))]
 fn compile_body_inner(
     db: &dyn DefDatabase,
     fid: crate::InternedInFileCompileOption,
@@ -589,10 +1021,12 @@ fn compile_body_inner(
 fn define_body_dispatch(db: &dyn DefDatabase, define_id: InFile<DefineId>) -> Arc<DefineBody> {
     db.define_body_interned(crate::InternedInFileDefine::new(db, define_id))
 }
+#[salsa::tracked(returns(clone))]
 fn define_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileDefine) -> Arc<DefineBody> {
     db.define_body_with_source(fid.value(db)).0
 }
 
+#[salsa::tracked(returns(clone))]
 fn ssr_body(db: &dyn DefDatabase, ssr_source: SsrSource) -> Option<Arc<SsrBody>> {
     db.ssr_body_with_source(ssr_source)
         .map(|(body, _source)| body)
@@ -609,6 +1043,7 @@ fn file_external_defines_dispatch(db: &dyn DefDatabase, file_id: FileId) -> Arc<
 /// An app's macros are stored as eetf::Term and can be:
 /// - An Atom (just the macro name, with implicit value true)
 /// - A Tuple of (Atom key, value) for {MacroName, Value}
+#[salsa::tracked(returns(clone))]
 fn file_external_defines_inner(db: &dyn DefDatabase, fid: InternedFileId) -> Arc<Vec<Name>> {
     let file_id = fid.file_id(db);
     // Define ELP_ERLANG_SERVICE to match the Erlang service behavior.

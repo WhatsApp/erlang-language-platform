@@ -117,6 +117,7 @@ pub(crate) fn function_clause_implicit_calls_dispatch(
     ))
 }
 
+#[salsa::tracked(returns(clone))]
 pub(crate) fn function_clause_implicit_calls_inner(
     db: &dyn DefDatabase,
     fid: crate::InternedInFileFunctionClause,

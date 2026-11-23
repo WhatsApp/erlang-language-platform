@@ -203,6 +203,7 @@ pub fn file_edoc_comments_dispatch(
     db.file_edoc_comments_interned(elp_base_db::InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 pub fn file_edoc_comments_inner(
     db: &dyn DefDatabase,
     fid: elp_base_db::InternedFileId,

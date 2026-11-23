@@ -123,6 +123,7 @@ pub(crate) fn resolve_dispatch(
     db.resolve_macro_interned(elp_base_db::InternedFileId::new(db, file_id), name)
 }
 
+#[salsa::tracked(returns(clone))]
 pub(crate) fn resolve_inner(
     db: &dyn DefDatabase,
     fid: elp_base_db::InternedFileId,
@@ -226,6 +227,7 @@ pub fn project_macro_environment_dispatch(
     db.project_macro_environment_interned(elp_base_db::InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 pub fn project_macro_environment_inner(
     db: &dyn DefDatabase,
     fid: elp_base_db::InternedFileId,

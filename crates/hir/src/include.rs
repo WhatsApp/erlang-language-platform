@@ -26,6 +26,7 @@ pub(crate) fn resolve_dispatch(
     db.resolve_include_interned(InternedResolveInclude::new(db, orig_app, include_id))
 }
 
+#[salsa::tracked(returns(clone))]
 pub(crate) fn resolve_inner(db: &dyn DefDatabase, key: InternedResolveInclude) -> Option<FileId> {
     let orig_app = key.orig_app(db);
     let include_id = key.include_id(db);
