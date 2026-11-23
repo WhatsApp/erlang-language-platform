@@ -298,6 +298,10 @@ jobs:
       - name: npm run compile
         working-directory: editors/code
         run: npm run compile
+      - name: Test VS Code Extension
+        if: matrix.platform-arch == 'ubuntu-22.04-x64'
+        working-directory: editors/code
+        run: xvfb-run -a npm test
       - name: Package Extension
         working-directory: editors/code
         run: vsce package --target ${{ matrix.vscode-target }}

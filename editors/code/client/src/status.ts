@@ -26,9 +26,13 @@ interface ServerStatusParams {
 const serverStatusNotification = new NotificationType<ServerStatusParams>('elp/status');
 
 // Shows the last status ELP reported while an Erlang file is active.
-class ServerStatus implements vscode.Disposable {
+export class ServerStatus implements vscode.Disposable {
 	private readonly statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+	private readonly onDidChangeEmitter = new vscode.EventEmitter<ServerStatusState>();
 	private readonly editorListener: vscode.Disposable;
+	private state?: ServerStatusState;
+
+	readonly onDidChange = this.onDidChangeEmitter.event;
 
 	constructor() {
 		this.statusBarItem.text = 'ELP';
@@ -37,13 +41,20 @@ class ServerStatus implements vscode.Disposable {
 		this.editorListener = vscode.window.onDidChangeActiveTextEditor(editor => this.updateVisibility(editor));
 	}
 
+	get current(): ServerStatusState | undefined {
+		return this.state;
+	}
+
 	update(state: ServerStatusState): void {
+		this.state = state;
 		this.statusBarItem.text = `ELP: ${state}`;
+		this.onDidChangeEmitter.fire(state);
 	}
 
 	dispose(): void {
 		this.editorListener.dispose();
 		this.statusBarItem.dispose();
+		this.onDidChangeEmitter.dispose();
 	}
 
 	private updateVisibility(editor: vscode.TextEditor | undefined): void {
@@ -80,8 +91,9 @@ class ServerStatusFeature implements StaticFeature {
 	}
 }
 
-export function registerServerStatus(context: vscode.ExtensionContext, client: LanguageClient): void {
+export function registerServerStatus(context: vscode.ExtensionContext, client: LanguageClient): ServerStatus {
 	const status = new ServerStatus();
 	context.subscriptions.push(status);
 	client.registerFeature(new ServerStatusFeature(client, status));
+	return status;
 }

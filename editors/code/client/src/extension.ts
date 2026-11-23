@@ -15,7 +15,7 @@ import { registerCommands } from './commands';
 import { pathWithErlangInstallation } from './erlang';
 import { registerFormatter } from './formatting';
 import { outputChannel } from './logging';
-import { registerServerStatus } from './status';
+import { registerServerStatus, ServerStatus } from './status';
 import * as path from 'path';
 
 import {
@@ -30,7 +30,11 @@ let client: LanguageClient;
 
 export const ELP = 'elpClient';
 
-export function activate(context: vscode.ExtensionContext) {
+export interface ElpExtensionApi {
+	serverStatus: ServerStatus;
+}
+
+export function activate(context: vscode.ExtensionContext): ElpExtensionApi {
 	const log = outputChannel();
 
 	// Options to control the language server
@@ -78,7 +82,7 @@ export function activate(context: vscode.ExtensionContext) {
 		clientOptions
 	);
 
-	registerServerStatus(context, client);
+	const serverStatus = registerServerStatus(context, client);
 
 	log.appendLine('Registering commands');
 	registerCommands(context, client);
@@ -92,6 +96,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Start the client. This will also launch the server
 	client.start();
+
+	return { serverStatus };
 }
 
 export function deactivate(): Thenable<void> | undefined {
