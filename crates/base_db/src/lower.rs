@@ -506,7 +506,7 @@ pub(crate) mod tests {
     }
 
     /// Reads every input lowering sets.
-    #[salsa::tracked]
+    #[salsa::tracked(returns(clone))]
     fn read_model(db: &dyn RootQueryDb, workspace: Workspace) {
         ran("read_model");
         for project in workspace.projects(db).iter() {

@@ -449,7 +449,7 @@ pub trait DefDatabase:
     fn file_external_defines_interned(&self, fid: InternedFileId) -> Arc<Vec<Name>>;
 }
 
-#[salsa::tracked(cycle_result = preprocessor::recover_cycle_with_diagnostics)]
+#[salsa::tracked(returns(clone), cycle_result = preprocessor::recover_cycle_with_diagnostics)]
 fn file_preprocessor_analysis_with_diagnostics_interned_tracked(
     db: &dyn DefDatabase,
     fid: InternedFileId,
@@ -458,7 +458,7 @@ fn file_preprocessor_analysis_with_diagnostics_interned_tracked(
     preprocessor::file_preprocessor_analysis_with_diagnostics_inner(db, fid, env)
 }
 
-#[salsa::tracked(cycle_result = preprocessor::recover_cycle)]
+#[salsa::tracked(returns(clone), cycle_result = preprocessor::recover_cycle)]
 fn file_preprocessor_analysis_interned_tracked(
     db: &dyn DefDatabase,
     fid: InternedFileId,
@@ -467,7 +467,7 @@ fn file_preprocessor_analysis_interned_tracked(
     preprocessor::file_preprocessor_analysis_inner(db, fid, env)
 }
 
-#[salsa::tracked(cycle_result = preprocessor::recover_cycle_macro_defs)]
+#[salsa::tracked(returns(clone), cycle_result = preprocessor::recover_cycle_macro_defs)]
 fn file_macro_defs_interned_tracked(
     db: &dyn DefDatabase,
     fid: InternedFileId,
@@ -476,7 +476,7 @@ fn file_macro_defs_interned_tracked(
     preprocessor::file_macro_defs_inner(db, fid, env)
 }
 
-#[salsa::tracked(cycle_result = macro_exp::recover_cycle)]
+#[salsa::tracked(returns(clone), cycle_result = macro_exp::recover_cycle)]
 fn local_resolve_macro_interned_tracked(
     db: &dyn DefDatabase,
     fid: InternedFileId,
@@ -485,12 +485,12 @@ fn local_resolve_macro_interned_tracked(
     macro_exp::local_resolve_inner(db, fid, name)
 }
 
-#[salsa::tracked(cycle_result = DefMap::recover_cycle)]
+#[salsa::tracked(returns(clone), cycle_result = DefMap::recover_cycle)]
 fn def_map_interned_tracked(db: &dyn DefDatabase, fid: InternedFileId) -> Arc<DefMap> {
     DefMap::def_map_inner(db, fid)
 }
 
-#[salsa::tracked(cycle_result = DefMap::recover_cycle_with_env)]
+#[salsa::tracked(returns(clone), cycle_result = DefMap::recover_cycle_with_env)]
 fn def_map_with_env_interned_tracked(
     db: &dyn DefDatabase,
     fid: InternedFileId,

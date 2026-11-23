@@ -87,6 +87,7 @@ pub struct Workspace {
     pub removed_projects: Arc<[Project]>,
     /// Bumped whenever the erlang_service pool drops its VMs. The queries that
     /// ask a VM read it, so that they run again on a new one.
+    #[returns(clone)]
     pub vm_epoch: u64,
 }
 
@@ -105,6 +106,7 @@ pub struct Project {
     pub removed_apps: Arc<[App]>,
     /// The OTP project of the project's OTP installation, whose own link is to
     /// itself; `None` when OTP isn't loaded.
+    #[returns(clone)]
     pub otp: Option<Project>,
     #[returns(ref)]
     pub buck_index: Option<Arc<BuckProjectIndex>>,
@@ -121,9 +123,11 @@ pub struct Project {
 
 #[salsa::input]
 pub struct App {
+    #[returns(clone)]
     pub project: Project,
     #[returns(ref)]
     pub name: AppName,
+    #[returns(clone)]
     pub app_type: AppType,
     #[returns(ref)]
     pub dir: VfsPath,
@@ -154,6 +158,7 @@ pub struct App {
     pub src_dirs: Arc<[AbsPathBuf]>,
     #[returns(ref)]
     pub extra_src_dirs: Arc<[String]>,
+    #[returns(clone)]
     pub is_test_target: Option<bool>,
 }
 
@@ -215,7 +220,7 @@ impl Project {
 
     /// The app `name` refers to in the project: the last of the project's own
     /// apps with that name, else of its OTP apps.
-    #[salsa::tracked]
+    #[salsa::tracked(returns(clone))]
     pub fn app_named(self, db: &dyn RootQueryDb, name: AppName) -> Option<App> {
         self.apps(db)
             .iter()

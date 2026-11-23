@@ -25,7 +25,7 @@ use crate::RootQueryDb;
 use crate::Workspace;
 
 /// The apps of `project` that list each file, the primary owner first.
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 fn project_ownership(
     db: &dyn RootQueryDb,
     project: Project,

@@ -234,57 +234,69 @@ impl<T> InFile<T> {
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedInFileFunctionDef {
+    #[returns(clone)]
     pub value: InFile<FunctionDefId>,
 }
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedInFileFunctionClause {
+    #[returns(clone)]
     pub value: InFile<FunctionClauseId>,
 }
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedResolveInclude {
+    #[returns(clone)]
     pub orig_app: Option<elp_base_db::App>,
+    #[returns(clone)]
     pub include_id: InFile<IncludeAttributeId>,
 }
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedInFileRecord {
+    #[returns(clone)]
     pub value: InFile<RecordId>,
 }
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedInFileSpec {
+    #[returns(clone)]
     pub value: InFile<SpecId>,
 }
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedInFileCallback {
+    #[returns(clone)]
     pub value: InFile<CallbackId>,
 }
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedInFileTypeAlias {
+    #[returns(clone)]
     pub value: InFile<TypeAliasId>,
 }
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedInFileAttribute {
+    #[returns(clone)]
     pub value: InFile<AttributeId>,
 }
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedInFileCompileOption {
+    #[returns(clone)]
     pub value: InFile<CompileOptionId>,
 }
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedInFileDefine {
+    #[returns(clone)]
     pub value: InFile<DefineId>,
 }
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedInFilePPCondition {
+    #[returns(clone)]
     pub value: InFile<PPConditionId>,
 }
 

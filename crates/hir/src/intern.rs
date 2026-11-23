@@ -157,6 +157,7 @@ impl Var {
 
 #[salsa::interned(no_lifetime)]
 pub struct SsrSource {
+    #[returns(clone)]
     pub source: Arc<str>,
 }
 

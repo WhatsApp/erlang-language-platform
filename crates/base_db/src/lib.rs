@@ -312,8 +312,10 @@ pub struct File {
     pub path: VfsPath,
     #[returns(ref)]
     pub text: Arc<str>,
+    #[returns(clone)]
     pub exists: bool,
     /// Those of the file on disk or in the editor, for edits sent back to it.
+    #[returns(clone)]
     pub line_endings: LineEndings,
 }
 
@@ -359,11 +361,13 @@ impl File {
 
 #[salsa::input]
 pub struct FileSourceRootInput {
+    #[returns(clone)]
     pub source_root_id: SourceRootId,
 }
 
 #[salsa::input]
 pub struct SourceRootInput {
+    #[returns(clone)]
     pub source_root: Arc<SourceRoot>,
 }
 
@@ -371,6 +375,7 @@ pub struct SourceRootInput {
 /// every app.
 #[salsa::input]
 pub struct SourceRootAppInput {
+    #[returns(clone)]
     pub app: Option<App>,
 }
 
@@ -378,6 +383,7 @@ pub struct SourceRootAppInput {
 /// [`RootQueryDb::extra_dynamic_call_patterns`].
 #[salsa::input(singleton)]
 pub struct ExtraDynamicCallPatternsInput {
+    #[returns(clone)]
     pub patterns: Arc<FxHashMap<PatternKey, DynamicCallPatternInput>>,
 }
 
@@ -405,6 +411,7 @@ impl ExtraDynamicCallPatternsInput {
 /// See `QUERY_GROUP_MIGRATION_PLAN.md` Phase 1 / PR 1.1.
 #[salsa::interned(no_lifetime)]
 pub struct InternedFileId {
+    #[returns(clone)]
     pub file_id: FileId,
 }
 
@@ -1138,7 +1145,7 @@ mod tests {
         static EXECUTIONS: Cell<usize> = const { Cell::new(0) };
     }
 
-    #[salsa::tracked]
+    #[salsa::tracked(returns(clone))]
     fn observe(db: &dyn SourceDatabase, file: File) -> (Arc<str>, bool, LineEndings) {
         EXECUTIONS.with(|n| n.set(n.get() + 1));
         (

@@ -80,6 +80,7 @@ pub trait ELPDbApi {
 
 #[salsa::input(singleton)]
 pub struct EqwalizerConfigInput {
+    #[returns(clone)]
     pub config: Arc<EqwalizerConfig>,
 }
 
