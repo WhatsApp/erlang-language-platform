@@ -50,4 +50,18 @@ suite('Diagnostics', () => {
 			assert.strictEqual(diagnostic.range.start.line, 1);
 		});
 	});
+
+	test('compiler errors are reported on save', async () => {
+		const document = await openWorkspaceFile('single_errors/src/compiler_diagnostics.erl');
+		// The first diagnostics pass is over before the edit.
+		await waitForDiagnostic(document, diagnostic => diagnosticCode(diagnostic) === 'W0012');
+
+		await restoringContent(document, async () => {
+			// `-behaviour(application).` becomes `-beha viour(application).`
+			await replaceText(document, new vscode.Range(3, 5, 3, 5), ' ');
+			await document.save();
+			const diagnostic = await waitForDiagnostic(document, diagnostic => diagnosticCode(diagnostic) === 'P1702');
+			assert.strictEqual(diagnostic.range.start.line, 3);
+		});
+	});
 });
