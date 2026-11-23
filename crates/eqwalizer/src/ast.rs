@@ -200,7 +200,11 @@ pub fn from_beam(bytes: &Vec<u8>) -> Result<AST, Error> {
         cursor.read(&mut buf).map_err(|_| Error::InvalidBEAM)?;
         let length = u32::from_be_bytes(buf);
         if &tag == b"Dbgi" || &tag == b"Abst" {
-            let t1 = Term::decode(&mut cursor)?;
+            let start = cursor.position() as usize;
+            let chunk = bytes
+                .get(start..start + length as usize)
+                .ok_or(Error::InvalidBEAM)?;
+            let t1 = Term::decode(chunk)?;
             if let Term::Tuple(terms) = t1
                 && let Term::Tuple(terms) = &terms.elements[2]
             {
