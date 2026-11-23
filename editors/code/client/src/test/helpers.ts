@@ -68,3 +68,25 @@ export function waitForDiagnostic(
 		check();
 	});
 }
+
+export async function replaceText(document: vscode.TextDocument, range: vscode.Range, text: string): Promise<void> {
+	const edit = new vscode.WorkspaceEdit();
+	edit.replace(document.uri, range, text);
+	if (!await vscode.workspace.applyEdit(edit)) {
+		throw new Error(`Could not edit ${document.uri.fsPath}`);
+	}
+}
+
+// Runs `body`, then puts the document back to its original content on disk,
+// for the tests that use the same file after it.
+export async function restoringContent(document: vscode.TextDocument, body: () => Promise<void>): Promise<void> {
+	const original = document.getText();
+	try {
+		await body();
+	} finally {
+		await replaceText(document, new vscode.Range(0, 0, document.lineCount, 0), original);
+		if (!await document.save()) {
+			throw new Error(`Could not save ${document.uri.fsPath}`);
+		}
+	}
+}

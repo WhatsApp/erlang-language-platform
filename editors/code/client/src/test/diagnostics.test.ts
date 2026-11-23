@@ -10,7 +10,7 @@
 
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { diagnosticCode, openWorkspaceFile, waitForDiagnostic } from './helpers';
+import { diagnosticCode, openWorkspaceFile, replaceText, restoringContent, waitForDiagnostic } from './helpers';
 
 suite('Diagnostics', () => {
 	test('unused macro is reported', async () => {
@@ -29,5 +29,15 @@ suite('Diagnostics', () => {
 		// `foo(X) -> X.`
 		assert.strictEqual(diagnostic.range.start.line, 5);
 		assert.strictEqual(diagnostic.severity, vscode.DiagnosticSeverity.Error);
+	});
+
+	test('head mismatch is updated as you type', async () => {
+		const document = await openWorkspaceFile('assist_examples/src/head_mismatch.erl');
+
+		await restoringContent(document, async () => {
+			// `bar(1) -> 2;` becomes `baz(1) -> 2;`
+			await replaceText(document, new vscode.Range(4, 2, 4, 3), 'z');
+			await waitForDiagnostic(document, diagnostic => diagnostic.message.includes("'baz' vs 'bar'"));
+		});
 	});
 });
