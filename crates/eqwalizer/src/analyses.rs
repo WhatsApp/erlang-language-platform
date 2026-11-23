@@ -19,9 +19,8 @@ use crate::db::EqwalizerDiagnosticsDatabase;
 mod escape_hatches;
 mod overloaded_specs;
 
-#[ra_ap_query_group_macro::query_group(EqwalizerAnalysesDatabaseStorage)]
+#[salsa::db]
 pub trait EqwalizerAnalysesDatabase: EqwalizerDiagnosticsDatabase {
-    #[salsa::invoke(compute_eqwalizer_stats)]
     fn compute_eqwalizer_stats(
         &self,
         project: Project,
@@ -29,6 +28,21 @@ pub trait EqwalizerAnalysesDatabase: EqwalizerDiagnosticsDatabase {
     ) -> Arc<Vec<EqwalizerDiagnostic>>;
 }
 
+#[salsa::db]
+impl<DB> EqwalizerAnalysesDatabase for DB
+where
+    DB: EqwalizerDiagnosticsDatabase,
+{
+    fn compute_eqwalizer_stats(
+        &self,
+        project: Project,
+        module: ModuleName,
+    ) -> Arc<Vec<EqwalizerDiagnostic>> {
+        compute_eqwalizer_stats(self, project, module)
+    }
+}
+
+#[salsa::tracked(returns(clone))]
 pub fn compute_eqwalizer_stats(
     db: &dyn EqwalizerAnalysesDatabase,
     project: Project,

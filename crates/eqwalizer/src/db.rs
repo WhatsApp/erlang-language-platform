@@ -97,61 +97,49 @@ impl EqwalizerConfigInput {
     }
 }
 
-#[ra_ap_query_group_macro::query_group]
+#[salsa::db]
 pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + ELPDbApi {
-    #[salsa::transparent]
-    #[salsa::invoke(eqwalizer_config)]
     fn eqwalizer_config(&self) -> Arc<EqwalizerConfig>;
 
-    #[salsa::invoke(module_diagnostics)]
     fn module_diagnostics(
         &self,
         project: Project,
         module: String,
     ) -> (Arc<EqwalizerDiagnostics>, Instant);
 
-    #[salsa::invoke(converted_stub)]
     fn converted_stub(&self, project: Project, module: ModuleName) -> Result<Arc<AST>, Error>;
 
-    #[salsa::invoke(type_ids)]
     fn type_ids(
         &self,
         project: Project,
         module: ModuleName,
     ) -> Result<Arc<BTreeMap<Id, Visibility>>, Error>;
 
-    #[salsa::invoke(native_rec_ids)]
     fn native_rec_ids(
         &self,
         project: Project,
         module: ModuleName,
     ) -> Result<Arc<BTreeMap<StringId, Visibility>>, Error>;
 
-    #[salsa::invoke(expanded_stub)]
     fn expanded_stub(&self, project: Project, module: ModuleName)
     -> Result<Arc<ModuleStub>, Error>;
 
-    #[salsa::invoke(contractive_stub)]
     fn contractive_stub(&self, project: Project, module: ModuleName) -> Result<Arc<VStub>, Error>;
 
-    #[salsa::invoke(transitive_stub)]
     fn transitive_stub(
         &self,
         project: Project,
         module: ModuleName,
     ) -> Result<Arc<ModuleStub>, Error>;
 
-    #[salsa::invoke(transitive_stub_bytes)]
     fn transitive_stub_bytes(
         &self,
         project: Project,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error>;
 
-    #[salsa::invoke(custom_types)]
     fn custom_types(&self, project: Project) -> Result<Arc<TypeDeclMap>, Error>;
 
-    #[salsa::invoke(type_decl)]
     fn type_decl(
         &self,
         project: Project,
@@ -159,7 +147,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<TypeDecl>>, Error>;
 
-    #[salsa::invoke(type_decl_bytes)]
     fn type_decl_bytes(
         &self,
         project: Project,
@@ -167,7 +154,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
-    #[salsa::invoke(rec_decl)]
     fn rec_decl(
         &self,
         project: Project,
@@ -175,7 +161,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: StringId,
     ) -> Result<Option<Arc<RecDecl>>, Error>;
 
-    #[salsa::invoke(rec_decl_bytes)]
     fn rec_decl_bytes(
         &self,
         project: Project,
@@ -183,7 +168,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: StringId,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
-    #[salsa::invoke(native_rec_decl)]
     fn native_rec_decl(
         &self,
         project: Project,
@@ -191,7 +175,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: StringId,
     ) -> Result<Option<Arc<NativeRecDecl>>, Error>;
 
-    #[salsa::invoke(native_rec_decl_bytes)]
     fn native_rec_decl_bytes(
         &self,
         project: Project,
@@ -199,7 +182,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: StringId,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
-    #[salsa::invoke(fun_spec)]
     fn fun_spec(
         &self,
         project: Project,
@@ -207,7 +189,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<FunSpec>>, Error>;
 
-    #[salsa::invoke(fun_spec_bytes)]
     fn fun_spec_bytes(
         &self,
         project: Project,
@@ -215,7 +196,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
-    #[salsa::invoke(overloaded_fun_spec)]
     fn overloaded_fun_spec(
         &self,
         project: Project,
@@ -223,7 +203,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<OverloadedFunSpec>>, Error>;
 
-    #[salsa::invoke(overloaded_fun_spec_bytes)]
     fn overloaded_fun_spec_bytes(
         &self,
         project: Project,
@@ -231,19 +210,15 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
-    #[salsa::invoke(custom_fun_specs)]
     fn custom_fun_specs(&self, project: Project) -> Result<Arc<FunSpecMap>, Error>;
 
-    #[salsa::invoke(custom_overloaded_fun_specs)]
     fn custom_overloaded_fun_specs(
         &self,
         project: Project,
     ) -> Result<Arc<OverloadedFunSpecMap>, Error>;
 
-    #[salsa::invoke(callbacks)]
     fn callbacks(&self, project: Project, module: ModuleName) -> Result<CallbacksResult, Error>;
 
-    #[salsa::invoke(callbacks_bytes)]
     fn callbacks_bytes(
         &self,
         project: Project,
@@ -251,10 +226,194 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 }
 
+#[salsa::db]
+impl<DB> EqwalizerDiagnosticsDatabase for DB
+where
+    DB: EqwalizerErlASTStorage + RootQueryDb + ELPDbApi,
+{
+    fn eqwalizer_config(&self) -> Arc<EqwalizerConfig> {
+        eqwalizer_config(self)
+    }
+
+    fn module_diagnostics(
+        &self,
+        project: Project,
+        module: String,
+    ) -> (Arc<EqwalizerDiagnostics>, Instant) {
+        module_diagnostics(self, project, module)
+    }
+
+    fn converted_stub(&self, project: Project, module: ModuleName) -> Result<Arc<AST>, Error> {
+        converted_stub(self, project, module)
+    }
+
+    fn type_ids(
+        &self,
+        project: Project,
+        module: ModuleName,
+    ) -> Result<Arc<BTreeMap<Id, Visibility>>, Error> {
+        type_ids(self, project, module)
+    }
+
+    fn native_rec_ids(
+        &self,
+        project: Project,
+        module: ModuleName,
+    ) -> Result<Arc<BTreeMap<StringId, Visibility>>, Error> {
+        native_rec_ids(self, project, module)
+    }
+
+    fn expanded_stub(
+        &self,
+        project: Project,
+        module: ModuleName,
+    ) -> Result<Arc<ModuleStub>, Error> {
+        expanded_stub(self, project, module)
+    }
+
+    fn contractive_stub(&self, project: Project, module: ModuleName) -> Result<Arc<VStub>, Error> {
+        contractive_stub(self, project, module)
+    }
+
+    fn transitive_stub(
+        &self,
+        project: Project,
+        module: ModuleName,
+    ) -> Result<Arc<ModuleStub>, Error> {
+        transitive_stub(self, project, module)
+    }
+
+    fn transitive_stub_bytes(
+        &self,
+        project: Project,
+        module: ModuleName,
+    ) -> Result<Arc<Vec<u8>>, Error> {
+        transitive_stub_bytes(self, project, module)
+    }
+
+    fn custom_types(&self, project: Project) -> Result<Arc<TypeDeclMap>, Error> {
+        custom_types(self, project)
+    }
+
+    fn type_decl(
+        &self,
+        project: Project,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<TypeDecl>>, Error> {
+        type_decl(self, project, module, id)
+    }
+
+    fn type_decl_bytes(
+        &self,
+        project: Project,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<Vec<u8>>>, Error> {
+        type_decl_bytes(self, project, module, id)
+    }
+
+    fn rec_decl(
+        &self,
+        project: Project,
+        module: ModuleName,
+        id: StringId,
+    ) -> Result<Option<Arc<RecDecl>>, Error> {
+        rec_decl(self, project, module, id)
+    }
+
+    fn rec_decl_bytes(
+        &self,
+        project: Project,
+        module: ModuleName,
+        id: StringId,
+    ) -> Result<Option<Arc<Vec<u8>>>, Error> {
+        rec_decl_bytes(self, project, module, id)
+    }
+
+    fn native_rec_decl(
+        &self,
+        project: Project,
+        module: ModuleName,
+        id: StringId,
+    ) -> Result<Option<Arc<NativeRecDecl>>, Error> {
+        native_rec_decl(self, project, module, id)
+    }
+
+    fn native_rec_decl_bytes(
+        &self,
+        project: Project,
+        module: ModuleName,
+        id: StringId,
+    ) -> Result<Option<Arc<Vec<u8>>>, Error> {
+        native_rec_decl_bytes(self, project, module, id)
+    }
+
+    fn fun_spec(
+        &self,
+        project: Project,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<FunSpec>>, Error> {
+        fun_spec(self, project, module, id)
+    }
+
+    fn fun_spec_bytes(
+        &self,
+        project: Project,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<Vec<u8>>>, Error> {
+        fun_spec_bytes(self, project, module, id)
+    }
+
+    fn overloaded_fun_spec(
+        &self,
+        project: Project,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<OverloadedFunSpec>>, Error> {
+        overloaded_fun_spec(self, project, module, id)
+    }
+
+    fn overloaded_fun_spec_bytes(
+        &self,
+        project: Project,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<Vec<u8>>>, Error> {
+        overloaded_fun_spec_bytes(self, project, module, id)
+    }
+
+    fn custom_fun_specs(&self, project: Project) -> Result<Arc<FunSpecMap>, Error> {
+        custom_fun_specs(self, project)
+    }
+
+    fn custom_overloaded_fun_specs(
+        &self,
+        project: Project,
+    ) -> Result<Arc<OverloadedFunSpecMap>, Error> {
+        custom_overloaded_fun_specs(self, project)
+    }
+
+    fn callbacks(&self, project: Project, module: ModuleName) -> Result<CallbacksResult, Error> {
+        callbacks(self, project, module)
+    }
+
+    fn callbacks_bytes(
+        &self,
+        project: Project,
+        module: ModuleName,
+    ) -> Result<Option<Arc<Vec<u8>>>, Error> {
+        callbacks_bytes(self, project, module)
+    }
+}
+
 fn eqwalizer_config(db: &dyn EqwalizerDiagnosticsDatabase) -> Arc<EqwalizerConfig> {
     EqwalizerConfigInput::get(db).config(db)
 }
 
+#[salsa::tracked(returns(clone))]
 fn module_diagnostics(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -292,6 +451,7 @@ fn is_non_stub_form(form: &&ExternalForm) -> bool {
     }
 }
 
+#[salsa::tracked(returns(clone))]
 fn converted_stub(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -323,6 +483,7 @@ fn from_beam_path(
     Some(ebin.join(filename))
 }
 
+#[salsa::tracked(returns(clone))]
 fn type_ids(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -332,6 +493,7 @@ fn type_ids(
         .map(|ast| Arc::new(ast::type_ids(&ast)))
 }
 
+#[salsa::tracked(returns(clone))]
 fn native_rec_ids(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -341,6 +503,7 @@ fn native_rec_ids(
         .map(|ast| Arc::new(ast::native_rec_ids(&ast)))
 }
 
+#[salsa::tracked(returns(clone))]
 fn expanded_stub(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -354,6 +517,7 @@ fn expanded_stub(
         .map_err(Error::TypeConversionError)
 }
 
+#[salsa::tracked(returns(clone))]
 fn contractive_stub(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -364,6 +528,7 @@ fn contractive_stub(
     Ok(Arc::new(checker.check(stub)))
 }
 
+#[salsa::tracked(returns(clone))]
 fn transitive_stub(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -425,6 +590,7 @@ fn layer_stub(bundled: &ModuleStub, own: ModuleStub) -> ModuleStub {
     }
 }
 
+#[salsa::tracked(returns(clone))]
 fn transitive_stub_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -437,6 +603,7 @@ fn transitive_stub_bytes(
 pub static EQWALIZER_TYPES: LazyLock<ModuleName> =
     LazyLock::new(|| ModuleName::new("eqwalizer_types"));
 
+#[salsa::tracked(returns(clone))]
 fn custom_types(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -467,6 +634,7 @@ fn custom_types(
     }
 }
 
+#[salsa::tracked(returns(clone))]
 fn type_decl(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -482,6 +650,7 @@ fn type_decl(
     Ok(stub.types.get(&id).cloned())
 }
 
+#[salsa::tracked(returns(clone))]
 fn type_decl_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -501,6 +670,7 @@ fn type_decl_bytes(
     }
 }
 
+#[salsa::tracked(returns(clone))]
 fn rec_decl(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -511,6 +681,7 @@ fn rec_decl(
     Ok(stub.records.get(&id).cloned())
 }
 
+#[salsa::tracked(returns(clone))]
 fn rec_decl_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -522,6 +693,7 @@ fn rec_decl_bytes(
 }
 
 /// Looks up a native record declaration from the module's transitive stub.
+#[salsa::tracked(returns(clone))]
 fn native_rec_decl(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -532,6 +704,7 @@ fn native_rec_decl(
     Ok(stub.native_records.get(&id).cloned())
 }
 
+#[salsa::tracked(returns(clone))]
 fn native_rec_decl_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -542,6 +715,7 @@ fn native_rec_decl_bytes(
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }
 
+#[salsa::tracked(returns(clone))]
 fn fun_spec(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -564,6 +738,7 @@ fn fun_spec(
     Ok(stub.specs.get(&id).cloned())
 }
 
+#[salsa::tracked(returns(clone))]
 fn fun_spec_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -574,6 +749,7 @@ fn fun_spec_bytes(
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }
 
+#[salsa::tracked(returns(clone))]
 fn overloaded_fun_spec(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -599,6 +775,7 @@ fn overloaded_fun_spec(
     Ok(stub.overloaded_specs.get(&id).cloned())
 }
 
+#[salsa::tracked(returns(clone))]
 fn overloaded_fun_spec_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -612,6 +789,7 @@ fn overloaded_fun_spec_bytes(
 pub static EQWALIZER_SPECS: LazyLock<ModuleName> =
     LazyLock::new(|| ModuleName::new("eqwalizer_specs"));
 
+#[salsa::tracked(returns(clone))]
 fn custom_fun_specs(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -642,6 +820,7 @@ fn custom_fun_specs(
     }
 }
 
+#[salsa::tracked(returns(clone))]
 fn custom_overloaded_fun_specs(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -670,6 +849,7 @@ fn custom_overloaded_fun_specs(
     }
 }
 
+#[salsa::tracked(returns(clone))]
 fn callbacks(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
@@ -679,6 +859,7 @@ fn callbacks(
     Ok((stub.callbacks.clone(), stub.optional_callbacks.clone()))
 }
 
+#[salsa::tracked(returns(clone))]
 fn callbacks_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project: Project,
