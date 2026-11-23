@@ -11,6 +11,7 @@
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_base_db::InternedFileId;
 use elp_base_db::Project;
 use elp_base_db::RootQueryDb;
 use elp_base_db::Upcast;
@@ -47,8 +48,20 @@ pub enum CommonTestInfo {
 
 #[ra_ap_query_group_macro::query_group(CommonTestDatabaseStorage)]
 pub trait CommonTestDatabase: DefDatabase + RootQueryDb + CommonTestLoader {
-    #[salsa::invoke_interned(ct_info)]
+    #[salsa::transparent]
+    #[salsa::invoke(ct_info_dispatch)]
     fn ct_info(&self, file_id: FileId) -> Arc<CommonTestInfo>;
+
+    #[salsa::invoke(ct_info_inner)]
+    fn ct_info_interned(&self, fid: InternedFileId) -> Arc<CommonTestInfo>;
+}
+
+fn ct_info_dispatch(db: &dyn CommonTestDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
+    db.ct_info_interned(InternedFileId::new(db, file_id))
+}
+
+fn ct_info_inner(db: &dyn CommonTestDatabase, fid: InternedFileId) -> Arc<CommonTestInfo> {
+    ct_info(db, fid.file_id(db))
 }
 
 fn ct_info(db: &dyn CommonTestDatabase, file_id: FileId) -> Arc<CommonTestInfo> {

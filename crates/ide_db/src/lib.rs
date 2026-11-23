@@ -15,12 +15,14 @@ use std::sync::Arc;
 
 use elp_base_db::AbsPath;
 use elp_base_db::App;
+use elp_base_db::ExtraDynamicCallPatternsInput;
 use elp_base_db::File;
 use elp_base_db::FileId;
 use elp_base_db::FilePosition;
 use elp_base_db::FileRange;
 use elp_base_db::FileSourceRootInput;
 use elp_base_db::Files;
+use elp_base_db::InternedFileId;
 use elp_base_db::Project;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
@@ -35,7 +37,7 @@ use elp_base_db::salsa;
 use elp_base_db::salsa::Setter;
 use elp_eqwalizer::EqwalizerConfig;
 use elp_eqwalizer::Mode;
-use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
+use elp_eqwalizer::db::EqwalizerConfigInput;
 use elp_eqwalizer::ipc::IpcHandle;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
@@ -168,8 +170,8 @@ impl Default for RootDatabase {
             eqwalizer_progress_reporter: EqwalizerProgressReporterBox::default(),
             ipc_handles: Arc::default(),
         };
-        db.set_eqwalizer_config(Arc::new(EqwalizerConfig::default()));
-        db.set_extra_dynamic_call_patterns(Arc::new(FxHashMap::default()));
+        EqwalizerConfigInput::set(&mut db, Arc::new(EqwalizerConfig::default()));
+        ExtraDynamicCallPatternsInput::set(&mut db, Arc::new(FxHashMap::default()));
         // Before any lowering, so that queries never see it missing: salsa
         // doesn't track that a singleton doesn't exist.
         Workspace::new(&db, Arc::from([]), Arc::from([]), 0);
@@ -375,8 +377,20 @@ impl RootDatabase {
 
 #[ra_ap_query_group_macro::query_group(LineIndexDatabaseStorage)]
 pub trait LineIndexDatabase: RootQueryDb {
-    #[salsa::invoke_interned(file_line_index)]
+    #[salsa::transparent]
+    #[salsa::invoke(file_line_index_dispatch)]
     fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex>;
+
+    #[salsa::invoke(file_line_index_inner)]
+    fn file_line_index_interned(&self, fid: InternedFileId) -> Arc<LineIndex>;
+}
+
+fn file_line_index_dispatch(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
+    db.file_line_index_interned(InternedFileId::new(db, file_id))
+}
+
+fn file_line_index_inner(db: &dyn LineIndexDatabase, fid: InternedFileId) -> Arc<LineIndex> {
+    file_line_index(db, fid.file_id(db))
 }
 
 fn file_line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {

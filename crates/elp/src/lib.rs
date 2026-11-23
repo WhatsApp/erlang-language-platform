@@ -22,7 +22,6 @@ use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use serde::de::DeserializeOwned;
@@ -215,9 +214,10 @@ pub fn apply_lint_config(analysis_host: &mut AnalysisHost, lint_config: &LintCon
 
     let patterns = lint_config.dynamic_calls.parse();
     let db = analysis_host.raw_database_mut();
-    db.set_extra_dynamic_call_patterns(Arc::new(elp_ide::elp_ide_db::elp_base_db::build_index(
-        patterns,
-    )));
+    elp_ide::elp_ide_db::elp_base_db::ExtraDynamicCallPatternsInput::set(
+        db,
+        Arc::new(elp_ide::elp_ide_db::elp_base_db::build_index(patterns)),
+    );
 }
 
 #[cfg(test)]

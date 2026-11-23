@@ -27,6 +27,7 @@ use elp::otp_file_to_ignore;
 use elp::sort_by_file_size_descending;
 use elp_eqwalizer::EqwalizerConfig;
 use elp_eqwalizer::Mode;
+use elp_eqwalizer::db::EqwalizerConfigInput;
 use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
 use elp_ide::Analysis;
 use elp_ide::diagnostics::Diagnostic;
@@ -903,6 +904,6 @@ pub(crate) fn set_eqwalizer_config(loaded: &mut LoadResult) {
     let config = EqwalizerConfig::default();
     let db = loaded.analysis_host.raw_database_mut();
     if config != *db.eqwalizer_config() {
-        db.set_eqwalizer_config(Arc::new(config));
+        EqwalizerConfigInput::set(db, Arc::new(config));
     }
 }

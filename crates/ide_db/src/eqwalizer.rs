@@ -31,6 +31,7 @@ use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::db::EqwalizerErlASTStorage;
 use elp_eqwalizer::ipc::IpcHandle;
 use elp_syntax::SmolStr;
+use elp_syntax::TextRange;
 use elp_syntax::ast;
 use elp_types_db::eqwalizer;
 use elp_types_db::eqwalizer::types::Type;
@@ -87,22 +88,29 @@ pub trait EqwalizerDatabase:
     + EqwalizerLoader
     + ErlAstDatabase
 {
-    #[salsa::invoke_interned(eqwalizer_diagnostics_by_project)]
+    #[salsa::invoke(eqwalizer_diagnostics_by_project)]
     fn eqwalizer_diagnostics_by_project(
         &self,
         project: Project,
         file_ids: Vec<FileId>,
     ) -> Arc<EqwalizerDiagnostics>;
-    #[salsa::invoke_interned(eqwalizer_stats)]
+    #[salsa::invoke(eqwalizer_stats)]
     fn eqwalizer_stats(
         &self,
         project: Project,
         file_id: FileId,
     ) -> Option<Arc<Vec<EqwalizerDiagnostic>>>;
-    #[salsa::invoke_interned(type_at_position)]
+    #[salsa::transparent]
+    #[salsa::invoke(type_at_position_dispatch)]
     fn type_at_position(
         &self,
         position: FileRange,
+    ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
+    #[salsa::invoke(type_at_position_inner)]
+    fn type_at_position_interned(
+        &self,
+        fid: InternedFileId,
+        range: TextRange,
     ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
     #[salsa::transparent]
     #[salsa::invoke(types_for_file_dispatch)]
@@ -145,6 +153,27 @@ fn eqwalizer_stats(
     let module_index = db.module_index(project);
     let module_name: &str = module_index.module_for_file(file_id)?.as_str();
     Some(db.compute_eqwalizer_stats(project, ModuleName::new(module_name)))
+}
+
+fn type_at_position_dispatch(
+    db: &dyn EqwalizerDatabase,
+    position: FileRange,
+) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
+    db.type_at_position_interned(InternedFileId::new(db, position.file_id), position.range)
+}
+
+fn type_at_position_inner(
+    db: &dyn EqwalizerDatabase,
+    fid: InternedFileId,
+    range: TextRange,
+) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
+    type_at_position(
+        db,
+        FileRange {
+            file_id: fid.file_id(db),
+            range,
+        },
+    )
 }
 
 fn type_at_position(

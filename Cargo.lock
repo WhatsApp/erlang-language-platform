@@ -1977,9 +1977,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "ra_ap_query-group-macro"
-version = "0.0.340"
+version = "0.0.341"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdea5852ab59ab1aae6f5c79b22b583c8493634ba67004b33dcff78f1ced44a9"
+checksum = "fded4fa6aa6bcd494fa9af6919143b7899e4e391157c31685149bdc7640e848a"
 dependencies = [
  "proc-macro2",
  "quote",

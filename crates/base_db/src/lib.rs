@@ -374,6 +374,29 @@ pub struct SourceRootAppInput {
     pub app: Option<App>,
 }
 
+/// Extra dynamic call patterns from `.elp_lint.toml` configuration, read via
+/// [`RootQueryDb::extra_dynamic_call_patterns`].
+#[salsa::input(singleton)]
+pub struct ExtraDynamicCallPatternsInput {
+    pub patterns: Arc<FxHashMap<PatternKey, DynamicCallPatternInput>>,
+}
+
+impl ExtraDynamicCallPatternsInput {
+    pub fn set<Db: ?Sized + salsa::Database>(
+        db: &mut Db,
+        patterns: Arc<FxHashMap<PatternKey, DynamicCallPatternInput>>,
+    ) {
+        match Self::try_get(db) {
+            Some(input) => {
+                input.set_patterns(db).to(patterns);
+            }
+            None => {
+                Self::new(db, patterns);
+            }
+        }
+    }
+}
+
 /// Salsa-interned wrapper around `vfs::FileId`. Used to satisfy salsa 0.25's
 /// "first non-`db` argument must implement `SalsaStructInDb`" constraint for
 /// queries that take a `FileId`. Construct via `InternedFileId::new(db, file_id)`;
@@ -428,7 +451,8 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     ///
     /// Stored pre-indexed by `(module, function, arity)` so look-ups are
     /// O(1) (mirroring the built-in pattern index).
-    #[salsa::input]
+    #[salsa::transparent]
+    #[salsa::invoke(extra_dynamic_call_patterns)]
     fn extra_dynamic_call_patterns(&self) -> Arc<FxHashMap<PatternKey, DynamicCallPatternInput>>;
 
     /// Returns a map from module name to FileId of the containing file.
@@ -547,7 +571,7 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     #[salsa::invoke(IncludeCtx::resolve_local_inner)]
     fn resolve_local_interned(&self, fid: InternedFileId, path: SmolStr) -> Option<FileId>;
 
-    #[salsa::invoke_interned(IncludeCtx::resolve_remote_query)]
+    #[salsa::invoke(IncludeCtx::resolve_remote_query)]
     fn resolve_remote(
         &self,
         orig_app: Option<App>,
@@ -577,6 +601,12 @@ pub trait SourceDatabase: salsa::Database {
     fn source_root_app(&self, id: SourceRootId) -> SourceRootAppInput;
 
     fn set_source_root_app(&mut self, id: SourceRootId, app: Option<App>);
+}
+
+fn extra_dynamic_call_patterns(
+    db: &dyn RootQueryDb,
+) -> Arc<FxHashMap<PatternKey, DynamicCallPatternInput>> {
+    ExtraDynamicCallPatternsInput::get(db).patterns(db)
 }
 
 fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {

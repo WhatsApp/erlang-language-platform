@@ -91,7 +91,10 @@ pub trait WithFixture: Default + SourceDatabase + 'static {
                     .unwrap_or_else(|e| panic!("invalid dynamic call pattern '{}': {}", s, e))
             })
             .collect();
-        db.set_extra_dynamic_call_patterns(std::sync::Arc::new(crate::build_index(patterns)));
+        crate::ExtraDynamicCallPatternsInput::set(
+            &mut db,
+            std::sync::Arc::new(crate::build_index(patterns)),
+        );
         fixture.validate(&db);
         (db, fixture)
     }

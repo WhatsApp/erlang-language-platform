@@ -14,6 +14,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_base_db::InternedFileId;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
@@ -188,11 +189,35 @@ pub struct FileDoc {
 // TODO Add an input so we know when to invalidate?
 #[ra_ap_query_group_macro::query_group]
 pub trait DocDatabase: DefDatabase + RootQueryDb + DocLoader + Upcast<dyn DefDatabase> {
-    #[salsa::invoke_interned(get_file_docs)]
+    #[salsa::transparent]
+    #[salsa::invoke(file_doc_dispatch)]
     fn file_doc(&self, file_id: FileId) -> Arc<FileDoc>;
 
-    #[salsa::invoke_interned(get_file_specs)]
+    #[salsa::invoke(file_doc_inner)]
+    fn file_doc_interned(&self, fid: InternedFileId) -> Arc<FileDoc>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(file_specs_dispatch)]
     fn file_specs(&self, file_id: FileId) -> Arc<FxHashMap<NameArity, Doc>>;
+
+    #[salsa::invoke(file_specs_inner)]
+    fn file_specs_interned(&self, fid: InternedFileId) -> Arc<FxHashMap<NameArity, Doc>>;
+}
+
+fn file_doc_dispatch(db: &dyn DocDatabase, file_id: FileId) -> Arc<FileDoc> {
+    db.file_doc_interned(InternedFileId::new(db, file_id))
+}
+
+fn file_doc_inner(db: &dyn DocDatabase, fid: InternedFileId) -> Arc<FileDoc> {
+    get_file_docs(db, fid.file_id(db))
+}
+
+fn file_specs_dispatch(db: &dyn DocDatabase, file_id: FileId) -> Arc<FxHashMap<NameArity, Doc>> {
+    db.file_specs_interned(InternedFileId::new(db, file_id))
+}
+
+fn file_specs_inner(db: &dyn DocDatabase, fid: InternedFileId) -> Arc<FxHashMap<NameArity, Doc>> {
+    get_file_specs(db, fid.file_id(db))
 }
 
 /// Primary API to get documentation information from HIR

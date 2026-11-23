@@ -21,7 +21,7 @@ mod overloaded_specs;
 
 #[ra_ap_query_group_macro::query_group(EqwalizerAnalysesDatabaseStorage)]
 pub trait EqwalizerAnalysesDatabase: EqwalizerDiagnosticsDatabase {
-    #[salsa::invoke_interned(compute_eqwalizer_stats)]
+    #[salsa::invoke(compute_eqwalizer_stats)]
     fn compute_eqwalizer_stats(
         &self,
         project: Project,

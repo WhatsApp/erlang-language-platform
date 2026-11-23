@@ -555,7 +555,7 @@ mod tests {
     use elp_eqwalizer::EqwalizerConfig;
     use elp_eqwalizer::EqwalizerDiagnostics;
     use elp_eqwalizer::Mode;
-    use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
+    use elp_eqwalizer::db::EqwalizerConfigInput;
     use elp_ide::TextSize;
     use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
     use elp_ide::elp_ide_db::elp_base_db::AppType;
@@ -940,10 +940,7 @@ mod tests {
         )
         .with_context(|| format!("Failed to load project at {}", project_path.display()))
         .unwrap();
-        loaded
-            .analysis_host
-            .raw_database_mut()
-            .set_eqwalizer_config(Arc::new(config));
+        EqwalizerConfigInput::set(loaded.analysis_host.raw_database_mut(), Arc::new(config));
         build::compile_deps(&mut loaded, &cli)
             .with_context(|| format!("Failed to compile deps for project {project}"))
             .unwrap();

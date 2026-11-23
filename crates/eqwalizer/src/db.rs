@@ -30,6 +30,7 @@ use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use parking_lot::Mutex;
+use salsa::Setter;
 
 type TypeDeclMap = BTreeMap<ModuleName, BTreeMap<Id, Arc<TypeDecl>>>;
 type FunSpecMap = BTreeMap<ModuleName, BTreeMap<Id, Arc<FunSpec>>>;
@@ -77,60 +78,79 @@ pub trait ELPDbApi {
     fn module_ipc_handle(&self, module: ModuleName) -> Option<Arc<Mutex<IpcHandle>>>;
 }
 
+#[salsa::input(singleton)]
+pub struct EqwalizerConfigInput {
+    pub config: Arc<EqwalizerConfig>,
+}
+
+impl EqwalizerConfigInput {
+    pub fn set<Db: ?Sized + salsa::Database>(db: &mut Db, config: Arc<EqwalizerConfig>) {
+        match Self::try_get(db) {
+            Some(input) => {
+                input.set_config(db).to(config);
+            }
+            None => {
+                Self::new(db, config);
+            }
+        }
+    }
+}
+
 #[ra_ap_query_group_macro::query_group]
 pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + ELPDbApi {
-    #[salsa::input]
+    #[salsa::transparent]
+    #[salsa::invoke(eqwalizer_config)]
     fn eqwalizer_config(&self) -> Arc<EqwalizerConfig>;
 
-    #[salsa::invoke_interned(module_diagnostics)]
+    #[salsa::invoke(module_diagnostics)]
     fn module_diagnostics(
         &self,
         project: Project,
         module: String,
     ) -> (Arc<EqwalizerDiagnostics>, Instant);
 
-    #[salsa::invoke_interned(converted_stub)]
+    #[salsa::invoke(converted_stub)]
     fn converted_stub(&self, project: Project, module: ModuleName) -> Result<Arc<AST>, Error>;
 
-    #[salsa::invoke_interned(type_ids)]
+    #[salsa::invoke(type_ids)]
     fn type_ids(
         &self,
         project: Project,
         module: ModuleName,
     ) -> Result<Arc<BTreeMap<Id, Visibility>>, Error>;
 
-    #[salsa::invoke_interned(native_rec_ids)]
+    #[salsa::invoke(native_rec_ids)]
     fn native_rec_ids(
         &self,
         project: Project,
         module: ModuleName,
     ) -> Result<Arc<BTreeMap<StringId, Visibility>>, Error>;
 
-    #[salsa::invoke_interned(expanded_stub)]
+    #[salsa::invoke(expanded_stub)]
     fn expanded_stub(&self, project: Project, module: ModuleName)
     -> Result<Arc<ModuleStub>, Error>;
 
-    #[salsa::invoke_interned(contractive_stub)]
+    #[salsa::invoke(contractive_stub)]
     fn contractive_stub(&self, project: Project, module: ModuleName) -> Result<Arc<VStub>, Error>;
 
-    #[salsa::invoke_interned(transitive_stub)]
+    #[salsa::invoke(transitive_stub)]
     fn transitive_stub(
         &self,
         project: Project,
         module: ModuleName,
     ) -> Result<Arc<ModuleStub>, Error>;
 
-    #[salsa::invoke_interned(transitive_stub_bytes)]
+    #[salsa::invoke(transitive_stub_bytes)]
     fn transitive_stub_bytes(
         &self,
         project: Project,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error>;
 
-    #[salsa::invoke_interned(custom_types)]
+    #[salsa::invoke(custom_types)]
     fn custom_types(&self, project: Project) -> Result<Arc<TypeDeclMap>, Error>;
 
-    #[salsa::invoke_interned(type_decl)]
+    #[salsa::invoke(type_decl)]
     fn type_decl(
         &self,
         project: Project,
@@ -138,7 +158,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<TypeDecl>>, Error>;
 
-    #[salsa::invoke_interned(type_decl_bytes)]
+    #[salsa::invoke(type_decl_bytes)]
     fn type_decl_bytes(
         &self,
         project: Project,
@@ -146,7 +166,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
-    #[salsa::invoke_interned(rec_decl)]
+    #[salsa::invoke(rec_decl)]
     fn rec_decl(
         &self,
         project: Project,
@@ -154,7 +174,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: StringId,
     ) -> Result<Option<Arc<RecDecl>>, Error>;
 
-    #[salsa::invoke_interned(rec_decl_bytes)]
+    #[salsa::invoke(rec_decl_bytes)]
     fn rec_decl_bytes(
         &self,
         project: Project,
@@ -162,7 +182,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: StringId,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
-    #[salsa::invoke_interned(native_rec_decl)]
+    #[salsa::invoke(native_rec_decl)]
     fn native_rec_decl(
         &self,
         project: Project,
@@ -170,7 +190,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: StringId,
     ) -> Result<Option<Arc<NativeRecDecl>>, Error>;
 
-    #[salsa::invoke_interned(native_rec_decl_bytes)]
+    #[salsa::invoke(native_rec_decl_bytes)]
     fn native_rec_decl_bytes(
         &self,
         project: Project,
@@ -178,7 +198,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: StringId,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
-    #[salsa::invoke_interned(fun_spec)]
+    #[salsa::invoke(fun_spec)]
     fn fun_spec(
         &self,
         project: Project,
@@ -186,7 +206,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<FunSpec>>, Error>;
 
-    #[salsa::invoke_interned(fun_spec_bytes)]
+    #[salsa::invoke(fun_spec_bytes)]
     fn fun_spec_bytes(
         &self,
         project: Project,
@@ -194,7 +214,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
-    #[salsa::invoke_interned(overloaded_fun_spec)]
+    #[salsa::invoke(overloaded_fun_spec)]
     fn overloaded_fun_spec(
         &self,
         project: Project,
@@ -202,7 +222,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<OverloadedFunSpec>>, Error>;
 
-    #[salsa::invoke_interned(overloaded_fun_spec_bytes)]
+    #[salsa::invoke(overloaded_fun_spec_bytes)]
     fn overloaded_fun_spec_bytes(
         &self,
         project: Project,
@@ -210,24 +230,28 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
-    #[salsa::invoke_interned(custom_fun_specs)]
+    #[salsa::invoke(custom_fun_specs)]
     fn custom_fun_specs(&self, project: Project) -> Result<Arc<FunSpecMap>, Error>;
 
-    #[salsa::invoke_interned(custom_overloaded_fun_specs)]
+    #[salsa::invoke(custom_overloaded_fun_specs)]
     fn custom_overloaded_fun_specs(
         &self,
         project: Project,
     ) -> Result<Arc<OverloadedFunSpecMap>, Error>;
 
-    #[salsa::invoke_interned(callbacks)]
+    #[salsa::invoke(callbacks)]
     fn callbacks(&self, project: Project, module: ModuleName) -> Result<CallbacksResult, Error>;
 
-    #[salsa::invoke_interned(callbacks_bytes)]
+    #[salsa::invoke(callbacks_bytes)]
     fn callbacks_bytes(
         &self,
         project: Project,
         module: ModuleName,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
+}
+
+fn eqwalizer_config(db: &dyn EqwalizerDiagnosticsDatabase) -> Arc<EqwalizerConfig> {
+    EqwalizerConfigInput::get(db).config(db)
 }
 
 fn module_diagnostics(
