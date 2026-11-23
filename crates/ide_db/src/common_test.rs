@@ -46,20 +46,32 @@ pub enum CommonTestInfo {
     NoProjectInfoError,
 }
 
-#[ra_ap_query_group_macro::query_group(CommonTestDatabaseStorage)]
+#[salsa::db]
 pub trait CommonTestDatabase: DefDatabase + RootQueryDb + CommonTestLoader {
-    #[salsa::transparent]
-    #[salsa::invoke(ct_info_dispatch)]
     fn ct_info(&self, file_id: FileId) -> Arc<CommonTestInfo>;
 
-    #[salsa::invoke(ct_info_inner)]
     fn ct_info_interned(&self, fid: InternedFileId) -> Arc<CommonTestInfo>;
+}
+
+#[salsa::db]
+impl<DB> CommonTestDatabase for DB
+where
+    DB: DefDatabase + RootQueryDb + CommonTestLoader,
+{
+    fn ct_info(&self, file_id: FileId) -> Arc<CommonTestInfo> {
+        ct_info_dispatch(self, file_id)
+    }
+
+    fn ct_info_interned(&self, fid: InternedFileId) -> Arc<CommonTestInfo> {
+        ct_info_inner(self, fid)
+    }
 }
 
 fn ct_info_dispatch(db: &dyn CommonTestDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
     db.ct_info_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn ct_info_inner(db: &dyn CommonTestDatabase, fid: InternedFileId) -> Arc<CommonTestInfo> {
     ct_info(db, fid.file_id(db))
 }

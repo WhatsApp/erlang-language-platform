@@ -375,20 +375,32 @@ impl RootDatabase {
     }
 }
 
-#[ra_ap_query_group_macro::query_group(LineIndexDatabaseStorage)]
+#[salsa::db]
 pub trait LineIndexDatabase: RootQueryDb {
-    #[salsa::transparent]
-    #[salsa::invoke(file_line_index_dispatch)]
     fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 
-    #[salsa::invoke(file_line_index_inner)]
     fn file_line_index_interned(&self, fid: InternedFileId) -> Arc<LineIndex>;
+}
+
+#[salsa::db]
+impl<DB> LineIndexDatabase for DB
+where
+    DB: RootQueryDb,
+{
+    fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
+        file_line_index_dispatch(self, file_id)
+    }
+
+    fn file_line_index_interned(&self, fid: InternedFileId) -> Arc<LineIndex> {
+        file_line_index_inner(self, fid)
+    }
 }
 
 fn file_line_index_dispatch(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
     db.file_line_index_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn file_line_index_inner(db: &dyn LineIndexDatabase, fid: InternedFileId) -> Arc<LineIndex> {
     file_line_index(db, fid.file_id(db))
 }

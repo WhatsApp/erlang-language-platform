@@ -187,27 +187,44 @@ pub struct FileDoc {
 }
 
 // TODO Add an input so we know when to invalidate?
-#[ra_ap_query_group_macro::query_group]
+#[salsa::db]
 pub trait DocDatabase: DefDatabase + RootQueryDb + DocLoader + Upcast<dyn DefDatabase> {
-    #[salsa::transparent]
-    #[salsa::invoke(file_doc_dispatch)]
     fn file_doc(&self, file_id: FileId) -> Arc<FileDoc>;
 
-    #[salsa::invoke(file_doc_inner)]
     fn file_doc_interned(&self, fid: InternedFileId) -> Arc<FileDoc>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(file_specs_dispatch)]
     fn file_specs(&self, file_id: FileId) -> Arc<FxHashMap<NameArity, Doc>>;
 
-    #[salsa::invoke(file_specs_inner)]
     fn file_specs_interned(&self, fid: InternedFileId) -> Arc<FxHashMap<NameArity, Doc>>;
+}
+
+#[salsa::db]
+impl<DB> DocDatabase for DB
+where
+    DB: DefDatabase + RootQueryDb + DocLoader + Upcast<dyn DefDatabase>,
+{
+    fn file_doc(&self, file_id: FileId) -> Arc<FileDoc> {
+        file_doc_dispatch(self, file_id)
+    }
+
+    fn file_doc_interned(&self, fid: InternedFileId) -> Arc<FileDoc> {
+        file_doc_inner(self, fid)
+    }
+
+    fn file_specs(&self, file_id: FileId) -> Arc<FxHashMap<NameArity, Doc>> {
+        file_specs_dispatch(self, file_id)
+    }
+
+    fn file_specs_interned(&self, fid: InternedFileId) -> Arc<FxHashMap<NameArity, Doc>> {
+        file_specs_inner(self, fid)
+    }
 }
 
 fn file_doc_dispatch(db: &dyn DocDatabase, file_id: FileId) -> Arc<FileDoc> {
     db.file_doc_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn file_doc_inner(db: &dyn DocDatabase, fid: InternedFileId) -> Arc<FileDoc> {
     get_file_docs(db, fid.file_id(db))
 }
@@ -216,6 +233,7 @@ fn file_specs_dispatch(db: &dyn DocDatabase, file_id: FileId) -> Arc<FxHashMap<N
     db.file_specs_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn file_specs_inner(db: &dyn DocDatabase, fid: InternedFileId) -> Arc<FxHashMap<NameArity, Doc>> {
     get_file_specs(db, fid.file_id(db))
 }

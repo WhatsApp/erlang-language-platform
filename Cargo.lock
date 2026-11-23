@@ -756,11 +756,9 @@ dependencies = [
  "memchr",
  "parking_lot 0.13.0",
  "paths",
- "ra_ap_query-group-macro",
  "regex",
  "rustc-hash 2.1.3",
  "salsa",
- "salsa-macros",
  "serde",
  "serde_json",
  "stdx",
@@ -1968,17 +1966,6 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
-
-[[package]]
-name = "ra_ap_query-group-macro"
-version = "0.0.343"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e98365f70b8f21eaba24942a04c9101d753e1301ef9259d7284cb3c165b99ad7"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
-]
 
 [[package]]
 name = "radix_trie"

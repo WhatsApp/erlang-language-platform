@@ -105,25 +105,42 @@ fn resolve_include(
     ))
 }
 
-#[ra_ap_query_group_macro::query_group(ErlAstDatabaseStorage)]
+#[salsa::db]
 pub trait ErlAstDatabase: RootQueryDb + AstLoader + LineIndexDatabase {
-    #[salsa::transparent]
-    #[salsa::invoke(module_ast_dispatch)]
     fn module_ast(&self, file_id: FileId) -> Arc<ParseResult>;
-    #[salsa::invoke(module_ast_inner)]
     fn module_ast_interned(&self, fid: InternedFileId) -> Arc<ParseResult>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(elp_metadata_dispatch)]
     fn elp_metadata(&self, file_id: FileId) -> Metadata;
-    #[salsa::invoke(elp_metadata_inner)]
     fn elp_metadata_interned(&self, fid: InternedFileId) -> Metadata;
+}
+
+#[salsa::db]
+impl<DB> ErlAstDatabase for DB
+where
+    DB: RootQueryDb + AstLoader + LineIndexDatabase,
+{
+    fn module_ast(&self, file_id: FileId) -> Arc<ParseResult> {
+        module_ast_dispatch(self, file_id)
+    }
+
+    fn module_ast_interned(&self, fid: InternedFileId) -> Arc<ParseResult> {
+        module_ast_inner(self, fid)
+    }
+
+    fn elp_metadata(&self, file_id: FileId) -> Metadata {
+        elp_metadata_dispatch(self, file_id)
+    }
+
+    fn elp_metadata_interned(&self, fid: InternedFileId) -> Metadata {
+        elp_metadata_inner(self, fid)
+    }
 }
 
 fn module_ast_dispatch(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseResult> {
     db.module_ast_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn module_ast_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Arc<ParseResult> {
     let file_id = fid.file_id(db);
     let _ = stdx::panic_context::enter(format!("\nmodule_ast: {file_id:?}"));
@@ -157,6 +174,7 @@ fn elp_metadata_dispatch(db: &dyn ErlAstDatabase, file_id: FileId) -> Metadata {
     db.elp_metadata_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn elp_metadata_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Metadata {
     let file_id = fid.file_id(db);
     let line_index = db.file_line_index(file_id);

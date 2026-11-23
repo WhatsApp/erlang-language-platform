@@ -80,7 +80,7 @@ impl EqwalizerLoader for crate::RootDatabase {
     }
 }
 
-#[ra_ap_query_group_macro::query_group]
+#[salsa::db]
 pub trait EqwalizerDatabase:
     EqwalizerDiagnosticsDatabase
     + EqwalizerAnalysesDatabase
@@ -88,55 +88,112 @@ pub trait EqwalizerDatabase:
     + EqwalizerLoader
     + ErlAstDatabase
 {
-    #[salsa::invoke(eqwalizer_diagnostics_by_project)]
     fn eqwalizer_diagnostics_by_project(
         &self,
         project: Project,
         file_ids: Vec<FileId>,
     ) -> Arc<EqwalizerDiagnostics>;
-    #[salsa::invoke(eqwalizer_stats)]
     fn eqwalizer_stats(
         &self,
         project: Project,
         file_id: FileId,
     ) -> Option<Arc<Vec<EqwalizerDiagnostic>>>;
-    #[salsa::transparent]
-    #[salsa::invoke(type_at_position_dispatch)]
     fn type_at_position(
         &self,
         position: FileRange,
     ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
-    #[salsa::invoke(type_at_position_inner)]
     fn type_at_position_interned(
         &self,
         fid: InternedFileId,
         range: TextRange,
     ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
-    #[salsa::transparent]
-    #[salsa::invoke(types_for_file_dispatch)]
     fn types_for_file(&self, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>>;
-    #[salsa::invoke(types_for_file_inner)]
     fn types_for_file_interned(&self, fid: InternedFileId) -> Option<Arc<Vec<(Pos, Type)>>>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(has_eqwalizer_module_marker_dispatch)]
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
-    #[salsa::invoke(has_eqwalizer_module_marker_inner)]
     fn has_eqwalizer_module_marker_interned(&self, fid: InternedFileId) -> bool;
 
-    #[salsa::transparent]
-    #[salsa::invoke(has_eqwalizer_ignore_marker_dispatch)]
     fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool;
-    #[salsa::invoke(has_eqwalizer_ignore_marker_inner)]
     fn has_eqwalizer_ignore_marker_interned(&self, fid: InternedFileId) -> bool;
 
-    #[salsa::transparent]
-    #[salsa::invoke(is_eqwalizer_enabled_dispatch)]
     fn is_eqwalizer_enabled(&self, file_id: FileId) -> bool;
-    #[salsa::invoke(is_eqwalizer_enabled_inner)]
     fn is_eqwalizer_enabled_interned(&self, fid: InternedFileId) -> bool;
 }
 
+#[salsa::db]
+impl<DB> EqwalizerDatabase for DB
+where
+    DB: EqwalizerDiagnosticsDatabase
+        + EqwalizerAnalysesDatabase
+        + RootQueryDb
+        + EqwalizerLoader
+        + ErlAstDatabase,
+{
+    fn eqwalizer_diagnostics_by_project(
+        &self,
+        project: Project,
+        file_ids: Vec<FileId>,
+    ) -> Arc<EqwalizerDiagnostics> {
+        eqwalizer_diagnostics_by_project(self, project, file_ids)
+    }
+
+    fn eqwalizer_stats(
+        &self,
+        project: Project,
+        file_id: FileId,
+    ) -> Option<Arc<Vec<EqwalizerDiagnostic>>> {
+        eqwalizer_stats(self, project, file_id)
+    }
+
+    fn type_at_position(
+        &self,
+        position: FileRange,
+    ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
+        type_at_position_dispatch(self, position)
+    }
+
+    fn type_at_position_interned(
+        &self,
+        fid: InternedFileId,
+        range: TextRange,
+    ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
+        type_at_position_inner(self, fid, range)
+    }
+
+    fn types_for_file(&self, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>> {
+        types_for_file_dispatch(self, file_id)
+    }
+
+    fn types_for_file_interned(&self, fid: InternedFileId) -> Option<Arc<Vec<(Pos, Type)>>> {
+        types_for_file_inner(self, fid)
+    }
+
+    fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool {
+        has_eqwalizer_module_marker_dispatch(self, file_id)
+    }
+
+    fn has_eqwalizer_module_marker_interned(&self, fid: InternedFileId) -> bool {
+        has_eqwalizer_module_marker_inner(self, fid)
+    }
+
+    fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool {
+        has_eqwalizer_ignore_marker_dispatch(self, file_id)
+    }
+
+    fn has_eqwalizer_ignore_marker_interned(&self, fid: InternedFileId) -> bool {
+        has_eqwalizer_ignore_marker_inner(self, fid)
+    }
+
+    fn is_eqwalizer_enabled(&self, file_id: FileId) -> bool {
+        is_eqwalizer_enabled_dispatch(self, file_id)
+    }
+
+    fn is_eqwalizer_enabled_interned(&self, fid: InternedFileId) -> bool {
+        is_eqwalizer_enabled_inner(self, fid)
+    }
+}
+
+#[salsa::tracked(returns(clone))]
 pub fn eqwalizer_diagnostics_by_project(
     db: &dyn EqwalizerDatabase,
     project: Project,
@@ -145,6 +202,7 @@ pub fn eqwalizer_diagnostics_by_project(
     Arc::new(db.typecheck(project, file_ids))
 }
 
+#[salsa::tracked(returns(clone))]
 fn eqwalizer_stats(
     db: &dyn EqwalizerDatabase,
     project: Project,
@@ -162,6 +220,7 @@ fn type_at_position_dispatch(
     db.type_at_position_interned(InternedFileId::new(db, position.file_id), position.range)
 }
 
+#[salsa::tracked(returns(clone))]
 fn type_at_position_inner(
     db: &dyn EqwalizerDatabase,
     fid: InternedFileId,
@@ -225,6 +284,7 @@ fn types_for_file_dispatch(
     db.types_for_file_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn types_for_file_inner(
     db: &dyn EqwalizerDatabase,
     fid: InternedFileId,
@@ -247,6 +307,7 @@ fn is_eqwalizer_enabled_dispatch(db: &dyn EqwalizerDatabase, file_id: FileId) ->
     db.is_eqwalizer_enabled_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn is_eqwalizer_enabled_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -> bool {
     let file_id = fid.file_id(db);
 
@@ -278,6 +339,7 @@ fn has_eqwalizer_module_marker_dispatch(db: &dyn EqwalizerDatabase, file_id: Fil
     db.has_eqwalizer_module_marker_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn has_eqwalizer_module_marker_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -> bool {
     let file_id = fid.file_id(db);
     let parsed = db.parse(file_id);
@@ -305,6 +367,7 @@ fn has_eqwalizer_ignore_marker_dispatch(db: &dyn EqwalizerDatabase, file_id: Fil
     db.has_eqwalizer_ignore_marker_interned(InternedFileId::new(db, file_id))
 }
 
+#[salsa::tracked(returns(clone))]
 fn has_eqwalizer_ignore_marker_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -> bool {
     let file_id = fid.file_id(db);
     let parsed = db.parse(file_id);
