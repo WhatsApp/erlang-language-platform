@@ -93,6 +93,11 @@
         "command": "elp.openExtensionLogs",
         "title": "Open Extension Logs",
         "category": "Erlang"
+      },
+      {
+        "command": "elp.openLanguageClientLogs",
+        "title": "Open LanguageClient Logs",
+        "category": "Erlang"
       }
     ],
     "debuggers": [
