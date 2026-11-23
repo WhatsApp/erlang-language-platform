@@ -64,4 +64,16 @@ suite('Diagnostics', () => {
 			assert.strictEqual(diagnostic.range.start.line, 3);
 		});
 	});
+
+	test('misspelled attributes are reported on save', async () => {
+		const document = await openWorkspaceFile('single_errors/src/compiler_diagnostics.erl');
+
+		await restoringContent(document, async () => {
+			// `-behaviour(application).` becomes `-behaiour(application).`
+			await replaceText(document, new vscode.Range(3, 5, 3, 6), '');
+			await document.save();
+			const diagnostic = await waitForDiagnostic(document, diagnostic => diagnosticCode(diagnostic) === 'W0013');
+			assert.strictEqual(diagnostic.range.start.line, 3);
+		});
+	});
 });
