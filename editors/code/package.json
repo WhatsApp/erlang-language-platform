@@ -407,6 +407,16 @@
             }
         }
         ]
+      },
+      "editor.semanticTokenColorCustomizations": {
+        "[*]": {
+          "rules": {
+            "*.disabled_code": {
+              "foreground": "#888888",
+              "fontStyle": "italic"
+            }
+          }
+        }
       }
     },
     "semanticTokenTypes": [],
@@ -434,6 +444,10 @@
       {
         "id": "format_specifier",
         "description": "Style for format specifiers (e.g., ~p, ~s) in io:format strings"
+      },
+      {
+        "id": "disabled_code",
+        "description": "Style for disabled code"
       }
     ],
     "semanticTokenScopes": [
