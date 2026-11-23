@@ -245,6 +245,8 @@ pub enum DiagnosticCode {
     MapComprehensionToFromKeys,
     #[strum(props(code = "W0097"))]
     ManualIntegerRangeCheck,
+    #[strum(props(code = "W0098"))]
+    UnusedCallback,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),

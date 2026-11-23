@@ -219,7 +219,9 @@ mod tests {
     use crate::tests::check_fix;
 
     pub(crate) fn check_diagnostics(fixture: &str) {
-        let config = DiagnosticsConfig::default().disable(elp_ide_db::DiagnosticCode::NoSize);
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::NoSize)
+            .disable(DiagnosticCode::UnusedCallback);
         check_diagnostics_with_config(config, fixture)
     }
 

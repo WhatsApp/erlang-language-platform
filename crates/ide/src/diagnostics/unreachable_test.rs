@@ -112,7 +112,8 @@ mod tests {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
             .disable(DiagnosticCode::CannotEvaluateCTCallbacks)
-            .disable(DiagnosticCode::RedundantCtCallback);
+            .disable(DiagnosticCode::RedundantCtCallback)
+            .disable(DiagnosticCode::UnusedCallback);
         check_diagnostics_with_config(config, fixture)
     }
 

@@ -354,7 +354,8 @@ mod tests {
             .disable(DiagnosticCode::UndefinedFunction)
             .disable(DiagnosticCode::UnspecificInclude)
             .disable(DiagnosticCode::NoDialyzerAttribute)
-            .disable(DiagnosticCode::UnusedHeader);
+            .disable(DiagnosticCode::UnusedHeader)
+            .disable(DiagnosticCode::UnusedCallback);
         check_diagnostics_with_config(config, fixture)
     }
 

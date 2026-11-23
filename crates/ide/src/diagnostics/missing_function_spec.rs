@@ -170,7 +170,8 @@ mod tests {
             .disable(DiagnosticCode::RedundantCtCallback)
             .disable(DiagnosticCode::CannotEvaluateCTCallbacks)
             .disable(DiagnosticCode::UnusedInclude)
-            .disable(DiagnosticCode::UnnecessaryFunctionArg);
+            .disable(DiagnosticCode::UnnecessaryFunctionArg)
+            .disable(DiagnosticCode::UnusedCallback);
         check_diagnostics_with_config(config, fixture);
     }
 

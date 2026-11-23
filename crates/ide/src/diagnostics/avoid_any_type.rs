@@ -217,6 +217,7 @@ mod tests {
         DiagnosticsConfig::default()
             .enable(DiagnosticCode::AvoidAnyType)
             .disable(DiagnosticCode::UnusedHeader)
+            .disable(DiagnosticCode::UnusedCallback)
     }
 
     #[track_caller]

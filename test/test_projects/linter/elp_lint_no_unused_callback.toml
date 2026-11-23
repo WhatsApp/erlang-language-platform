@@ -1,0 +1,5 @@
+# The default lint ruleset without `unused_callback`, for tests whose project
+# declares callbacks that nothing calls.
+
+[linters.unused_callback]
+enabled = false

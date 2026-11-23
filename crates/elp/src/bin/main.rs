@@ -2175,7 +2175,7 @@ mod tests {
                 "lint",
                 "--no-stream",
                 "--config-file",
-                project_path("linter/elp_lint_empty.toml")
+                project_path("linter/elp_lint_no_unused_callback.toml")
             ],
             "diagnostics",
             resource_file("diagnostics/lint_no_stream.stdout"),

@@ -251,7 +251,8 @@ mod tests {
         let config = DiagnosticsConfig::default()
             .enable(DiagnosticCode::UnusedExportedFunction)
             .disable(DiagnosticCode::UndefinedFunction)
-            .disable(DiagnosticCode::UnusedHeader);
+            .disable(DiagnosticCode::UnusedHeader)
+            .disable(DiagnosticCode::UnusedCallback);
         check_diagnostics_with_config(config, fixture)
     }
 

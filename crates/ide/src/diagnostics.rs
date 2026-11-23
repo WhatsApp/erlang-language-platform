@@ -194,6 +194,7 @@ mod unreachable_test;
 mod unresolved_include;
 mod unresolved_macro;
 mod unspecific_include;
+mod unused_callback;
 mod unused_exported_function;
 mod unused_exported_type;
 mod unused_header;
@@ -2375,6 +2376,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &redundant_ct_callback::LINTER,
     &used_ignored_variable::LINTER,
     &manual_integer_range_check::LINTER,
+    &unused_callback::LINTER,
 ];
 
 /// Unified registry for all types of linters, initialized once and reused.

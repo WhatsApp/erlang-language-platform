@@ -152,6 +152,7 @@ mod tests {
         DiagnosticsConfig::default()
             .enable(DiagnosticCode::UndocumentedFunction)
             .disable(DiagnosticCode::OldEdocSyntax)
+            .disable(DiagnosticCode::UnusedCallback)
     }
 
     #[track_caller]

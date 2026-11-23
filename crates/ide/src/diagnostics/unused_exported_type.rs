@@ -203,7 +203,8 @@ mod tests {
             .disable(DiagnosticCode::UnnecessaryFunctionArg)
             .disable(DiagnosticCode::UncheckedCast)
             .disable(DiagnosticCode::AvoidTypeDefsInHeader)
-            .disable(DiagnosticCode::UnusedInclude);
+            .disable(DiagnosticCode::UnusedInclude)
+            .disable(DiagnosticCode::UnusedCallback);
         check_diagnostics_with_config(config, fixture)
     }
 

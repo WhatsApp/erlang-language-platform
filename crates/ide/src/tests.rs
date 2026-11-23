@@ -717,7 +717,8 @@ pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
         .disable(DiagnosticCode::NoCatch)
         .disable(DiagnosticCode::UnnecessaryFunctionArg)
         .disable(DiagnosticCode::UnusedExportedType)
-        .disable(DiagnosticCode::UnusedHeader);
+        .disable(DiagnosticCode::UnusedHeader)
+        .disable(DiagnosticCode::UnusedCallback);
     check_no_parse_errors_with_config(analysis, file_id, &config, &vec![]);
 }
 
