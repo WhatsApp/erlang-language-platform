@@ -73,6 +73,11 @@
         "command": "elp.expandMacro",
         "title": "Expand Macro",
         "category": "Erlang"
+      },
+      {
+        "command": "elp.externalDocs",
+        "title": "Open docs under cursor",
+        "category": "Erlang"
       }
     ],
     "debuggers": [
