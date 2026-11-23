@@ -68,6 +68,11 @@
         "command": "elp.restartServer",
         "title": "Restart server",
         "category": "Erlang"
+      },
+      {
+        "command": "elp.expandMacro",
+        "title": "Expand Macro",
+        "category": "Erlang"
       }
     ],
     "debuggers": [
