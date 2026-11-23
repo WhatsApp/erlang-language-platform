@@ -90,3 +90,21 @@ export async function restoringContent(document: vscode.TextDocument, body: () =
 		}
 	}
 }
+
+// Runs `body` with `vscode.env.openExternal` recording the URIs it is asked to
+// open instead of opening them.
+export async function openedUris(body: () => Thenable<unknown>): Promise<vscode.Uri[]> {
+	const env = vscode.env as { openExternal: typeof vscode.env.openExternal };
+	const openExternal = env.openExternal;
+	const uris: vscode.Uri[] = [];
+	env.openExternal = async uri => {
+		uris.push(uri);
+		return true;
+	};
+	try {
+		await body();
+	} finally {
+		env.openExternal = openExternal;
+	}
+	return uris;
+}
