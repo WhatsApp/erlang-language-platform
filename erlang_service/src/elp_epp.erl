@@ -1266,19 +1266,21 @@ scan_define(Toks, Def, From, St) ->
     wait_req_scan(St).
 
 scan_define_1([{',', _} = Comma | Toks], Mac, _Def, From, St) ->
-    case catch macro_expansion(Toks, Comma) of
+    try macro_expansion(Toks, Comma) of
         Expansion when is_list(Expansion) ->
-            scan_define_2(none, {none, Expansion}, Mac, From, St);
-        {error, ErrL, What} ->
+            scan_define_2(none, {none, Expansion}, Mac, From, St)
+    catch
+        throw:{error, ErrL, What} ->
             epp_reply(From, {error, {ErrL, elp_epp, What}}),
             wait_req_scan(St)
     end;
 scan_define_1([{'(', _Ac} = T | Toks], Mac, _Def, From, St) ->
-    case catch macro_pars(Toks, [], T) of
+    try macro_pars(Toks, [], T) of
         {ok, {As, _} = MacroDef} ->
             Len = length(As),
-            scan_define_2(Len, MacroDef, Mac, From, St);
-        {error, ErrL, What} ->
+            scan_define_2(Len, MacroDef, Mac, From, St)
+    catch
+        throw:{error, ErrL, What} ->
             epp_reply(From, {error, {ErrL, elp_epp, What}}),
             wait_req_scan(St)
     end;
@@ -1996,15 +1998,11 @@ expand_arg(ArgToks, Ts, Anno, Rest, Bs) ->
 update_fun_name(Token, #epp{fname = Toks0} = St) when is_list(Toks0) ->
     %% ?FUNCTION_NAME or ?FUNCTION_ARITY is used for the first time in
     %% a function.  First expand macros (except ?FUNCTION_NAME and
-    %% ?FUNCTION_ARITY) in the form.
+    %% ?FUNCTION_ARITY) in the form, and then extract the name and
+    %% arity from the stream of tokens, and store the result in the
+    %% #epp{} record so we don't have to do it again.
 
-    Toks1 = (catch expand_macros(Toks0, St#epp{fname = undefined})),
-
-    %% Now extract the name and arity from the stream of tokens, and store
-    %% the result in the #epp{} record so we don't have to do it
-    %% again.
-
-    case Toks1 of
+    try expand_macros(Toks0, St#epp{fname = undefined}) of
         [{atom, _, Name}, {'(', _} | Toks] ->
             %% This is the beginning of a function definition.
             %% Scan the token stream up to the matching right
@@ -2016,12 +2014,13 @@ update_fun_name(Token, #epp{fname = Toks0} = St) when is_list(Toks0) ->
             %% of a form. Does not make sense.
             {var, _, Macro} = Token,
             throw({error, loc(Token), {illegal_function_usage, Macro}});
-        _ when is_list(Toks1) ->
+        Toks1 when is_list(Toks1) ->
             %% Not the beginning of a function (an attribute or a
             %% syntax error).
             {var, _, Macro} = Token,
-            throw({error, loc(Token), {illegal_function, Macro}});
-        _ ->
+            throw({error, loc(Token), {illegal_function, Macro}})
+    catch
+        throw:_ ->
             %% A macro expansion error. Return a dummy value and
             %% let the caller notice and handle the error.
             St#epp{fname = {'_', 0}}
@@ -2157,10 +2156,10 @@ wait_epp_reply(Epp, Mref) ->
     end.
 
 expand_var([$$ | _] = NewName) ->
-    case catch expand_var1(NewName) of
-        {ok, ExpName} ->
-            ExpName;
-        _ ->
+    try
+        expand_var1(NewName)
+    catch
+        error:_ ->
             NewName
     end;
 expand_var(NewName) ->
@@ -2170,7 +2169,7 @@ expand_var1(NewName) ->
     [[$$ | Var] | Rest] = filename:split(NewName),
     Value = os:getenv(Var),
     true = Value =/= false,
-    {ok, fname_join([Value | Rest])}.
+    fname_join([Value | Rest]).
 
 fname_join(["." | [_ | _] = Rest]) ->
     fname_join(Rest);
