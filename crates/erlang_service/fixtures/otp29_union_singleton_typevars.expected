@@ -1,0 +1,88 @@
+AST
+{attribute,{0,0},file,{"otp29_union_singleton_typevars.erl",0}}.
+{attribute,{0,39},module,otp29_union_singleton_typevars}.
+{attribute,{41,65},export,[{f,0},{g,1},{h,0}]}.
+{attribute,{67,101},compile,nowarn_singleton_typevar}.
+{attribute,{104,137},
+           spec,
+           {{f,0},
+            [{type,{111,137},
+                   'fun',
+                   [{type,{111,137},product,[]},
+                    {type,{117,137},
+                          union,
+                          [{type,{117,124},
+                                 tuple,
+                                 [{atom,{118,120},ok},{var,{122,123},'A'}]},
+                           {type,{127,137},
+                                 tuple,
+                                 [{atom,{128,133},error},
+                                  {var,{135,136},'A'}]}]}]}]}}.
+{function,{139,153},
+          f,0,
+          [{clause,{139,153},
+                   [],[],
+                   [{tuple,{146,153},
+                           [{atom,{147,149},ok},{integer,{151,152},1}]}]}]}.
+{attribute,{156,190},
+           spec,
+           {{g,1},
+            [{type,{163,190},
+                   'fun',
+                   [{type,{163,190},product,[{var,{164,165},'B'}]},
+                    {type,{170,190},
+                          union,
+                          [{type,{170,177},
+                                 tuple,
+                                 [{atom,{171,173},ok},{var,{175,176},'B'}]},
+                           {type,{180,190},
+                                 tuple,
+                                 [{atom,{181,186},error},
+                                  {var,{188,189},'B'}]}]}]}]}}.
+{function,{192,207},
+          g,1,
+          [{clause,{192,207},
+                   [{var,{194,195},'B'}],
+                   [],
+                   [{tuple,{200,207},
+                           [{atom,{201,203},ok},{var,{205,206},'B'}]}]}]}.
+{attribute,{210,245},
+           spec,
+           {{h,0},
+            [{type,{217,245},
+                   'fun',
+                   [{type,{217,245},product,[]},
+                    {type,{223,245},
+                          union,
+                          [{type,{223,231},
+                                 tuple,
+                                 [{atom,{224,226},ok},{var,{228,230},'_C'}]},
+                           {type,{234,245},
+                                 tuple,
+                                 [{atom,{235,240},error},
+                                  {var,{242,244},'_C'}]}]}]}]}}.
+{function,{247,261},
+          h,0,
+          [{clause,{247,261},
+                   [],[],
+                   [{tuple,{254,261},
+                           [{atom,{255,257},ok},{integer,{259,260},1}]}]}]}.
+{eof,{263,263}}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[
+    ParseError {
+        path: "otp29_union_singleton_typevars.erl",
+        location: Some(
+            Normal(
+                122..123,
+            ),
+        ),
+        msg: "type variable 'A' is only used once (is unbound)",
+        code: "L1292",
+    },
+]

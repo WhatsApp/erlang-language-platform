@@ -948,6 +948,14 @@ mod tests {
     }
 
     #[test]
+    fn otp29_singleton_type_variables_in_union_are_errors() {
+        expect_module(
+            "otp29_union_singleton_typevars.erl".into(),
+            fixture_file!("otp29_union_singleton_typevars.expected"),
+        );
+    }
+
+    #[test]
     fn regular_module() {
         expect_module("regular.erl".into(), fixture_file!("regular.expected"));
     }
