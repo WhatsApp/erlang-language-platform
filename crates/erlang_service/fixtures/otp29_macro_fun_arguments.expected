@@ -1,0 +1,80 @@
+AST
+{attribute,{0,0},file,{"otp29_macro_fun_arguments.erl",0}}.
+{attribute,{0,34},module,otp29_macro_fun_arguments}.
+{attribute,{36,50},export,[{f,0}]}.
+{attribute,{52,71},export_type,[{t,0}]}.
+{attribute,
+    {123,184},
+    type,
+    {t,{type,
+           {136,184},
+           tuple,
+           [{type,
+                {146,154},
+                'fun',
+                [{type,{146,154},product,[]},{atom,{152,154},ok}]},
+            {type,
+                {161,182},
+                'fun',
+                [{type,
+                     {161,182},
+                     product,
+                     [{type,
+                          {166,174},
+                          'fun',
+                          [{type,{166,174},product,[]},{atom,{172,174},ok}]}]},
+                 {atom,{180,182},ok}]}]},
+       []}}.
+{function,
+    {187,334},
+    f,0,
+    [{clause,
+         {187,334},
+         [],[],
+         [{tuple,
+              {198,334},
+              [{'fun',
+                   {203,218},
+                   {clauses,[{clause,{206,214},[],[],[{atom,{212,214},ok}]}]}},
+               {'fun',
+                   {230,272},
+                   {clauses,
+                       [{clause,
+                            {233,268},
+                            [{var,{234,235},'X'}],
+                            [[{call,
+                                  {242,252},
+                                  {atom,{242,249},is_atom},
+                                  [{var,{250,251},'X'}]},
+                              {op,{254,263},
+                                  '=/=',
+                                  {var,{254,255},'X'},
+                                  {atom,{260,263},bad}}]],
+                            [{var,{267,268},'X'}]}]}},
+               {named_fun,
+                   {284,332},
+                   'Named',
+                   [{clause,
+                        {288,302},
+                        [{integer,{294,295},0}],
+                        [],
+                        [{atom,{300,302},ok}]},
+                    {clause,
+                        {304,328},
+                        [{var,{310,311},'N'}],
+                        [],
+                        [{call,
+                             {316,328},
+                             {var,{316,321},'Named'},
+                             [{op,{322,327},
+                                  '-',
+                                  {var,{322,323},'N'},
+                                  {integer,{326,327},1}}]}]}]}]}]}]}.
+{eof,{336,336}}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[]

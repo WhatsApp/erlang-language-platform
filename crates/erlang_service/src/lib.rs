@@ -932,6 +932,14 @@ mod tests {
     }
 
     #[test]
+    fn otp29_macros_accept_fun_types_and_expressions() {
+        expect_module(
+            "otp29_macro_fun_arguments.erl".into(),
+            fixture_file!("otp29_macro_fun_arguments.expected"),
+        );
+    }
+
+    #[test]
     fn regular_module() {
         expect_module("regular.erl".into(), fixture_file!("regular.expected"));
     }
