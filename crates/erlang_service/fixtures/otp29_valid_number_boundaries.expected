@@ -1,0 +1,21 @@
+AST
+{attribute,{0,0},file,{"otp29_valid_number_boundaries.erl",0}}.
+{attribute,{0,38},module,otp29_valid_number_boundaries}.
+{attribute,{40,54},export,[{f,0}]}.
+{function,{57,94},
+          f,0,
+          [{clause,{57,94},
+                   [],[],
+                   [{tuple,{64,94},
+                           [{integer,{65,68},123},
+                            {integer,{70,75},255},
+                            {float,{77,86},10.0},
+                            {float,{88,93},150.0}]}]}]}.
+{eof,{96,96}}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[]

@@ -215,6 +215,11 @@ string_quote(_) -> $".
         (C >= $\000 andalso C =< $\s orelse C >= $\200 andalso C =< $\240))
 ).
 -define(DIGIT(C), (is_integer(C) andalso $0 =< C andalso C =< $9)).
+-define(NAMECHAR(C),
+    (is_integer(C) andalso
+        (C >= $a andalso C =< $z orelse C >= $A andalso C =< $Z orelse
+            C =:= $_ orelse ?DIGIT(C) orelse C =:= $@))
+).
 -define(CHAR(C), (is_integer(C) andalso 0 =< C andalso C < 16#110000)).
 -define(UNICODE(C),
     (is_integer(C) andalso
@@ -1430,6 +1435,8 @@ scan_number([$_] = Cs, St, Off, Toks, Ncs, Us) ->
     {more, {Cs, St, Off, Toks, {Ncs, Us}, fun scan_number/5}};
 scan_number([$., C | Cs], St, Off, Toks, Ncs, Us) when ?DIGIT(C) ->
     scan_fraction(Cs, St, Off, Toks, [C, $. | Ncs], Us);
+scan_number([$., C | _] = Cs, _St, Off, _Toks, Ncs, _Us) when ?NAMECHAR(C) ->
+    scan_error({illegal, float}, Off, Off + length(Ncs), Cs);
 scan_number([$.] = Cs, St, Off, Toks, Ncs, Us) ->
     {more, {Cs, St, Off, Toks, {Ncs, Us}, fun scan_number/5}};
 scan_number([$# | Cs] = Cs0, St, Off, Toks, Ncs0, Us) ->
@@ -1446,6 +1453,8 @@ scan_number([$# | Cs] = Cs0, St, Off, Toks, Ncs0, Us) ->
             %% Extremely unlikely to occur in practice.
             scan_error({illegal, base}, Off, Off, Cs0)
     end;
+scan_number([C | _] = Cs, _St, Off, _Toks, Ncs, _Us) when ?NAMECHAR(C) ->
+    scan_error({illegal, integer}, Off, Off + length(Ncs), Cs);
 scan_number([] = Cs, St, Off, Toks, Ncs, Us) ->
     {more, {Cs, St, Off, Toks, {Ncs, Us}, fun scan_number/5}};
 scan_number(Cs, St, Off, Toks, Ncs0, Us) ->
@@ -1497,8 +1506,12 @@ scan_based_num([$_] = Cs, St, Off, Toks, B, NCs, BCs, Us) ->
     {more, {Cs, St, Off, Toks, {B, NCs, BCs, Us}, fun scan_based_num/5}};
 scan_based_num([$., C | Cs], St, Off, Toks, B, Ncs, BCs, Us) when ?BASED_DIGIT(C, B) ->
     scan_based_fraction(Cs, St, Off, Toks, B, [C, $. | Ncs], BCs, Us);
+scan_based_num([$., C | _] = Cs, _St, Off, _Toks, _B, Ncs, Bcs, _Us) when ?NAMECHAR(C) ->
+    scan_error({illegal, float}, Off, Off + length(Ncs) + length(Bcs), Cs);
 scan_based_num([$.] = Cs, St, Off, Toks, B, Ncs, BCs, Us) ->
     {more, {Cs, St, Off, Toks, {B, Ncs, BCs, Us}, fun scan_based_num/5}};
+scan_based_num([C | _] = Cs, _St, Off, _Toks, _B, Ncs, Bcs, _Us) when ?NAMECHAR(C) ->
+    scan_error({illegal, integer}, Off, Off + length(Ncs) + length(Bcs), Cs);
 scan_based_num([] = Cs, St, Off, Toks, B, NCs, BCs, Us) ->
     {more, {Cs, St, Off, Toks, {B, NCs, BCs, Us}, fun scan_based_num/5}};
 scan_based_num(Cs, _St, Off, _Toks, _B, [], Bcs, _Us) ->
@@ -1532,6 +1545,8 @@ scan_based_fraction([$#, E | Cs], St, Off, Toks, B, Ncs, BCs, Us) when E =:= $e;
     scan_based_exponent_sign(Cs, St, Off, Toks, B, Ncs, BCs, [E, $#], Us);
 scan_based_fraction([$#] = Cs, St, Off, Toks, B, Ncs, BCs, Us) ->
     {more, {Cs, St, Off, Toks, {B, Ncs, BCs, Us}, fun scan_based_fraction/5}};
+scan_based_fraction([C | _] = Cs, _St, Off, _Toks, _B, Ncs, Bcs, _Us) when ?NAMECHAR(C) ->
+    scan_error({illegal, float}, Off, Off + length(Ncs) + length(Bcs), Cs);
 scan_based_fraction([] = Cs, St, Off, Toks, B, Ncs, BCs, Us) ->
     {more, {Cs, St, Off, Toks, {B, Ncs, BCs, Us}, fun scan_based_fraction/5}};
 scan_based_fraction(Cs, St, Off, Toks, B, Ncs, BCs, Us) ->
@@ -1616,6 +1631,8 @@ scan_fraction([$_] = Cs, St, Off, Toks, Ncs, Us) ->
     {more, {Cs, St, Off, Toks, {Ncs, Us}, fun scan_fraction/5}};
 scan_fraction([E | Cs], St, Off, Toks, Ncs, Us) when E =:= $e; E =:= $E ->
     scan_exponent_sign(Cs, St, Off, Toks, [E | Ncs], Us);
+scan_fraction([C | _] = Cs, _St, Off, _Toks, Ncs, _Us) when ?NAMECHAR(C) ->
+    scan_error({illegal, float}, Off, Off + length(Ncs), Cs);
 scan_fraction([] = Cs, St, Off, Toks, Ncs, Us) ->
     {more, {Cs, St, Off, Toks, {Ncs, Us}, fun scan_fraction/5}};
 scan_fraction(Cs, St, Off, Toks, Ncs, Us) ->
@@ -1644,6 +1661,8 @@ scan_exponent([$_, Next | Cs], St, Off, Toks, [Prev | _] = Ncs, _) when
     scan_exponent(Cs, St, Off, Toks, [Next, $_ | Ncs], with_underscore);
 scan_exponent([$_] = Cs, St, Off, Toks, Ncs, Us) ->
     {more, {Cs, St, Off, Toks, {Ncs, Us}, fun scan_exponent/5}};
+scan_exponent([C | _] = Cs, _St, Off, _Toks, Ncs, _Us) when ?NAMECHAR(C) ->
+    scan_error({illegal, float}, Off, Off + length(Ncs), Cs);
 scan_exponent([] = Cs, St, Off, Toks, Ncs, Us) ->
     {more, {Cs, St, Off, Toks, {Ncs, Us}, fun scan_exponent/5}};
 scan_exponent(Cs, St, Off, Toks, Ncs, Us) ->

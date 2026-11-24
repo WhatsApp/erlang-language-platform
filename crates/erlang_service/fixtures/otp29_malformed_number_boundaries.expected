@@ -1,0 +1,237 @@
+AST
+{attribute,{0,0},file,{"otp29_malformed_number_boundaries.erl",0}}.
+{attribute,{0,42},module,otp29_malformed_number_boundaries}.
+{attribute,{44,88},export,[{f,0},{g,0},{h,0},{i,0},{j,0},{k,0},{l,0}]}.
+{error,{{105,108},elp_scan,{illegal,integer}}}.
+{error,{{111,112},elp_parse,["syntax error before: ","'}'"]}}.
+{error,{{128,131},elp_scan,{illegal,float}}}.
+{error,{{131,132},elp_parse,["syntax error before: ","'.'"]}}.
+{error,{{152,157},elp_scan,{illegal,integer}}}.
+{error,{{158,159},elp_parse,["syntax error before: ","'}'"]}}.
+{error,{{175,181},elp_scan,{illegal,float}}}.
+{error,{{182,183},elp_parse,["syntax error before: ","'}'"]}}.
+{error,{{199,204},elp_scan,{illegal,float}}}.
+{error,{{209,210},elp_parse,["syntax error before: ","'}'"]}}.
+{error,{{226,229},elp_scan,{illegal,float}}}.
+{error,{{234,235},elp_parse,["syntax error before: ","'}'"]}}.
+{error,{{251,256},elp_scan,{illegal,float}}}.
+{error,{{256,257},elp_parse,["syntax error before: ","'.'"]}}.
+{eof,{261,261}}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                105..108,
+            ),
+        ),
+        msg: "illegal integer",
+        code: "S1401",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                111..112,
+            ),
+        ),
+        msg: "syntax error before: '}'",
+        code: "P1711",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                128..131,
+            ),
+        ),
+        msg: "illegal float",
+        code: "S1401",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                131..132,
+            ),
+        ),
+        msg: "syntax error before: '.'",
+        code: "P1711",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                152..157,
+            ),
+        ),
+        msg: "illegal integer",
+        code: "S1401",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                158..159,
+            ),
+        ),
+        msg: "syntax error before: '}'",
+        code: "P1711",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                175..181,
+            ),
+        ),
+        msg: "illegal float",
+        code: "S1401",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                182..183,
+            ),
+        ),
+        msg: "syntax error before: '}'",
+        code: "P1711",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                199..204,
+            ),
+        ),
+        msg: "illegal float",
+        code: "S1401",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                209..210,
+            ),
+        ),
+        msg: "syntax error before: '}'",
+        code: "P1711",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                226..229,
+            ),
+        ),
+        msg: "illegal float",
+        code: "S1401",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                234..235,
+            ),
+        ),
+        msg: "syntax error before: '}'",
+        code: "P1711",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                251..256,
+            ),
+        ),
+        msg: "illegal float",
+        code: "S1401",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                256..257,
+            ),
+        ),
+        msg: "syntax error before: '.'",
+        code: "P1711",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                44..88,
+            ),
+        ),
+        msg: "function f/0 undefined",
+        code: "L1227",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                44..88,
+            ),
+        ),
+        msg: "function g/0 undefined",
+        code: "L1227",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                44..88,
+            ),
+        ),
+        msg: "function h/0 undefined",
+        code: "L1227",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                44..88,
+            ),
+        ),
+        msg: "function i/0 undefined",
+        code: "L1227",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                44..88,
+            ),
+        ),
+        msg: "function j/0 undefined",
+        code: "L1227",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                44..88,
+            ),
+        ),
+        msg: "function k/0 undefined",
+        code: "L1227",
+    },
+    ParseError {
+        path: "otp29_malformed_number_boundaries.erl",
+        location: Some(
+            Normal(
+                44..88,
+            ),
+        ),
+        msg: "function l/0 undefined",
+        code: "L1227",
+    },
+]

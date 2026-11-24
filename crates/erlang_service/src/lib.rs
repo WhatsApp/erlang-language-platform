@@ -956,6 +956,18 @@ mod tests {
     }
 
     #[test]
+    fn otp29_rejects_malformed_number_boundaries() {
+        expect_module(
+            "otp29_malformed_number_boundaries.erl".into(),
+            fixture_file!("otp29_malformed_number_boundaries.expected"),
+        );
+        expect_module(
+            "otp29_valid_number_boundaries.erl".into(),
+            fixture_file!("otp29_valid_number_boundaries.expected"),
+        );
+    }
+
+    #[test]
     fn regular_module() {
         expect_module("regular.erl".into(), fixture_file!("regular.expected"));
     }
