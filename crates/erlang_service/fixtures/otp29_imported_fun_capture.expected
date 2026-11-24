@@ -1,0 +1,44 @@
+AST
+{attribute,{0,0},file,{"otp29_imported_fun_capture.erl",0}}.
+{attribute,{0,35},module,otp29_imported_fun_capture}.
+{attribute,{37,64},import,{lists,[{reverse,1}]}}.
+{attribute,{66,90},export,[{bad,0},{good,0}]}.
+{function,{93,115},
+          bad,0,
+          [{clause,{93,115},[],[],[{'fun',{102,115},{function,reverse,1}}]}]}.
+{function,
+    {117,175},
+    good,0,
+    [{clause,
+         {117,175},
+         [],[],
+         [{tuple,
+              {127,175},
+              [{'fun',
+                   {128,147},
+                   {function,
+                       {atom,{132,137},lists},
+                       {atom,{138,145},reverse},
+                       {integer,{146,147},1}}},
+               {'fun',{149,160},{function,local,0}},
+               {'fun',{162,174},{function,length,1}}]}]}]}.
+{function,{177,190},local,0,[{clause,{177,190},[],[],[{atom,{188,190},ok}]}]}.
+{eof,{192,192}}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[
+    ParseError {
+        path: "otp29_imported_fun_capture.erl",
+        location: Some(
+            Normal(
+                102..115,
+            ),
+        ),
+        msg: "creating a fun from imported name reverse/1 is not allowed",
+        code: "L1347",
+    },
+]

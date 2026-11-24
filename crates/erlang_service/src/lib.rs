@@ -968,6 +968,14 @@ mod tests {
     }
 
     #[test]
+    fn otp29_rejects_unqualified_capture_of_imported_function() {
+        expect_module(
+            "otp29_imported_fun_capture.erl".into(),
+            fixture_file!("otp29_imported_fun_capture.expected"),
+        );
+    }
+
+    #[test]
     fn regular_module() {
         expect_module("regular.erl".into(), fixture_file!("regular.expected"));
     }

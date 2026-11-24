@@ -229,6 +229,8 @@ format_error({attribute,A}) ->
     io_lib:format("attribute ~tw after function definitions", [A]);
 format_error({missing_qlc_hrl,A}) ->
     io_lib:format("qlc:q/~w called, but \"qlc.hrl\" not included", [A]);
+format_error({fun_import,{F,A}}) ->
+    io_lib:format("creating a fun from imported name ~tw/~w is not allowed", [F,A]);
 format_error({redefine_import,{{F,A},M}}) ->
     io_lib:format("function ~tw/~w already imported from ~w", [F,A,M]);
 format_error({invalid_fa_attribute,Term}) ->
@@ -2874,13 +2876,15 @@ expr({'fun',Anno,Body}, Vt, St) ->
             %% It is illegal to call record_info/2 with unknown arguments.
             {[],add_error(Anno, illegal_record_info, St)};
         {function,F,A} ->
-	    %% BifClash - Fun expression
-            %% N.B. Only allows BIFs here as well, NO IMPORTS!!
-            case ((not is_local_function(St#lint.locals,{F,A})) andalso
-		  (erl_internal:bif(F, A) andalso
-		   (not is_autoimport_suppressed(St#lint.no_auto,{F,A})))) of
-                true -> {[],St};
-                false -> {[],call_function(Anno, F, A, St)}
+            case is_imported_function(St#lint.imports,{F,A}) of
+                true -> {[],add_error(Anno, {fun_import,{F,A}}, St)};
+                false ->
+                    case not is_local_function(St#lint.locals,{F,A}) andalso
+                         erl_internal:bif(F, A) andalso
+                         not is_autoimport_suppressed(St#lint.no_auto,{F,A}) of
+                        true -> {[],St};
+                        false -> {[],call_function(Anno, F, A, St)}
+                    end
             end;
 	{function,M,F,A} ->
 	    expr_list([M,F,A], Vt, St)
