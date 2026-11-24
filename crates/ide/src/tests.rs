@@ -496,7 +496,7 @@ fn assert_fixture_annotations(
     match updated {
         Ok(updated) => panic!(
             "assertion failed\n  expected: {expected:?}\n  actual  : {actual:?}\n\n\
-             re-run with `-m fbcode//whatsapp/elp:expect[update]` to apply:\n{updated}"
+             re-run with `UPDATE_EXPECT=1` to apply:\n{updated}"
         ),
         Err(reason) => panic!(
             "assertion failed\n  expected: {expected:?}\n  actual  : {actual:?}\n\n\
@@ -927,7 +927,7 @@ mod test {
               expected: [[(0..15, "error: W9999: wrong diagnostic")]]
               actual  : [[(0..12, "error: L1201: no module definition\n💡 <suppression>")]]
 
-            re-run with `-m fbcode//whatsapp/elp:expect[update]` to apply:
+            re-run with `UPDATE_EXPECT=1` to apply:
             //- expect_parse_errors
             foo() -> ok.
             %%<^^^^^^^^^ error: L1201: no module definition

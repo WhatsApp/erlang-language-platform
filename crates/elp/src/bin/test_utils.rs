@@ -17,9 +17,18 @@ use expect_test::expect_file;
 use crate::daemon::DaemonCli;
 
 // Snapshot dir from `ELP_RESOURCE_DIR`, set by both the Buck and cargo pipelines.
-// The `expect[update]` value is repo-relative, so absolutize it against CWD.
+// Buck points it at a copy of the snapshots, so a run that updates them takes the
+// checked-in directory from `ELP_RESOURCE_SOURCE_DIR` instead. That value is
+// repo-relative, so absolutize it against CWD.
 pub fn resource_dir() -> PathBuf {
-    let dir = PathBuf::from(std::env::var("ELP_RESOURCE_DIR").expect("ELP_RESOURCE_DIR not set"));
+    let source_dir = std::env::var("ELP_RESOURCE_SOURCE_DIR")
+        .ok()
+        .filter(|_| std::env::var_os("UPDATE_EXPECT").is_some());
+    let dir = PathBuf::from(
+        source_dir
+            .or_else(|| std::env::var("ELP_RESOURCE_DIR").ok())
+            .expect("ELP_RESOURCE_DIR not set"),
+    );
     if dir.is_absolute() {
         dir
     } else {
