@@ -1,0 +1,4 @@
+-module(otp29_malformed_function_lists).
+-compile({inline, [oops]}).
+-compile({nowarn_unused_function, [oops]}).
+-compile({nowarn_bif_clash, [oops]}).

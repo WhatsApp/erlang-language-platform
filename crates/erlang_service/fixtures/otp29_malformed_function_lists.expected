@@ -1,0 +1,45 @@
+AST
+{attribute,{0,0},file,{"otp29_malformed_function_lists.erl",0}}.
+{attribute,{0,39},module,otp29_malformed_function_lists}.
+{attribute,{41,67},compile,{inline,[oops]}}.
+{attribute,{69,111},compile,{nowarn_unused_function,[oops]}}.
+{attribute,{113,149},compile,{nowarn_bif_clash,[oops]}}.
+{eof,{151,151}}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[
+    ParseError {
+        path: "otp29_malformed_function_lists.erl",
+        location: Some(
+            Normal(
+                41..67,
+            ),
+        ),
+        msg: "badly formed attribute oops",
+        code: "L1346",
+    },
+    ParseError {
+        path: "otp29_malformed_function_lists.erl",
+        location: Some(
+            Normal(
+                69..111,
+            ),
+        ),
+        msg: "badly formed attribute oops",
+        code: "L1346",
+    },
+    ParseError {
+        path: "otp29_malformed_function_lists.erl",
+        location: Some(
+            Normal(
+                113..149,
+            ),
+        ),
+        msg: "badly formed attribute oops",
+        code: "L1346",
+    },
+]

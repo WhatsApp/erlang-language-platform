@@ -354,6 +354,8 @@ make_code(elp_lint, {native_record_already_exported, _N}) ->
     "L1344";
 make_code(elp_lint, {native_record_header, _T}) ->
     "L1345";
+make_code(elp_lint, {invalid_fa_attribute, _Term}) ->
+    "L1346";
 make_code(elp_lint, _Other) ->
     "L1399";
 %% stdlib-3.15.2/src/erl_scan.erl

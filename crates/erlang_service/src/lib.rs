@@ -920,6 +920,18 @@ mod tests {
     }
 
     #[test]
+    fn otp29_malformed_function_list_entries() {
+        expect_module(
+            "otp29_malformed_function_lists.erl".into(),
+            fixture_file!("otp29_malformed_function_lists.expected"),
+        );
+        expect_module(
+            "otp29_valid_inline.erl".into(),
+            fixture_file!("otp29_valid_inline.expected"),
+        );
+    }
+
+    #[test]
     fn regular_module() {
         expect_module("regular.erl".into(), fixture_file!("regular.expected"));
     }

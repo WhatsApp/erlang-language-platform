@@ -1,0 +1,14 @@
+AST
+{attribute,{0,0},file,{"otp29_valid_inline.erl",0}}.
+{attribute,{0,27},module,otp29_valid_inline}.
+{attribute,{29,43},export,[{f,0}]}.
+{attribute,{45,70},compile,{inline,[{f,0}]}}.
+{function,{73,82},f,0,[{clause,{73,82},[],[],[{atom,{80,82},ok}]}]}.
+{eof,{84,84}}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[]

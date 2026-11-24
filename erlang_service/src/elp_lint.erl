@@ -231,6 +231,8 @@ format_error({missing_qlc_hrl,A}) ->
     io_lib:format("qlc:q/~w called, but \"qlc.hrl\" not included", [A]);
 format_error({redefine_import,{{F,A},M}}) ->
     io_lib:format("function ~tw/~w already imported from ~w", [F,A,M]);
+format_error({invalid_fa_attribute,Term}) ->
+    io_lib:format("badly formed attribute ~tw", [Term]);
 format_error({bad_inline,{F,A}}) ->
     io_lib:format("inlined function ~tw/~w undefined", [F,A]);
 format_error({undefined_nif,{F,A}}) ->
@@ -1626,7 +1628,9 @@ func_location_warning(Type, Fs, St) ->
     foldl(fun ({F,Anno}, St0) -> add_warning(Anno, {Type,F}, St0) end, St, Fs).
 
 func_location_error(Type, Fs, St) ->
-    foldl(fun ({F,Anno}, St0) -> add_error(Anno, {Type,F}, St0) end, St, Fs).
+    foldl(fun ({{_,_}=FA,Anno}, St0) -> add_error(Anno, {Type,FA}, St0);
+              ({Term,Anno}, St0) -> add_error(Anno, {invalid_fa_attribute,Term}, St0)
+          end, St, Fs).
 
 check_untyped_records(Forms, St0) ->
     case is_warn_enabled(untyped_record, St0) of
