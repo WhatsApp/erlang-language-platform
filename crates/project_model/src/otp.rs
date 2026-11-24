@@ -254,10 +254,6 @@ impl Otp {
             .is_some_and(|v| v >= 29)
     }
 
-    pub fn epp_has_function_arity_bug() -> bool {
-        Self::version().map(|v| v < "29").unwrap_or(true)
-    }
-
     pub fn discover(path: Utf8PathBuf, otp_config: &OtpConfig) -> (Otp, Vec<ProjectAppData>) {
         let cache_key = format!("{}:{:?}", path, otp_config.exclude_apps);
 

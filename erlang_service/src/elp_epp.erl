@@ -2048,7 +2048,12 @@ update_fun_name_1([Tok | Toks], L, FA, St) ->
                     update_fun_name_1(Toks, L, FA, St)
             end;
         left ->
-            update_fun_name_1(Toks, L + 1, FA, St);
+            case FA of
+                {Name, 0} ->
+                    update_fun_name_1(Toks, L + 1, {Name, 1}, St);
+                {_, _} ->
+                    update_fun_name_1(Toks, L + 1, FA, St)
+            end;
         right when L =:= 1 ->
             FA;
         right ->

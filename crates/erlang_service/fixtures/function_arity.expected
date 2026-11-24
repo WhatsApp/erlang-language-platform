@@ -1,0 +1,50 @@
+AST
+{attribute,{0,0},file,{"function_arity.erl",0}}.
+{attribute,{0,23},module,function_arity}.
+{attribute,{25,91},
+           export,
+           [{zero,0},{list,1},{tuple,1},{binary,1},{nested,1},{multiple,2}]}.
+{function,{94,119},zero,0,[{clause,{94,119},[],[],[{integer,{104,119},0}]}]}.
+{function,{121,148},
+          list,1,
+          [{clause,{121,148},[{nil,{126,128}}],[],[{integer,{133,148},1}]}]}.
+{function,{150,178},
+          tuple,1,
+          [{clause,{150,178},
+                   [{tuple,{156,158},[]}],
+                   [],
+                   [{integer,{163,178},1}]}]}.
+{function,{180,211},
+          binary,1,
+          [{clause,{180,211},
+                   [{bin,{187,191},[]}],
+                   [],
+                   [{integer,{196,211},1}]}]}.
+{function,{213,248},
+          nested,1,
+          [{clause,{213,248},
+                   [{cons,{220,228},
+                          {nil,{221,223}},
+                          {cons,{223,228},
+                                {tuple,{225,227},[]},
+                                {nil,{227,228}}}}],
+                   [],
+                   [{integer,{233,248},1}]}]}.
+{function,{251,320},
+          multiple,2,
+          [{clause,{251,285},
+                   [{nil,{260,262}},{integer,{264,265},0}],
+                   [],
+                   [{integer,{270,285},2}]},
+           {clause,{287,320},
+                   [{var,{296,297},'_'},{var,{299,300},'_'}],
+                   [],
+                   [{integer,{305,320},2}]}]}.
+{eof,{322,322}}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[]

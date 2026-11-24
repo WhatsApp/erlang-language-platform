@@ -1098,6 +1098,14 @@ mod tests {
         );
     }
 
+    #[test]
+    fn function_arity_counts_empty_compound_arguments() {
+        expect_module(
+            "function_arity.erl".into(),
+            fixture_file!("function_arity.expected"),
+        );
+    }
+
     fn expect_module_with_opts(path: PathBuf, expected: ExpectFile, options: Vec<CompileOption>) {
         static CONN: LazyLock<Connection> = LazyLock::new(|| Connection::start().unwrap());
 
