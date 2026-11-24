@@ -1,0 +1,42 @@
+AST
+{attribute,{0,0},file,{"otp29_record_info.erl",0}}.
+{attribute,{0,26},module,otp29_record_info}.
+{attribute,{28,42},export,[{f,0}]}.
+{attribute,{44,66},
+           record,
+           {used,[{record_field,{59,64},{atom,{59,64},field}}]}}.
+{attribute,{68,92},
+           record,
+           {unused,[{record_field,{85,90},{atom,{85,90},field}}]}}.
+{function,{95,154},
+          f,0,
+          [{clause,{95,154},
+                   [],[],
+                   [{tuple,{102,154},
+                           [{call,{103,126},
+                                  {atom,{103,114},record_info},
+                                  [{atom,{115,119},size},
+                                   {atom,{121,125},used}]},
+                            {call,{128,153},
+                                  {atom,{128,139},record_info},
+                                  [{atom,{140,146},fields},
+                                   {atom,{148,152},used}]}]}]}]}.
+{eof,{156,156}}.
+
+
+WARNINGS
+[
+    ParseError {
+        path: "otp29_record_info.erl",
+        location: Some(
+            Normal(
+                68..92,
+            ),
+        ),
+        msg: "record unused is unused",
+        code: "L1260",
+    },
+]
+
+ERRORS
+[]

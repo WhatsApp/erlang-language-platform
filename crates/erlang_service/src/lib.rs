@@ -940,6 +940,14 @@ mod tests {
     }
 
     #[test]
+    fn otp29_record_info_counts_as_record_use() {
+        expect_module(
+            "otp29_record_info.erl".into(),
+            fixture_file!("otp29_record_info.expected"),
+        );
+    }
+
+    #[test]
     fn regular_module() {
         expect_module("regular.erl".into(), fixture_file!("regular.expected"));
     }
