@@ -13,34 +13,49 @@ import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const testProject = join(import.meta.dirname, '../../test/test_projects/end_to_end');
-const apps = ['assist_examples', 'definitions', 'docs', 'hover', 'single_errors'];
+const endToEnd = join(import.meta.dirname, '../../test/test_projects/end_to_end');
 const settings = {
 	'elp.hoverActions.enable': true,
 	'elp.hoverActions.docLinks.enable': true,
 	'elp.typesOnHover.enable': true,
 };
 
-// `end_to_end` is configured as a Buck project. The copy lists its apps
-// instead, so that ELP loads them as a single project without Buck, and gives
-// them a documentation URL.
-const workspaceFolder = mkdtempSync(join(tmpdir(), 'elp-vscode-test-'));
-cpSync(testProject, workspaceFolder, { recursive: true });
-writeFileSync(join(workspaceFolder, '.elp.toml'), `[build_info]
-apps = ${JSON.stringify(apps)}
+// The settings go in a profile of their own, so that the Buck2 workspace can be
+// the test project itself.
+function launchArgs() {
+	const userDataDir = mkdtempSync(join(tmpdir(), 'elp-vscode-test-user-'));
+	mkdirSync(join(userDataDir, 'User'));
+	writeFileSync(join(userDataDir, 'User', 'settings.json'), JSON.stringify(settings));
+	return ['--disable-extensions', `--user-data-dir=${userDataDir}`];
+}
 
-[docs]
-base_url = "https://docs.example.com/"
+// A copy of `end_to_end` without its Buck2 configuration, which ELP loads as a
+// rebar3 project of the apps the rebar3 tests use, with a documentation URL.
+const rebar3Workspace = mkdtempSync(join(tmpdir(), 'elp-vscode-test-rebar3-'));
+cpSync(endToEnd, rebar3Workspace, { recursive: true });
+writeFileSync(join(rebar3Workspace, '.elp.toml'), '[docs]\nbase_url = "https://docs.example.com/"\n');
+writeFileSync(join(rebar3Workspace, 'rebar.config'), `{project_app_dirs, ["definitions", "docs"]}.
+{erl_opts, [debug_info]}.
 `);
-mkdirSync(join(workspaceFolder, '.vscode'));
-writeFileSync(join(workspaceFolder, '.vscode', 'settings.json'), JSON.stringify(settings));
 
-export default defineConfig({
-	files: 'client/out/test/**/*.test.js',
-	workspaceFolder,
-	launchArgs: ['--disable-extensions'],
-	mocha: {
-		ui: 'tdd',
-		timeout: 120000,
+const mocha = {
+	ui: 'tdd',
+	timeout: 120000,
+};
+
+export default defineConfig([
+	{
+		label: 'buck2',
+		files: 'client/out/test/*.test.js',
+		workspaceFolder: endToEnd,
+		launchArgs: launchArgs(),
+		mocha,
 	},
-});
+	{
+		label: 'rebar3',
+		files: ['client/out/test/rebar3/*.test.js', 'client/out/test/definition.test.js'],
+		workspaceFolder: rebar3Workspace,
+		launchArgs: launchArgs(),
+		mocha,
+	},
+]);
