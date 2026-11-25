@@ -156,6 +156,7 @@ impl Runnable {
 
     pub fn rebar3_ct(
         runnable: elp_ide::Runnable,
+        suite_path: Option<String>,
         location: Option<lsp_types::LocationLink>,
         workspace_root: PathBuf,
     ) -> Self {
@@ -166,7 +167,7 @@ impl Runnable {
             args: RunnableArgs::Rebar3(Rebar3RunnableArgs {
                 workspace_root,
                 command: "ct".to_string(),
-                args: runnable.rebar3_test_args(),
+                args: runnable.rebar3_test_args(suite_path),
             }),
         }
     }
