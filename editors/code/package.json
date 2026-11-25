@@ -385,14 +385,54 @@
           "markdownDescription": "Display types when hovering over expressions.",
           "type": "boolean"
         },
+        "erlangDap.buck2Mode": {
+          "type": "string",
+          "markdownDescription": "The Buck2 mode in which the Debug lenses build the test suite, and its test shell rebuilds changed modules (e.g. `@root//mode/dbg`). Breakpoints need modules compiled with `+beam_debug_info`. Only applies when `#erlangDap.runInTerminalArgsDebug#` is empty.",
+          "default": ""
+        },
         "erlangDap.command": {
           "type": "string",
           "description": "Custom command to invoke the DAP debugger."
+        },
+        "erlangDap.debuggerConfig": {
+          "type": "object",
+          "markdownDescription": "The debugger configuration of the Debug lenses in Buck2 projects.",
+          "default": {
+            "nameDomain": "shortnames",
+            "nodeInitCodeInEnvVar": "EDB_DAP_DEBUGGEE_INIT",
+            "timeout": 300
+          },
+          "properties": {
+            "nameDomain": {
+              "type": "string",
+              "description": "Node type to use for Erlang distribution.",
+              "default": "shortnames"
+            },
+            "nodeInitCodeInEnvVar": {
+              "type": "string",
+              "description": "Name of the environment variable containing the code to inject.",
+              "default": "EDB_DAP_DEBUGGEE_INIT"
+            },
+            "timeout": {
+              "type": "number",
+              "description": "The timeout, in seconds, for the test node to start, including building the suite.",
+              "default": 300
+            },
+            "stripSourcePrefix": {
+              "type": "string",
+              "description": "When specified, the string is stripped from the suffix of the `cwd`. Useful to guarantee that source paths are relative to the repo root, when this does not coincide with the current `cwd`."
+            }
+          }
         },
         "erlangDap.erlangInstallationPath": {
           "type": "string",
           "markdownDescription": "Custom path for Erlang when starting the DAP adapter. It should point to a directory with `erl`, `escript` and other standard erlang executables.",
           "markdownDeprecationMessage": "Use `#elpClient.erlangInstallationPath#` instead.",
+          "default": ""
+        },
+        "erlangDap.runInTerminalArgsDebug": {
+          "type": "string",
+          "markdownDescription": "The command, with space-separated arguments, that the Debug lenses run to open the test shell of a Buck2 suite under the debugger. The lenses append `--interactive=false TARGET TEST_REGEX` for a test and `--interactive=true TARGET` for a suite. Empty runs the `bin/run-buck2-test.sh` script of the extension. A launch configuration named `Buck2 Debug (EDB)` replaces this setting and `#erlangDap.debuggerConfig#`.",
           "default": ""
         }
       }

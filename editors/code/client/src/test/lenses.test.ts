@@ -9,6 +9,7 @@
  */
 
 import * as assert from 'assert';
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { openWorkspaceFile } from './helpers';
 
@@ -75,6 +76,39 @@ async function sentToShells(names: string[], runnable: unknown): Promise<string[
 	return inputs.map(input => input.trim());
 }
 
+// Runs a Debug lens command and returns the configuration it starts debugging with.
+async function debugConfiguration(command: string, runnable: unknown): Promise<vscode.DebugConfiguration> {
+	const debug = vscode.debug as { startDebugging: typeof vscode.debug.startDebugging };
+	const startDebugging = debug.startDebugging;
+	let configuration: vscode.DebugConfiguration | undefined;
+	debug.startDebugging = async (_folder, nameOrConfiguration) => {
+		configuration = nameOrConfiguration as vscode.DebugConfiguration;
+		return true;
+	};
+	try {
+		await vscode.commands.executeCommand(command, runnable);
+	} finally {
+		debug.startDebugging = startDebugging;
+	}
+	assert.ok(configuration, `${command} did not start debugging`);
+	return configuration;
+}
+
+// Runs `body` with the user settings `values` of `section`, then removes them.
+async function withSettings(section: string, values: Record<string, unknown>, body: () => Promise<void>): Promise<void> {
+	const config = vscode.workspace.getConfiguration(section);
+	for (const [key, value] of Object.entries(values)) {
+		await config.update(key, value, vscode.ConfigurationTarget.Global);
+	}
+	try {
+		await body();
+	} finally {
+		for (const key of Object.keys(values)) {
+			await config.update(key, undefined, vscode.ConfigurationTarget.Global);
+		}
+	}
+}
+
 suite('Lenses', () => {
 	test('Run runs a Buck2 test with buck2 test', async () => {
 		await openWorkspaceFile('hover/src/doc_examples.erl');
@@ -128,5 +162,81 @@ suite('Lenses', () => {
 
 		assert.strictEqual(process.process, 'buck2');
 		assert.deepStrictEqual(process.args, ['--client-metadata=id=elp_vscode', 'run', 'root//app_a:app_a_SUITE']);
+	});
+
+	test('Debug debugs a Buck2 test in the test shell of its suite, opened by the script of the extension', async () => {
+		await openWorkspaceFile('hover/src/doc_examples.erl');
+		const args = ['root//app_a:app_a_SUITE', '--', '--regex', '.my_case$'];
+
+		const configuration = await debugConfiguration('elp.debugSingle', buck2Runnable('test', args));
+
+		assert.strictEqual(configuration.type, 'erlang-edb');
+		assert.strictEqual(configuration.request, 'launch');
+		assert.deepStrictEqual(
+			configuration.config, { nameDomain: 'shortnames', nodeInitCodeInEnvVar: 'EDB_DAP_DEBUGGEE_INIT', timeout: 300 });
+		const terminal = configuration.runInTerminal;
+		assert.strictEqual(terminal.cwd, vscode.workspace.workspaceFolders![0].uri.fsPath);
+		const [shell, script, ...scriptArgs] = terminal.args;
+		assert.strictEqual(shell, 'bash');
+		assert.ok(script.endsWith('/bin/run-buck2-test.sh') && fs.existsSync(script), script);
+		assert.deepStrictEqual(scriptArgs, [
+			'--node-setup-code-from-env=EDB_DAP_DEBUGGEE_INIT', '--interactive=false', 'root//app_a:app_a_SUITE', 'app_a_SUITE - .my_case$',
+		]);
+	});
+
+	test('Debug on a suite opens the test shell of a Buck2 suite under the debugger', async () => {
+		await openWorkspaceFile('hover/src/doc_examples.erl');
+
+		const configuration = await debugConfiguration('elp.debugInteractive', buck2Runnable('test', ['root//app_a:app_a_SUITE']));
+
+		assert.deepStrictEqual(configuration.runInTerminal.args.slice(-2), ['--interactive=true', 'root//app_a:app_a_SUITE']);
+	});
+
+	test('Debug builds a Buck2 test in the mode of erlangDap.buck2Mode', async () => {
+		await openWorkspaceFile('hover/src/doc_examples.erl');
+		let configuration: vscode.DebugConfiguration | undefined;
+		await withSettings('erlangDap', { buck2Mode: '@root//mode/dbg' }, async () => {
+			configuration = await debugConfiguration('elp.debugSingle', buck2Runnable('test', ['root//app_a:app_a_SUITE']));
+		});
+
+		assert.deepStrictEqual(configuration!.runInTerminal.args.slice(2, 5), [
+			'--node-setup-code-from-env=EDB_DAP_DEBUGGEE_INIT', '--mode=@root//mode/dbg', '--interactive=false',
+		]);
+	});
+
+	test('Debug runs the command of erlangDap.runInTerminalArgsDebug with the debugger configuration of erlangDap.debuggerConfig', async () => {
+		await openWorkspaceFile('hover/src/doc_examples.erl');
+		let configuration: vscode.DebugConfiguration | undefined;
+		const settings = {
+			runInTerminalArgsDebug: ' buck2  run root//tools:debug -- ',
+			debuggerConfig: { nameDomain: 'longnames', nodeInitCodeInEnvVar: 'INIT', timeout: 60 },
+		};
+		await withSettings('erlangDap', settings, async () => {
+			configuration = await debugConfiguration('elp.debugSingle', buck2Runnable('test', ['root//app_a:app_a_SUITE']));
+		});
+
+		assert.deepStrictEqual(configuration!.runInTerminal.args, [
+			'buck2', 'run', 'root//tools:debug', '--', '--interactive=false', 'root//app_a:app_a_SUITE', 'app_a_SUITE - .my_case$',
+		]);
+		assert.deepStrictEqual(configuration!.config, { nameDomain: 'longnames', nodeInitCodeInEnvVar: 'INIT', timeout: 60 });
+	});
+
+	test('Debug starts the "Buck2 Debug (EDB)" launch configuration instead', async () => {
+		await openWorkspaceFile('hover/src/doc_examples.erl');
+		let configuration: vscode.DebugConfiguration | undefined;
+		const launch = {
+			type: 'erlang-edb',
+			request: 'launch',
+			name: 'Buck2 Debug (EDB)',
+			runInTerminal: { kind: 'integrated', args: ['my-test-shell', '--verbose'] },
+			config: { nameDomain: 'longnames' },
+		};
+		await withSettings('', { launch: { configurations: [launch] } }, async () => {
+			configuration = await debugConfiguration('elp.debugInteractive', buck2Runnable('test', ['root//app_a:app_a_SUITE']));
+		});
+
+		assert.deepStrictEqual(
+			configuration!.runInTerminal.args, ['my-test-shell', '--verbose', '--interactive=true', 'root//app_a:app_a_SUITE']);
+		assert.deepStrictEqual(configuration!.config, { nameDomain: 'longnames' });
 	});
 });
