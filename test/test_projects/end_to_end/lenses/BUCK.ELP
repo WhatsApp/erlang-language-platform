@@ -1,0 +1,11 @@
+oncall("vscode_erlang")
+
+erlang_tests(
+    suites = ["test/lenses_SUITE.erl"],
+    deps = [],
+    # Lets the debugger stop at breakpoints.
+    erl_opts = [
+        "+debug_info",
+        "+beam_debug_info",
+    ],
+)

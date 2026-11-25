@@ -1,0 +1,5 @@
+{application, lenses, [
+    {description, "Common Test suite to exercise the test code lenses"},
+    {vsn, "1.0.0"},
+    {applications, [kernel, stdlib]}
+]}.
