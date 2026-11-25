@@ -158,17 +158,20 @@ impl<'a> IncludeCtx<'a> {
             {
                 if p.is_some() {
                     // We have an entry in the include mapping, and it maps to a FileId.
-                    // Accept if the target is a dep of either the originating app
-                    // or the current file's app.
+                    // Accept if the target is an OTP app, whose headers Buck
+                    // resolves from the installation whether declared or not,
+                    // or a dep of either the originating app or the current
+                    // file's app.
                     let target = AppName(app_name.to_string());
-                    let is_dep = [orig_app, current_app].into_iter().flatten().any(|app| {
-                        app.buck_target_name(db).as_ref().is_some_and(|t| {
-                            db.reachable_targets(project, t.clone(), DepKind::Runtime)
-                                .is_some_and(|reachable| {
-                                    buck_index.app_deps.is_reachable_in(&reachable, &target)
-                                })
-                        })
-                    });
+                    let is_dep = buck_index.app_deps.is_otp_app(&target)
+                        || [orig_app, current_app].into_iter().flatten().any(|app| {
+                            app.buck_target_name(db).as_ref().is_some_and(|t| {
+                                db.reachable_targets(project, t.clone(), DepKind::Runtime)
+                                    .is_some_and(|reachable| {
+                                        buck_index.app_deps.is_reachable_in(&reachable, &target)
+                                    })
+                            })
+                        });
 
                     if is_dep {
                         p

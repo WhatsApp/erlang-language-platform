@@ -253,9 +253,19 @@ pub struct AppDepGraph {
     /// mapping from these to the corresponding `TargetFullName`.
     app_names: FxHashMap<AppName, TargetFullName>,
     app_names_rev: FxHashMap<TargetFullName, AppName>,
-    /// The OTP apps are always available as dependencies, keep track
-    /// of what they are
+    /// The applications of the OTP installation.
     otp_apps: FxHashSet<AppName>,
+}
+
+/// The OTP applications every application gets without declaring them: the
+/// `.app` file buck generates lists `kernel` and `stdlib`, and `erts` is the
+/// runtime itself.
+const IMPLICIT_OTP_APPS: [&str; 3] = ["erts", "kernel", "stdlib"];
+
+/// The buck target the prelude defines for the OTP application `app`, which
+/// is what an `applications` entry naming it, such as `"ssl"`, resolves to.
+pub fn otp_app_target(app: &AppName) -> TargetFullName {
+    format!("prelude//erlang/applications:{app}")
 }
 
 /// Which dependency declarations a reachability query honours.
@@ -358,11 +368,26 @@ impl IncludeMapping {
 }
 
 impl AppDepGraph {
-    /// The OTP applications are always available as dependencies.
+    /// Register the OTP applications to the targets the prelude defines for
+    /// them. A project application of the same name keeps the name.
     pub fn add_otp(&mut self, otp_apps: &[ProjectAppData]) {
         for app in otp_apps {
             self.otp_apps.insert(app.name.clone());
+            if !self.app_names.contains_key(&app.name) {
+                self.register_app_target(app.name.clone(), otp_app_target(&app.name));
+            }
         }
+    }
+
+    /// Whether `app` is an application of the OTP installation.
+    pub fn is_otp_app(&self, app: &AppName) -> bool {
+        self.otp_apps.contains(app)
+    }
+
+    /// Whether `app` is an OTP application every application gets without
+    /// declaring it.
+    fn is_implicit(&self, app: &AppName) -> bool {
+        IMPLICIT_OTP_APPS.contains(&app.as_str()) && self.is_otp_app(app)
     }
 
     /// Register an app name ↔ buck target name mapping.
@@ -390,7 +415,7 @@ impl AppDepGraph {
     /// [`Self::is_reachable_in`] against it.
     #[cfg(test)]
     fn is_reachable(&self, source: &TargetFullName, target_app: &AppName, kind: DepKind) -> bool {
-        self.otp_apps.contains(target_app)
+        self.is_implicit(target_app)
             || self.target_position(target_app).is_some_and(|target| {
                 self.reachable_positions(source, kind)
                     .any(|position| position == target)
@@ -409,10 +434,10 @@ impl AppDepGraph {
 
     /// Whether the application `target_app` is reachable from the source,
     /// under the kind, that `reachable` was built for. Reachability is
-    /// transitive, and an OTP application is always reachable. `reachable`
-    /// must come from this graph's [`Self::reachable_targets`].
+    /// transitive, and `erts`, `kernel` and `stdlib` are always reachable.
+    /// `reachable` must come from this graph's [`Self::reachable_targets`].
     pub fn is_reachable_in(&self, reachable: &ReachableTargets, target_app: &AppName) -> bool {
-        self.otp_apps.contains(target_app)
+        self.is_implicit(target_app)
             || self
                 .target_position(target_app)
                 .is_some_and(|target| reachable.contains(target))
@@ -1729,6 +1754,7 @@ mod tests {
     use super::BUCK_CELL_INFO;
     use super::BuckCellInfo;
     use crate::AppName;
+    use crate::ProjectAppData;
     use crate::buck::AppDepGraph;
     use crate::buck::BuckQueryError;
     use crate::buck::BuckTarget;
@@ -1738,6 +1764,7 @@ mod tests {
     use crate::buck::TargetType;
     use crate::buck::buck_path_to_abs_path;
     use crate::buck::find_app_root_bxl;
+    use crate::buck::otp_app_target;
     use crate::buck::parse_atom_list;
     use crate::buck::targets_to_project_data_bxl;
     use crate::temp_dir::TempDir;
@@ -1906,6 +1933,29 @@ mod tests {
         assert!(
             !mapping.is_reachable_in(&from_loose, &app_e),
             "a distributed dependency is not a runtime one"
+        );
+    }
+
+    /// An OTP application is reached only through an `applications` entry,
+    /// which names its prelude target, except for the implicit ones.
+    #[test]
+    fn otp_apps_are_reached_through_their_prelude_targets() {
+        let mut mapping = app_dep_graph(&[("app_a", &[], &[]), ("app_b", &[], &[])]);
+        let otp_dir = AbsPathBuf::assert("/otp/lib".into());
+        let otp_apps = ["kernel-10.0", "ssl-11.0", "crypto-5.0", "app_b-1.0"]
+            .map(|name| ProjectAppData::otp_app_data(name, &otp_dir.join(name)));
+        mapping.add_otp(&otp_apps);
+        let ssl = AppName("ssl".to_string());
+        mapping.add_dep("cell//app_a:app_a".to_string(), otp_app_target(&ssl));
+
+        let from_a = mapping.reachable_targets(&"cell//app_a:app_a".to_string(), DepKind::Extra);
+        let reaches = |app: &str| mapping.is_reachable_in(&from_a, &AppName(app.to_string()));
+        assert!(reaches("ssl"), "app_a declares ssl");
+        assert!(!reaches("crypto"), "app_a does not declare crypto");
+        assert!(reaches("kernel"), "kernel is implicit");
+        assert!(
+            !reaches("app_b"),
+            "the project's app_b keeps its name, and app_a does not depend on it"
         );
     }
 

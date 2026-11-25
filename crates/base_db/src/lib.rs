@@ -819,8 +819,9 @@ pub fn is_atom_char(c: char) -> bool {
 /// Whether `defining_app` is reachable from `referencing_app`, following the edges `dep_kind` allows - see
 /// [`DepKind`], which is what decides whether `distributed_dependencies` count.
 ///
-/// An application is always reachable from itself. OTP applications are always
-/// reachable, and reachability is transitive - both are
+/// An application is always reachable from itself. The OTP applications `erts`,
+/// `kernel` and `stdlib` are always reachable, other OTP applications only when
+/// declared, and reachability is transitive - all three are
 /// `AppDepGraph::is_reachable_in` semantics, for either `dep_kind`. A project
 /// with no build-system dependency graph, or an application with no buck
 /// target, has nothing to check against and is treated as reachable.

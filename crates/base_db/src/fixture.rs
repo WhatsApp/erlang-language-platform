@@ -23,6 +23,7 @@ use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::buck::BuckProjectIndex;
+use elp_project_model::buck::otp_app_target;
 use elp_project_model::otp::Otp;
 use elp_project_model::otp::find_otp_app;
 use elp_project_model::otp::read_otp_app_sources;
@@ -348,6 +349,10 @@ impl Fixture {
                             buck_index
                                 .app_deps
                                 .add_dep(source_target.clone(), dep_target.clone());
+                        } else if requested_otp_apps.contains(dep_name) {
+                            buck_index
+                                .app_deps
+                                .add_dep(source_target.clone(), otp_app_target(&dep_app_name));
                         }
                     }
                 }
@@ -366,6 +371,9 @@ impl Fixture {
                     }
                 }
             }
+
+            let otp_apps: Vec<ProjectAppData> = app_map.otp_apps().cloned().collect();
+            buck_index.app_deps.add_otp(&otp_apps);
 
             // Update the app_map with the apps given their files.
             for app in &apps {

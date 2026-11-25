@@ -14,7 +14,7 @@
 // This diagnostic checks if a type referenced in specs, type definitions, or opaque types exists in:
 // 1. The current module (local types)
 // 2. Built-in Erlang types
-// 3. Types from the module's application dependencies (including OTP apps)
+// 3. Types from the module's application dependencies (`erts`, `kernel` and `stdlib` are implicit)
 
 use std::borrow::Cow;
 
@@ -458,6 +458,48 @@ mod tests {
   -module(app_b).
   -type t() :: ok.
   -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn type_from_declared_otp_app_is_ok() {
+        check_diagnostics(
+            r#"
+//- otp_apps:crypto
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib deps:crypto
+  -module(main).
+  -spec main() -> crypto:hash_algorithm().
+  main() -> sha256.
+            "#,
+        )
+    }
+
+    #[test]
+    fn type_from_undeclared_otp_app_is_reported() {
+        check_diagnostics(
+            r#"
+//- otp_apps:crypto
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib
+  -module(main).
+  -spec main() -> crypto:hash_algorithm().
+%%                ^^^^^^^^^^^^^^^^^^^^^ warning: W0059: The type 'crypto:hash_algorithm/0' is defined in application 'crypto', but the application is not a dependency of 'app_a' (defined in 'cell//app_a:lib').
+%%                                    | 💡 <suppression>
+  main() -> sha256.
+            "#,
+        )
+    }
+
+    #[test]
+    fn type_from_implicit_otp_app_is_ok() {
+        // Every application gets `stdlib` without declaring it.
+        check_diagnostics(
+            r#"
+//- otp_apps:stdlib
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib
+  -module(main).
+  -spec main() -> maps:iterator().
+  main() -> maps:iterator(#{}).
             "#,
         )
     }
