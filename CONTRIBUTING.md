@@ -14,6 +14,8 @@ The gold standard is the current config in [ci.yml](.github/workflows/ci.yml).
 
 You can find detailed instructions on how to compile ELP from source [here](./website/docs/get-started/install.md).
 
+For the VS Code extension, including how to try a build from CI and how to run its end-to-end tests, see [these instructions](./website/docs/contributing/contributing.md#to-the-vs-code-extension).
+
 ## Pull Requests
 
 We actively welcome your pull requests.
