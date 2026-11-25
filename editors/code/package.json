@@ -320,6 +320,11 @@
           "markdownDescription": "Whether to report Edoc diagnostics.",
           "type": "boolean"
         },
+        "elp.highlightDisabledCode.enable": {
+          "default": true,
+          "markdownDescription": "Whether to highlight disabled code branches.",
+          "type": "boolean"
+        },
         "elp.highlightDynamic.enable": {
           "default": false,
           "markdownDescription": "If enabled, highlight variables with type `dynamic()` when Eqwalizer results are available.",
@@ -349,6 +354,14 @@
           "default": true,
           "markdownDescription": "Whether to show Code Lenses in Erlang files.",
           "type": "boolean"
+        },
+        "elp.lens.buck2.mode": {
+          "default": null,
+          "markdownDescription": "The buck2 mode to use for running tests via the code lenses.",
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "elp.lens.links.enable": {
           "default": false,
