@@ -22,6 +22,20 @@ export async function openWorkspaceFile(relativePath: string): Promise<vscode.Te
 	return document;
 }
 
+// Resolves once ELP has reported `Running` `times` times from now on.
+export async function serverRunning(times: number): Promise<void> {
+	const { serverStatus } = await vscode.extensions.getExtension<ElpExtensionApi>(EXTENSION_ID)!.activate();
+	let count = 0;
+	await new Promise<void>(resolve => {
+		const listener = serverStatus.onDidChange(state => {
+			if (state === 'Running' && ++count === times) {
+				listener.dispose();
+				resolve();
+			}
+		});
+	});
+}
+
 async function waitForServerRunning(): Promise<void> {
 	const { serverStatus } = await vscode.extensions.getExtension<ElpExtensionApi>(EXTENSION_ID)!.activate();
 	if (serverStatus.current === 'Running') {
