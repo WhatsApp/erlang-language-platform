@@ -175,7 +175,8 @@ suite('Lenses', () => {
 		assert.deepStrictEqual(
 			configuration.config, { nameDomain: 'shortnames', nodeInitCodeInEnvVar: 'EDB_DAP_DEBUGGEE_INIT', timeout: 300 });
 		const terminal = configuration.runInTerminal;
-		assert.strictEqual(terminal.cwd, vscode.workspace.workspaceFolders![0].uri.fsPath);
+		// The root of the Buck2 project of the workspace, `test/test_projects`.
+		assert.strictEqual(terminal.cwd, vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, '..').fsPath);
 		const [shell, script, ...scriptArgs] = terminal.args;
 		assert.strictEqual(shell, 'bash');
 		assert.ok(script.endsWith('/bin/run-buck2-test.sh') && fs.existsSync(script), script);
