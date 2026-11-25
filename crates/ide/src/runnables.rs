@@ -109,14 +109,17 @@ impl Runnable {
         args
     }
 
-    pub fn rebar3_test_args(&self) -> Vec<String> {
+    /// `suite_path` is the path of the suite from the project root, without
+    /// extension, which rebar3 needs unless the suite is in its top-level
+    /// `test` directory.
+    pub fn rebar3_test_args(&self, suite_path: Option<String>) -> Vec<String> {
         let mut args = Vec::new();
         match &self.kind {
             RunnableKind::Test {
                 suite, case, group, ..
             } => {
                 args.push("--suite".to_string());
-                args.push(suite.to_string());
+                args.push(suite_path.unwrap_or_else(|| suite.to_string()));
                 args.push("--case".to_string());
                 args.push(case.to_string());
                 if let GroupName::Name(group) = group {
@@ -126,7 +129,7 @@ impl Runnable {
             }
             RunnableKind::Suite { suite } => {
                 args.push("--suite".to_string());
-                args.push(suite.to_string());
+                args.push(suite_path.unwrap_or_else(|| suite.to_string()));
             }
         }
         args
@@ -267,6 +270,40 @@ mod tests {
     }
 
     #[test]
+    fn rebar3_test_args_use_the_suite_path() {
+        let fixture = r#"
+ //- erlang_service
+ //- /my_app/test/runnables_SUITE.erl
+    ~
+    -module(runnables_SUITE).
+    -export([all/0]).
+    -export([a/1]).
+    all() -> [a].
+    a(_Config) -> ok.
+    "#;
+
+        let (analysis, fixture) = fixture::with_fixture(trim_indent(fixture).as_str());
+        let runnables = analysis.runnables(fixture.file_id()).unwrap();
+        let args = |runnable: &super::Runnable| {
+            runnable.rebar3_test_args(Some("my_app/test/runnables_SUITE".to_string()))
+        };
+
+        let test = runnables
+            .iter()
+            .find(|runnable| matches!(&runnable.kind, super::RunnableKind::Test { .. }))
+            .unwrap();
+        assert_eq_expected!(
+            vec!["--suite", "my_app/test/runnables_SUITE", "--case", "a"],
+            args(test)
+        );
+        let suite = runnables
+            .iter()
+            .find(|runnable| matches!(&runnable.kind, super::RunnableKind::Suite { .. }))
+            .unwrap();
+        assert_eq_expected!(vec!["--suite", "my_app/test/runnables_SUITE"], args(suite));
+    }
+
+    #[test]
     fn rebar3_test_args_include_group_flag() {
         let fixture = r#"
  //- erlang_service
@@ -295,7 +332,7 @@ mod tests {
             })
             .unwrap();
         assert_eq!(
-            grouped.rebar3_test_args(),
+            grouped.rebar3_test_args(None),
             vec![
                 "--suite".to_string(),
                 "runnables_SUITE".to_string(),
@@ -316,7 +353,7 @@ mod tests {
             })
             .unwrap();
         assert_eq!(
-            ungrouped.rebar3_test_args(),
+            ungrouped.rebar3_test_args(None),
             vec![
                 "--suite".to_string(),
                 "runnables_SUITE".to_string(),
