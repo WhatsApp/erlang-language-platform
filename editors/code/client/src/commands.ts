@@ -8,6 +8,8 @@
  * above-listed licenses.
  */
 
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { pathWithErlangInstallation } from './erlang';
 import * as edbDebugger from './debugger';
@@ -65,7 +67,7 @@ export function registerCommands(context: vscode.ExtensionContext, client: Langu
         vscode.commands.registerCommand(
             'elp.debugSingle',
             async (runnable: Runnable) => {
-                await debug(runnable, false);
+                await debug(runnable, false, context.extensionUri);
             },
         ),
         vscode.commands.registerCommand(
@@ -77,7 +79,7 @@ export function registerCommands(context: vscode.ExtensionContext, client: Langu
         vscode.commands.registerCommand(
             'elp.debugInteractive',
             async (runnable: Runnable) => {
-                await debug(runnable, true);
+                await debug(runnable, true, context.extensionUri);
             },
         ),
         vscode.commands.registerCommand(
@@ -245,10 +247,14 @@ export function buildTask(
     return new vscode.Task(definition, vscode.TaskScope.Workspace, name, task_source, exec, []);
 }
 
-export async function debug(runnable: Runnable, interactive: boolean): Promise<void> {
+export async function debug(runnable: Runnable, interactive: boolean, extensionUri: vscode.Uri): Promise<void> {
     log.appendLine(`Debug: ${runnable.kind}, interactive: ${interactive}`);
     if (runnable.kind === 'buck2') {
-        await vscode.window.showErrorMessage('Debugging Buck2 tests is not supported yet.');
+        const base = userBuck2DebugConfiguration() ?? defaultBuck2DebugConfiguration(extensionUri);
+        const cwd = await buck2ProjectRoot(runnable.args.workspaceRoot);
+        const debugConfiguration = buck2DebugConfiguration(base, runnable, interactive, cwd);
+        log.appendLine(JSON.stringify(debugConfiguration, null, 2));
+        await vscode.debug.startDebugging(undefined, debugConfiguration);
         return;
     }
     const cmd = interactive
@@ -277,4 +283,99 @@ export async function debug(runnable: Runnable, interactive: boolean): Promise<v
     };
     log.appendLine(JSON.stringify(debugConfiguration, null, 2));
     await vscode.debug.startDebugging(undefined, debugConfiguration);
+}
+
+// A launch configuration with this name replaces the default configuration of
+// the Buck2 Debug lenses.
+const BUCK2_DEBUG_CONFIGURATION_NAME = 'Buck2 Debug (EDB)';
+
+interface EdbConfig {
+    nameDomain: string;
+    nodeInitCodeInEnvVar?: string;
+    timeout?: number;
+    stripSourcePrefix?: string;
+}
+
+const DEFAULT_EDB_CONFIG: EdbConfig = {
+    nameDomain: 'shortnames',
+    nodeInitCodeInEnvVar: 'EDB_DAP_DEBUGGEE_INIT',
+    // Includes building the suite.
+    timeout: 300,
+};
+
+function userBuck2DebugConfiguration(): vscode.DebugConfiguration | undefined {
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+        const configurations =
+            vscode.workspace.getConfiguration('launch', folder.uri).get<vscode.DebugConfiguration[]>('configurations') ?? [];
+        const configuration = configurations.find(
+            c => c.type === edbDebugger.DEBUG_TYPE && c.request === 'launch' && c.name === BUCK2_DEBUG_CONFIGURATION_NAME,
+        );
+        if (configuration) {
+            return configuration;
+        }
+    }
+    return undefined;
+}
+
+// The Buck2 Debug lenses run the `bin/run-buck2-test.sh` script of the
+// extension, or the command of `erlangDap.runInTerminalArgsDebug`.
+export function defaultBuck2DebugConfiguration(extensionUri: vscode.Uri): vscode.DebugConfiguration {
+    const settings = vscode.workspace.getConfiguration('erlangDap');
+    const config: EdbConfig = { ...DEFAULT_EDB_CONFIG, ...settings.get<Partial<EdbConfig>>('debuggerConfig') };
+    const command = (settings.get<string>('runInTerminalArgsDebug') || '').trim();
+    const mode = settings.get<string>('buck2Mode') || '';
+    const args = command
+        ? command.split(/\s+/)
+        : [
+            'bash',
+            vscode.Uri.joinPath(extensionUri, 'bin', 'run-buck2-test.sh').fsPath,
+            `--node-setup-code-from-env=${config.nodeInitCodeInEnvVar}`,
+            ...(mode ? [`--mode=${mode}`] : []),
+        ];
+    return {
+        type: edbDebugger.DEBUG_TYPE,
+        name: BUCK2_DEBUG_CONFIGURATION_NAME,
+        request: 'launch',
+        runInTerminal: { kind: 'integrated', args, argsCanBeInterpretedByShell: false },
+        config,
+    };
+}
+
+// Adds the test of `runnable` to the command of `base`, which then runs it
+// and stops, or opens the test shell of its suite when `interactive`.
+//
+// `cwd` is the root of the Buck2 project, which the source paths in the
+// compiled modules are relative to.
+export function buck2DebugConfiguration(
+    base: vscode.DebugConfiguration,
+    runnable: Runnable & Buck2Runnable,
+    interactive: boolean,
+    cwd: string,
+): vscode.DebugConfiguration {
+    const { target, id } = runnable.args;
+    const testArgs = interactive ? ['--interactive=true', target] : ['--interactive=false', target, `${id}$`];
+    return {
+        ...base,
+        runInTerminal: {
+            ...base.runInTerminal,
+            title: base.runInTerminal?.title ?? (interactive ? EDB_SHELL_TITLE : `EDB - ${id}`),
+            cwd,
+            args: [...(base.runInTerminal?.args ?? []), ...testArgs],
+            env: { PATH: pathWithErlangInstallation(), ...base.runInTerminal?.env },
+        },
+    };
+}
+
+// The root of the Buck2 project `dir` is in, or `dir` if Buck2 cannot tell.
+async function buck2ProjectRoot(dir: string): Promise<string> {
+    try {
+        const { stdout } = await promisify(execFile)('buck2', ['--client-metadata=id=elp_vscode', 'root', '--kind=project'], {
+            cwd: dir,
+            env: { ...process.env, PATH: pathWithErlangInstallation() },
+        });
+        return stdout.trim() || dir;
+    } catch (error) {
+        log.appendLine(`Could not find the Buck2 project root of ${dir}: ${error}`);
+        return dir;
+    }
 }
