@@ -14,6 +14,7 @@ import {
 	FeatureState,
 	LanguageClient,
 	NotificationType,
+	State,
 	StaticFeature,
 } from 'vscode-languageclient/node';
 
@@ -25,9 +26,11 @@ interface ServerStatusParams {
 
 const serverStatusNotification = new NotificationType<ServerStatusParams>('elp/status');
 
-// Shows the last status ELP reported while an Erlang file is active.
+// Shows the last status ELP reported while an Erlang file is active, on an
+// error background while the language client is not running. The tooltip
+// links to the logs and pings the server.
 export class ServerStatus implements vscode.Disposable {
-	private readonly statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+	readonly statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 	private readonly onDidChangeEmitter = new vscode.EventEmitter<ServerStatusState>();
 	private readonly editorListener: vscode.Disposable;
 	private state?: ServerStatusState;
@@ -36,13 +39,25 @@ export class ServerStatus implements vscode.Disposable {
 
 	constructor() {
 		this.statusBarItem.text = 'ELP';
-		this.statusBarItem.tooltip = 'Erlang Language Platform';
+		const tooltip = new vscode.MarkdownString(
+			'[$(terminal) Open Extension Logs](command:elp.openExtensionLogs "Open the Extension logs")\n\n' +
+			'[$(terminal) Open Language Client Logs](command:elp.openLanguageClientLogs "Open the Language Client logs")\n\n' +
+			'[$(megaphone) Ping Language Server](command:elp.pingAndShow "Ping Language Server")',
+			true,
+		);
+		tooltip.isTrusted = true;
+		this.statusBarItem.tooltip = tooltip;
 		this.updateVisibility(vscode.window.activeTextEditor);
 		this.editorListener = vscode.window.onDidChangeActiveTextEditor(editor => this.updateVisibility(editor));
 	}
 
 	get current(): ServerStatusState | undefined {
 		return this.state;
+	}
+
+	updateClientState(state: State): void {
+		this.statusBarItem.backgroundColor =
+			state === State.Running ? undefined : new vscode.ThemeColor('statusBarItem.errorBackground');
 	}
 
 	update(state: ServerStatusState): void {
@@ -93,7 +108,7 @@ class ServerStatusFeature implements StaticFeature {
 
 export function registerServerStatus(context: vscode.ExtensionContext, client: LanguageClient): ServerStatus {
 	const status = new ServerStatus();
-	context.subscriptions.push(status);
+	context.subscriptions.push(status, client.onDidChangeState(({ newState }) => status.updateClientState(newState)));
 	client.registerFeature(new ServerStatusFeature(client, status));
 	return status;
 }

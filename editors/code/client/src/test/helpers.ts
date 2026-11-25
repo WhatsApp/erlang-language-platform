@@ -15,6 +15,11 @@ import { ElpExtensionApi } from '../extension';
 
 const EXTENSION_ID = 'erlang-language-platform.erlang-language-platform';
 
+// The API the extension returns from `activate`.
+export async function extensionApi(): Promise<ElpExtensionApi> {
+	return await vscode.extensions.getExtension<ElpExtensionApi>(EXTENSION_ID)!.activate();
+}
+
 // Opens a file of the test workspace and waits until ELP has loaded its project.
 export async function openWorkspaceFile(relativePath: string): Promise<vscode.TextDocument> {
 	const folder = vscode.workspace.workspaceFolders![0];
@@ -26,7 +31,7 @@ export async function openWorkspaceFile(relativePath: string): Promise<vscode.Te
 
 // Resolves once ELP has reported `Running` `times` times from now on.
 export async function serverRunning(times: number): Promise<void> {
-	const { serverStatus } = await vscode.extensions.getExtension<ElpExtensionApi>(EXTENSION_ID)!.activate();
+	const { serverStatus } = await extensionApi();
 	let count = 0;
 	await new Promise<void>(resolve => {
 		const listener = serverStatus.onDidChange(state => {
@@ -39,7 +44,7 @@ export async function serverRunning(times: number): Promise<void> {
 }
 
 async function waitForServerRunning(): Promise<void> {
-	const { serverStatus } = await vscode.extensions.getExtension<ElpExtensionApi>(EXTENSION_ID)!.activate();
+	const { serverStatus } = await extensionApi();
 	if (serverStatus.current === 'Running') {
 		return;
 	}
