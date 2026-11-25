@@ -8,6 +8,8 @@
  * above-listed licenses.
  */
 
+import * as assert from 'assert';
+import { execFileSync } from 'child_process';
 import * as vscode from 'vscode';
 import { ElpExtensionApi } from '../extension';
 
@@ -121,4 +123,86 @@ export async function openedUris(body: () => Thenable<unknown>): Promise<vscode.
 		env.openExternal = openExternal;
 	}
 	return uris;
+}
+
+// The lens whose title ends with `title` among those ELP shows in `document`.
+// ELP shows no lenses while it reloads the project, as it does for the second
+// load stage of a Buck2 project, so this asks again for up to a minute.
+export async function codeLens(document: vscode.TextDocument, title: string): Promise<vscode.CodeLens> {
+	const deadline = Date.now() + 60000;
+	for (;;) {
+		const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+			'vscode.executeCodeLensProvider', document.uri, 100);
+		const lens = lenses.find(lens => lens.command?.title.endsWith(title));
+		if (lens !== undefined) {
+			return lens;
+		}
+		assert.ok(Date.now() < deadline, `No "${title}" lens among: ${lenses.map(lens => lens.command?.title).join(', ')}`);
+		await new Promise(resolve => setTimeout(resolve, 500));
+	}
+}
+
+export async function executeLens(lens: vscode.CodeLens): Promise<void> {
+	await vscode.commands.executeCommand(lens.command!.command, ...(lens.command!.arguments ?? []));
+}
+
+// The major OTP release of the `erl` on the `PATH`.
+export function otpRelease(): number {
+	const release = execFileSync('erl', ['-noshell', '-eval', 'io:put_chars(erlang:system_info(otp_release)), halt().']);
+	return parseInt(release.toString(), 10);
+}
+
+export interface Stop {
+	reason: string;
+	path: string | undefined;
+	line: number;
+}
+
+// Runs `start`, which starts an EDB debug session, and returns where the
+// debugger first stops, then stops debugging. Fails if the session ends
+// before the debugger stops.
+export async function firstStop(start: () => Promise<void>): Promise<Stop> {
+	let tracker: vscode.Disposable | undefined;
+	let terminated: vscode.Disposable | undefined;
+	const stopped = new Promise<{ session: vscode.DebugSession; reason: string; threadId: number }>((resolve, reject) => {
+		tracker = vscode.debug.registerDebugAdapterTrackerFactory('erlang-edb', {
+			createDebugAdapterTracker: session => ({
+				onDidSendMessage: message => {
+					if (message.type === 'event' && message.event === 'stopped') {
+						resolve({ session, reason: message.body.reason, threadId: message.body.threadId });
+					}
+				},
+			}),
+		});
+		terminated = vscode.debug.onDidTerminateDebugSession(session => {
+			if (session.type === 'erlang-edb') {
+				reject(new Error(`Debug session "${session.name}" ended before the debugger stopped`));
+			}
+		});
+	});
+	try {
+		await start();
+		const { session, reason, threadId } = await stopped;
+		const { stackFrames } = await session.customRequest('stackTrace', { threadId });
+		await vscode.debug.stopDebugging(session);
+		return { reason, path: stackFrames[0].source?.path, line: stackFrames[0].line };
+	} finally {
+		tracker?.dispose();
+		terminated?.dispose();
+	}
+}
+
+// Runs `body` with a breakpoint at `line` (0-based) of `document`.
+export async function withBreakpoint(
+	document: vscode.TextDocument,
+	line: number,
+	body: () => Promise<void>,
+): Promise<void> {
+	const breakpoint = new vscode.SourceBreakpoint(new vscode.Location(document.uri, new vscode.Position(line, 0)));
+	vscode.debug.addBreakpoints([breakpoint]);
+	try {
+		await body();
+	} finally {
+		vscode.debug.removeBreakpoints([breakpoint]);
+	}
 }

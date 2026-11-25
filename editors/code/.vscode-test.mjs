@@ -18,11 +18,12 @@ const launchArgs = ['--disable-extensions'];
 
 // A copy of `end_to_end` without its Buck2 configuration, which ELP loads as a
 // rebar3 project of the apps the rebar3 tests use, with a documentation URL.
+// Breakpoints need modules compiled with `beam_debug_info`.
 const rebar3Workspace = mkdtempSync(join(tmpdir(), 'elp-vscode-test-rebar3-'));
 cpSync(endToEnd, rebar3Workspace, { recursive: true });
 writeFileSync(join(rebar3Workspace, '.elp.toml'), '[docs]\nbase_url = "https://docs.example.com/"\n');
-writeFileSync(join(rebar3Workspace, 'rebar.config'), `{project_app_dirs, ["definitions", "docs"]}.
-{erl_opts, [debug_info]}.
+writeFileSync(join(rebar3Workspace, 'rebar.config'), `{project_app_dirs, ["definitions", "docs", "lenses"]}.
+{erl_opts, [debug_info, beam_debug_info]}.
 `);
 
 const mocha = {
