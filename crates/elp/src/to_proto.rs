@@ -756,7 +756,15 @@ pub(crate) fn buck2_test_runnable(
 pub(crate) fn rebar3_ct_runnable(snap: &Snapshot, runnable: Runnable) -> lsp_ext::Runnable {
     let file_id = runnable.nav.file_id;
     let location = location_link(snap, None, runnable.clone().nav).ok();
-    lsp_ext::Runnable::rebar3_ct(runnable, location, snap.workspace_root(file_id).into())
+    let workspace_root = snap.workspace_root(file_id);
+    let suite_path = snap.file_id_to_path(file_id).and_then(|path| {
+        let path = path
+            .strip_prefix(&workspace_root)?
+            .as_str()
+            .replace('\\', "/");
+        Some(path.strip_suffix(".erl").unwrap_or(&path).to_string())
+    });
+    lsp_ext::Runnable::rebar3_ct(runnable, suite_path, location, workspace_root.into())
 }
 
 pub(crate) fn rebar3_shell_runnable(snap: &Snapshot, runnable: Runnable) -> lsp_ext::Runnable {
