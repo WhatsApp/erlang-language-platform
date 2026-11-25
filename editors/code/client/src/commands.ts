@@ -138,10 +138,26 @@ export function registerCommands(
             'elp.restartServer',
             async () => {
                 telemetry.logEvent('ErlangCommand', { source: 'restartServer' }, true);
-                await client.restart();
+                await restartServer(client);
             },
         ),
     );
+}
+
+export async function restartServer(client: LanguageClient): Promise<void> {
+    // We deliberately don't use `client.restart()`: it does `await stop(); start()`,
+    // so when ELP is wedged and doesn't answer the LSP `shutdown`/`exit` handshake,
+    // `stop()` rejects on timeout and `start()` is never reached -- leaving the user
+    // with no server at all, which is the exact situation restart needs to recover.
+    // Instead, stop with a short timeout (the process is force-killed regardless) and
+    // always start afterwards. After a failed stop the client is in `Stopped` state
+    // with its connection cleared, so `start()` is valid and spawns a fresh server.
+    try {
+        await client.stop(500);
+    } catch (err) {
+        log.appendLine(`ELP stop() failed during restart, starting a fresh server anyway: ${String(err)}`);
+    }
+    await client.start();
 }
 
 export function runSingle(runnable: Runnable): Thenable<vscode.TaskExecution> {
