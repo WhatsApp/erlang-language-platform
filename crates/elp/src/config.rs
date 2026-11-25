@@ -53,12 +53,12 @@ config_data! {
       /// Whether to highlight disabled code branches.
       highlightDisabledCode_enable: bool = json! { true },
       /// If enabled, highlight variables with type `dynamic()` when Eqwalizer results are available.
-      highlightDynamic_enable: bool = json! { false },
+      highlightDynamic_enable: bool = json! { true },
       /// Whether to show Hover Actions.
-      hoverActions_enable: bool = json! { false },
+      hoverActions_enable: bool = json! { true },
       /// Whether to show Hover Actions of type `docs`. Only applies when
       /// `#elp.hoverActions.enable#` is set.
-      hoverActions_docLinks_enable: bool = json! { false },
+      hoverActions_docLinks_enable: bool = json! { true },
       /// Whether to show function parameter name inlay hints at the call
       /// site.
       inlayHints_parameterHints_enable: bool = json! { true },
@@ -81,7 +81,7 @@ config_data! {
       lens_debug_enable: bool = json! { false },
       /// Whether to show the `Link` lenses. Only applies when
       /// `#elp.lens.enable#` is set.
-      lens_links_enable: bool = json! { false },
+      lens_links_enable: bool = json! { true },
       /// Whether to enable LogView lens links.
       lens_logview_links: bool = json! { false },
       /// Whether to enable Scuba lens links.
@@ -93,7 +93,7 @@ config_data! {
       /// Whether to show Signature Help.
       signatureHelp_enable: bool = json! { true },
       /// Display types when hovering over expressions.
-      typesOnHover_enable: bool = json! { false },
+      typesOnHover_enable: bool = json! { true },
   }
 }
 
@@ -579,7 +579,7 @@ mod tests {
 
         let s = remove_ws(&schema);
 
-        expect![[r#""elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.diagnostics.enableOtp":{"default":false,"markdownDescription":"WhethertoreportdiagnosticsforOTPfiles.","type":"boolean"},"elp.diagnostics.onSave.enable":{"default":false,"markdownDescription":"Updatenativediagnosticsonlywhenthefileissaved.","type":"boolean"},"elp.highlightDisabledCode.enable":{"default":true,"markdownDescription":"Whethertohighlightdisabledcodebranches.","type":"boolean"},"elp.highlightDynamic.enable":{"default":false,"markdownDescription":"Ifenabled,highlightvariableswithtype`dynamic()`whenEqwalizerresultsareavailable.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype`docs`.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":true,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.buck2.mode":{"default":null,"markdownDescription":"Thebuck2modetouseforrunningtestsviathecodelenses.","type":["null","string"]},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.links.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Link`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.logview.links":{"default":false,"markdownDescription":"WhethertoenableLogViewlenslinks.","type":"boolean"},"elp.lens.run.coverage.enable":{"default":true,"markdownDescription":"Displaycodecoverageinformationwhenrunningtestsviathe\nCodeLenses.Onlyapplieswhen`#elp.lens.enabled`and\n`#elp.lens.run.enable#`areset.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.interactive.enable":{"default":false,"markdownDescription":"Whethertoshowthe`RunInteractive`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.scuba.links":{"default":false,"markdownDescription":"WhethertoenableScubalenslinks.","type":"boolean"},"elp.lens.wam.links":{"default":false,"markdownDescription":"WhethertoenableWAMlenslinks.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":true,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":false,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
+        expect![[r#""elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.diagnostics.enableOtp":{"default":false,"markdownDescription":"WhethertoreportdiagnosticsforOTPfiles.","type":"boolean"},"elp.diagnostics.onSave.enable":{"default":false,"markdownDescription":"Updatenativediagnosticsonlywhenthefileissaved.","type":"boolean"},"elp.highlightDisabledCode.enable":{"default":true,"markdownDescription":"Whethertohighlightdisabledcodebranches.","type":"boolean"},"elp.highlightDynamic.enable":{"default":true,"markdownDescription":"Ifenabled,highlightvariableswithtype`dynamic()`whenEqwalizerresultsareavailable.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":true,"markdownDescription":"WhethertoshowHoverActionsoftype`docs`.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":true,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":true,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.buck2.mode":{"default":null,"markdownDescription":"Thebuck2modetouseforrunningtestsviathecodelenses.","type":["null","string"]},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.links.enable":{"default":true,"markdownDescription":"Whethertoshowthe`Link`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.logview.links":{"default":false,"markdownDescription":"WhethertoenableLogViewlenslinks.","type":"boolean"},"elp.lens.run.coverage.enable":{"default":true,"markdownDescription":"Displaycodecoverageinformationwhenrunningtestsviathe\nCodeLenses.Onlyapplieswhen`#elp.lens.enabled`and\n`#elp.lens.run.enable#`areset.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.interactive.enable":{"default":false,"markdownDescription":"Whethertoshowthe`RunInteractive`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.scuba.links":{"default":false,"markdownDescription":"WhethertoenableScubalenslinks.","type":"boolean"},"elp.lens.wam.links":{"default":false,"markdownDescription":"WhethertoenableWAMlenslinks.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":true,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":true,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
         .assert_eq(s.as_str());
 
         expect![[r#"
@@ -613,17 +613,17 @@ mod tests {
               "type": "boolean"
             },
             "elp.highlightDynamic.enable": {
-              "default": false,
+              "default": true,
               "markdownDescription": "If enabled, highlight variables with type `dynamic()` when Eqwalizer results are available.",
               "type": "boolean"
             },
             "elp.hoverActions.docLinks.enable": {
-              "default": false,
+              "default": true,
               "markdownDescription": "Whether to show Hover Actions of type `docs`. Only applies when\n`#elp.hoverActions.enable#` is set.",
               "type": "boolean"
             },
             "elp.hoverActions.enable": {
-              "default": false,
+              "default": true,
               "markdownDescription": "Whether to show Hover Actions.",
               "type": "boolean"
             },
@@ -651,7 +651,7 @@ mod tests {
               "type": "boolean"
             },
             "elp.lens.links.enable": {
-              "default": false,
+              "default": true,
               "markdownDescription": "Whether to show the `Link` lenses. Only applies when\n`#elp.lens.enable#` is set.",
               "type": "boolean"
             },
@@ -696,7 +696,7 @@ mod tests {
               "type": "boolean"
             },
             "elp.typesOnHover.enable": {
-              "default": false,
+              "default": true,
               "markdownDescription": "Display types when hovering over expressions.",
               "type": "boolean"
             },

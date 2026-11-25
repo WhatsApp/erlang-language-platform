@@ -326,17 +326,17 @@
           "type": "boolean"
         },
         "elp.highlightDynamic.enable": {
-          "default": false,
+          "default": true,
           "markdownDescription": "If enabled, highlight variables with type `dynamic()` when Eqwalizer results are available.",
           "type": "boolean"
         },
         "elp.hoverActions.docLinks.enable": {
-          "default": false,
+          "default": true,
           "markdownDescription": "Whether to show Hover Actions of type 'docs'. Only applies when\n`#elp.hoverActions.enable#` is set.",
           "type": "boolean"
         },
         "elp.hoverActions.enable": {
-          "default": false,
+          "default": true,
           "markdownDescription": "Whether to show Hover Actions.",
           "type": "boolean"
         },
@@ -364,7 +364,7 @@
           ]
         },
         "elp.lens.links.enable": {
-          "default": false,
+          "default": true,
           "markdownDescription": "Whether to show the `Link` lenses. Only applies when\n`#elp.lens.enable#` is set.",
           "type": "boolean"
         },
@@ -394,7 +394,7 @@
           "type": "boolean"
         },
         "elp.typesOnHover.enable": {
-          "default": false,
+          "default": true,
           "markdownDescription": "Display types when hovering over expressions.",
           "type": "boolean"
         },
