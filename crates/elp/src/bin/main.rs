@@ -1554,7 +1554,7 @@ mod tests {
         buck_config.buck_root = Some(AbsPathBuf::assert(Utf8PathBuf::from_path_buf(abs).unwrap()));
         let content = normalise_prelude_path(content, buck_config);
 
-        let content = sort_json(&content);
+        let content = strip_prelude_app_layout(&sort_json(&content));
 
         expect![[r#"
             {
@@ -1574,67 +1574,27 @@ mod tests {
                 },
                 {
                   "dir": "/[prelude]//erlang/common_test/test_exec/src",
-                  "extra_src_dirs": [],
-                  "include_dirs": [],
-                  "macros": {},
-                  "name": "test_exec",
-                  "src_dirs": [
-                    ""
-                  ]
+                  "name": "test_exec"
                 },
                 {
                   "dir": "/[prelude]//erlang/common_test/common",
-                  "extra_src_dirs": [],
-                  "include_dirs": [
-                    "include"
-                  ],
-                  "macros": {},
-                  "name": "common",
-                  "src_dirs": [
-                    "src"
-                  ]
+                  "name": "common"
                 },
                 {
                   "dir": "/[prelude]//erlang/common_test/cth_hooks/src",
-                  "extra_src_dirs": [],
-                  "include_dirs": [
-                    ""
-                  ],
-                  "macros": {},
-                  "name": "cth_hooks",
-                  "src_dirs": [
-                    ""
-                  ]
+                  "name": "cth_hooks"
                 },
                 {
                   "dir": "/[prelude]//erlang/shell/src",
-                  "extra_src_dirs": [],
-                  "include_dirs": [],
-                  "macros": {},
-                  "name": "buck2_shell_utils",
-                  "src_dirs": [
-                    ""
-                  ]
+                  "name": "buck2_shell_utils"
                 },
                 {
                   "dir": "/[prelude]//erlang/common_test/test_binary/src",
-                  "extra_src_dirs": [],
-                  "include_dirs": [],
-                  "macros": {},
-                  "name": "test_binary",
-                  "src_dirs": [
-                    ""
-                  ]
+                  "name": "test_binary"
                 },
                 {
                   "dir": "/[prelude]//erlang/common_test/test_cli_lib/src",
-                  "extra_src_dirs": [],
-                  "include_dirs": [],
-                  "macros": {},
-                  "name": "test_cli_lib",
-                  "src_dirs": [
-                    ""
-                  ]
+                  "name": "test_cli_lib"
                 },
                 {
                   "dir": "app_a",
@@ -1666,6 +1626,25 @@ mod tests {
     fn sort_json(content: &str) -> String {
         let mut json: serde_json::Value = serde_json::from_str(content).unwrap();
         json.sort_all_objects();
+        serde_json::to_string_pretty(&json).unwrap()
+    }
+
+    /// Keep only the `dir` and `name` of the prelude's applications: their
+    /// source layout belongs to the buck2 release running the test, not to ELP.
+    fn strip_prelude_app_layout(content: &str) -> String {
+        let mut json: serde_json::Value = serde_json::from_str(content).unwrap();
+        json["apps"]
+            .as_array_mut()
+            .expect("build info should have an `apps` array")
+            .iter_mut()
+            .filter(|app| {
+                app["dir"]
+                    .as_str()
+                    .is_some_and(|dir| dir.starts_with("/[prelude]/"))
+            })
+            .for_each(|app| {
+                *app = serde_json::json!({"dir": app["dir"], "name": app["name"]});
+            });
         serde_json::to_string_pretty(&json).unwrap()
     }
 
