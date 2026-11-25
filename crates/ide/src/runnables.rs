@@ -23,6 +23,8 @@ use crate::GroupName;
 use crate::NavigationTarget;
 use crate::common_test;
 
+// @fb-only: mod meta_only;
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Runnable {
     pub nav: NavigationTarget,
@@ -86,24 +88,11 @@ impl Runnable {
         {
             args.push(mode)
         };
-        match &self.kind {
-            RunnableKind::Test { .. } => {
-                args.push(target);
-                args.push("--".to_string());
-                args.push("--regex".to_string());
-                args.push(self.regex());
-                args.push("--print-passing-details".to_string());
-                args.push("--run-disabled".to_string());
-            }
-            RunnableKind::Suite { .. } => {
-                args.push(target);
-                args.push("--".to_string());
-                args.push("--run-disabled".to_string());
-            }
-        }
-        if coverage_enabled {
-            args.push("--collect-coverage".to_string())
-        };
+        args.push(target);
+        // The test runner of open-source Buck2 takes no arguments to select
+        // tests or collect coverage: it runs the whole suite.
+        // @fb-only: args.extend(meta_only::test_runner_args(self, coverage_enabled));
+        let _ = coverage_enabled; // @oss-only
         args
     }
 

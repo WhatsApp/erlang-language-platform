@@ -834,7 +834,12 @@ pub(crate) fn code_lens(
                                 }
                             }
                         }
-                        if lens_config.run {
+                        // The test runner of open-source Buck2 cannot select a test,
+                        // so only suites have a `Run` lens there.
+                        // @fb-only: let run_lens = lens_config.run;
+                        let run_lens = // @oss-only
+                            lens_config.run && matches!(run.kind, RunnableKind::Suite { .. }); // @oss-only
+                        if run_lens {
                             let run_command = command::run_single(&r, run_title);
                             acc.push(lsp_types::CodeLens {
                                 range: annotation_range,
