@@ -52,6 +52,13 @@ export default defineConfig([
 		mocha,
 	},
 	{
+		label: 'buck2-codegen',
+		files: 'client/out/test/codegen/*.test.js',
+		workspaceFolder: join(endToEnd, '../codegen_test'),
+		launchArgs: launchArgs(),
+		mocha,
+	},
+	{
 		label: 'rebar3',
 		files: ['client/out/test/rebar3/*.test.js', 'client/out/test/definition.test.js'],
 		workspaceFolder: rebar3Workspace,
