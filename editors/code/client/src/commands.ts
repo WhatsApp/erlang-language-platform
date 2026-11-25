@@ -20,12 +20,24 @@ import { ping, pingAndShow } from './ping';
 export type Runnable = {
     label: string;
     location?: vscode.LocationLink;
-} & (Rebar3Runnable);
+} & (Buck2Runnable | Rebar3Runnable);
+
+type Buck2Runnable = {
+    kind: 'buck2';
+    args: Buck2RunnableArgs;
+};
 
 type Rebar3Runnable = {
     kind: 'rebar3';
     args: Rebar3RunnableArgs;
 };
+
+export type Buck2RunnableArgs = {
+    command: string;
+    args: string[];
+    target: string;
+    id: string;
+} & CommonRunnableArgs;
 
 export type Rebar3RunnableArgs = {
     command: string;
@@ -40,6 +52,7 @@ const log = outputChannel();
 
 const EDB_SHELL_TITLE = "EDB Shell";
 const REBAR3_SHELL_TITLE = "elp: Rebar3";
+const BUCK2_SHELL_TITLE = "Buck2 REPL";
 
 export function registerCommands(context: vscode.ExtensionContext, client: LanguageClient) {
     context.subscriptions.push(
@@ -132,6 +145,10 @@ export function runSingle(runnable: Runnable): Thenable<vscode.TaskExecution> {
 }
 
 export async function runInteractive(runnable: Runnable): Promise<void> {
+  if (runnable.kind === 'buck2') {
+    await runInBuck2Shell(runnable);
+    return;
+  }
   const terminal = vscode.window.terminals.find(
     terminal => terminal.name.includes(REBAR3_SHELL_TITLE) || terminal.name.includes(EDB_SHELL_TITLE),
   );
@@ -150,8 +167,33 @@ export async function runInteractive(runnable: Runnable): Promise<void> {
   }
 }
 
+function buck2ShellTitle(target: string): string {
+  return `${BUCK2_SHELL_TITLE} (${target})`;
+}
+
+// Runs the test in the shell that `buck2 run` opens for the test suite, or in
+// the Debug REPL, with the `test` module of the Erlang prelude. The runnable's
+// argument is the test id, which `test:run/1` matches as a regex.
+async function runInBuck2Shell(runnable: Runnable & Buck2Runnable): Promise<void> {
+  const title = buck2ShellTitle(runnable.args.target);
+  const terminal = vscode.window.terminals.find(
+    terminal =>
+      (terminal.name.includes(title) || terminal.name.includes(EDB_SHELL_TITLE)) && terminal.exitStatus === undefined,
+  );
+  if (terminal) {
+    terminal.show();
+    terminal.sendText(`test:run("${runnable.args.args.join()}$").`);
+    return;
+  }
+  const selection = await vscode.window.showInformationMessage('No active REPL. Open one, first.', 'Open REPL');
+  if (selection === 'Open REPL') {
+    await openInteractive({ ...runnable, args: { ...runnable.args, args: [runnable.args.target] } });
+  }
+}
+
 export function openInteractive(runnable: Runnable): Thenable<vscode.TaskExecution> {
-  const task = createTask(runnable);
+  // The shell's terminal takes the task name, which is how `runInBuck2Shell` finds it.
+  const task = createTask(runnable.kind === 'buck2' ? { ...runnable, label: buck2ShellTitle(runnable.args.target) } : runnable);
   task.group = vscode.TaskGroup.Build;
   task.presentationOptions = {
     reveal: vscode.TaskRevealKind.Always,
@@ -165,6 +207,9 @@ export function openInteractive(runnable: Runnable): Thenable<vscode.TaskExecuti
 export function createTask(runnable: Runnable): vscode.Task {
     const command = runnable.kind;
     const args = [runnable.args.command, ...runnable.args.args];
+    if (runnable.kind === 'buck2') {
+        args.unshift('--client-metadata=id=elp_vscode');
+    }
 
     const definition: TaskDefinition = {
         type: runnable.kind,
@@ -202,6 +247,10 @@ export function buildTask(
 
 export async function debug(runnable: Runnable, interactive: boolean): Promise<void> {
     log.appendLine(`Debug: ${runnable.kind}, interactive: ${interactive}`);
+    if (runnable.kind === 'buck2') {
+        await vscode.window.showErrorMessage('Debugging Buck2 tests is not supported yet.');
+        return;
+    }
     const cmd = interactive
         ? 'ok'
         : `Agent = self(), spawn(fun() -> catch gen_server:call(Agent, {cmd, default, ct, \"${runnable.args.args.join(" ")}\"}, infinity), erlang:halt(0) end)`;
