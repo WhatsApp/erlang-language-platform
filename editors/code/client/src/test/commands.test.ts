@@ -10,7 +10,7 @@
 
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { openWorkspaceFile } from './helpers';
+import { openWorkspaceFile, serverRunning } from './helpers';
 
 suite('Commands', () => {
 	test('Expand Macro opens the expansion of the macro under the cursor', async () => {
@@ -28,6 +28,17 @@ suite('Commands', () => {
 
 	test('Ping Language Server returns the answer of the server', async () => {
 		await openWorkspaceFile('hover/src/doc_examples.erl');
+
+		assert.strictEqual(await vscode.commands.executeCommand('elp.ping'), 'pong');
+	});
+
+	test('Restart Language Server starts a new server', async () => {
+		await openWorkspaceFile('hover/src/doc_examples.erl');
+		// The new server loads the Buck2 project in two stages, reporting `Running` after each.
+		const loaded = serverRunning(2);
+
+		await vscode.commands.executeCommand('elp.restartServer');
+		await loaded;
 
 		assert.strictEqual(await vscode.commands.executeCommand('elp.ping'), 'pong');
 	});
