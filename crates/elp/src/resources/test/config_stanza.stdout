@@ -29,17 +29,17 @@ stdout |     "markdownDescription": "Whether to highlight disabled code branches
 stdout |     "type": "boolean"
 stdout |   },
 stdout |   "elp.highlightDynamic.enable": {
-stdout |     "default": false,
+stdout |     "default": true,
 stdout |     "markdownDescription": "If enabled, highlight variables with type `dynamic()` when Eqwalizer results are available.",
 stdout |     "type": "boolean"
 stdout |   },
 stdout |   "elp.hoverActions.docLinks.enable": {
-stdout |     "default": false,
+stdout |     "default": true,
 stdout |     "markdownDescription": "Whether to show Hover Actions of type `docs`. Only applies when\n`#elp.hoverActions.enable#` is set.",
 stdout |     "type": "boolean"
 stdout |   },
 stdout |   "elp.hoverActions.enable": {
-stdout |     "default": false,
+stdout |     "default": true,
 stdout |     "markdownDescription": "Whether to show Hover Actions.",
 stdout |     "type": "boolean"
 stdout |   },
@@ -67,7 +67,7 @@ stdout |     "markdownDescription": "Whether to show Code Lenses in Erlang files
 stdout |     "type": "boolean"
 stdout |   },
 stdout |   "elp.lens.links.enable": {
-stdout |     "default": false,
+stdout |     "default": true,
 stdout |     "markdownDescription": "Whether to show the `Link` lenses. Only applies when\n`#elp.lens.enable#` is set.",
 stdout |     "type": "boolean"
 stdout |   },
@@ -112,7 +112,7 @@ stdout |     "markdownDescription": "Whether to show Signature Help.",
 stdout |     "type": "boolean"
 stdout |   },
 stdout |   "elp.typesOnHover.enable": {
-stdout |     "default": false,
+stdout |     "default": true,
 stdout |     "markdownDescription": "Display types when hovering over expressions.",
 stdout |     "type": "boolean"
 stdout |   }
