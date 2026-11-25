@@ -14,6 +14,7 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { pathWithErlangInstallation } from './erlang';
 import { outputChannel } from './logging';
+import { Telemetry } from './telemetry';
 
 const ERLFMT_CONFIG = 'elpClient.erlfmt';
 
@@ -23,18 +24,18 @@ const log = outputChannel();
 // Reset once erlfmt runs, so a later breakage is reported again.
 let reportedMissingErlfmt = false;
 
-export function registerFormatter(context: vscode.ExtensionContext) {
+export function registerFormatter(context: vscode.ExtensionContext, telemetry: Telemetry) {
     const bundledErlfmt = vscode.Uri.joinPath(context.extensionUri, 'bin', 'erlfmt').fsPath;
     const selector: vscode.DocumentSelector = { language: 'erlang' };
     context.subscriptions.push(
         vscode.languages.registerDocumentFormattingEditProvider(selector, {
             provideDocumentFormattingEdits: (document, _options, token) =>
-                format(document, bundledErlfmt, [], token),
+                format(document, bundledErlfmt, [], token, telemetry),
         }),
         vscode.languages.registerDocumentRangeFormattingEditProvider(selector, {
             // erlfmt formats whole top-level forms, so it may touch lines just outside the range.
             provideDocumentRangeFormattingEdits: (document, range, _options, token) =>
-                format(document, bundledErlfmt, [`--range=${erlfmtRange(range)}`], token),
+                format(document, bundledErlfmt, [`--range=${erlfmtRange(range)}`], token, telemetry),
         }),
     );
 }
@@ -71,6 +72,7 @@ async function format(
     bundledErlfmt: string,
     rangeArgs: string[],
     token: vscode.CancellationToken,
+    telemetry: Telemetry,
 ): Promise<vscode.TextEdit[]> {
     const config = vscode.workspace.getConfiguration(ERLFMT_CONFIG, document);
     const erlfmt = await erlfmtCommand(config.get<string>('path') || '', bundledErlfmt);
@@ -88,6 +90,10 @@ async function format(
         log.appendLine(`Could not run erlfmt: ${result.message}`);
         if (!reportedMissingErlfmt) {
             reportedMissingErlfmt = true;
+            telemetry.logEvent('ErlangInconsistentSettings', {
+                executable: command,
+                path: pathWithErlangInstallation(),
+            });
             void vscode.window.showErrorMessage(
                 `Could not run erlfmt (${command}): ${result.message}. ` +
                 `Check "${ERLFMT_CONFIG}.path" and "elpClient.erlangInstallationPath".`,

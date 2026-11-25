@@ -16,6 +16,7 @@ import * as edbDebugger from './debugger';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { openExternalDocs } from './docs';
 import { outputChannel } from './logging';
+import { Telemetry } from './telemetry';
 import { expandMacro } from './macro';
 import { ping, pingAndShow } from './ping';
 
@@ -56,29 +57,37 @@ const EDB_SHELL_TITLE = "EDB Shell";
 const REBAR3_SHELL_TITLE = "elp: Rebar3";
 const BUCK2_SHELL_TITLE = "Buck2 REPL";
 
-export function registerCommands(context: vscode.ExtensionContext, client: LanguageClient) {
+export function registerCommands(
+    context: vscode.ExtensionContext,
+    client: LanguageClient,
+    telemetry: Telemetry,
+) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'elp.runSingle',
             async (runnable: Runnable) => {
+                telemetry.logEvent('ErlangLens', { source: 'runSingle', runnable });
                 await runSingle(runnable);
             },
         ),
         vscode.commands.registerCommand(
             'elp.debugSingle',
             async (runnable: Runnable) => {
+                telemetry.logEvent('ErlangLens', { source: 'debugSingle', runnable });
                 await debug(runnable, false, context.extensionUri);
             },
         ),
         vscode.commands.registerCommand(
             'elp.openInteractive',
             async (runnable: Runnable) => {
+                telemetry.logEvent('ErlangLens', { source: 'openInteractive', runnable });
                 await openInteractive(runnable);
             },
         ),
         vscode.commands.registerCommand(
             'elp.debugInteractive',
             async (runnable: Runnable) => {
+                telemetry.logEvent('ErlangLens', { source: 'debugInteractive', runnable });
                 await debug(runnable, true, context.extensionUri);
             },
         ),
@@ -111,6 +120,7 @@ export function registerCommands(context: vscode.ExtensionContext, client: Langu
         vscode.commands.registerCommand(
             'elp.openUri',
             async (uri: string) => {
+                telemetry.logEvent('ErlangHoverAction', { source: 'openUri', uri });
                 await vscode.env.openExternal(vscode.Uri.parse(uri));
             },
         ),
@@ -127,6 +137,7 @@ export function registerCommands(context: vscode.ExtensionContext, client: Langu
         vscode.commands.registerCommand(
             'elp.restartServer',
             async () => {
+                telemetry.logEvent('ErlangCommand', { source: 'restartServer' }, true);
                 await client.restart();
             },
         ),

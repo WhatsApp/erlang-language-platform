@@ -16,6 +16,7 @@ import { pathWithErlangInstallation } from './erlang';
 import { registerFormatter } from './formatting';
 import { provideHover } from './hover';
 import { outputChannel } from './logging';
+import { createTelemetry } from './telemetry';
 import { registerServerStatus, ServerStatus } from './status';
 import * as path from 'path';
 
@@ -37,6 +38,8 @@ export interface ElpExtensionApi {
 
 export function activate(context: vscode.ExtensionContext): ElpExtensionApi {
 	const log = outputChannel();
+	const telemetry = createTelemetry(context);
+	telemetry.logEvent('ExtensionActivated', undefined, true);
 
 	// Options to control the language server
 	const config = vscode.workspace.getConfiguration(ELP);
@@ -54,7 +57,7 @@ export function activate(context: vscode.ExtensionContext): ElpExtensionApi {
 	};
 
 	// Options to control the language client
-	const clientOptions: LanguageClientOptions = {
+	const clientOptions: LanguageClientOptions = telemetry.instrumentClientOptions({
 		// Register the server for plain text documents
 		documentSelector: [{ scheme: 'file', language: 'erlang' }],
 		// ELP otherwise only asks for its settings once the project is loaded.
@@ -76,7 +79,7 @@ export function activate(context: vscode.ExtensionContext): ElpExtensionApi {
 				return next(action as unknown as vscode.CodeAction, token);
 			}
 		}
-	};
+	}, () => client);
 
 	// Create the language client and start the client.
 	client = new LanguageClient(
@@ -85,14 +88,15 @@ export function activate(context: vscode.ExtensionContext): ElpExtensionApi {
 		serverOptions,
 		clientOptions
 	);
+	telemetry.trackServerEvents(client);
 
 	const serverStatus = registerServerStatus(context, client);
 
 	log.appendLine('Registering commands');
-	registerCommands(context, client);
+	registerCommands(context, client, telemetry);
 
 	log.appendLine('Registering erlfmt formatter');
-	registerFormatter(context);
+	registerFormatter(context, telemetry);
 
 	// Activate the DAP Debugger
 	log.appendLine('Activating debugger');
