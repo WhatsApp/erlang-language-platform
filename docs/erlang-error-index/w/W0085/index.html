@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.10.0">
 <title data-rh="true">W0085: Unavailable Function | ELP</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0085/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="W0085: Unavailable Function | ELP"><meta data-rh="true" name="description" content="Error"><meta data-rh="true" property="og:description" content="Error"><link data-rh="true" rel="icon" href="/erlang-language-platform/img/elp_icon_color.svg"><link data-rh="true" rel="canonical" href="https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0085/"><link data-rh="true" rel="alternate" href="https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0085/" hreflang="en"><link data-rh="true" rel="alternate" href="https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0085/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Erlang Error Index","item":"https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/"},{"@type":"ListItem","position":2,"name":"W0085: Unavailable Function","item":"https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0085"}]}</script><link rel="stylesheet" href="/erlang-language-platform/assets/css/styles.fdd88167.css">
-<script src="/erlang-language-platform/assets/js/runtime~main.03b4fdc7.js" defer="defer"></script>
-<script src="/erlang-language-platform/assets/js/main.d8ea3b9c.js" defer="defer"></script>
+<script src="/erlang-language-platform/assets/js/runtime~main.6514fbad.js" defer="defer"></script>
+<script src="/erlang-language-platform/assets/js/main.e61c4c18.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -29,7 +29,9 @@ reported here: the code compiles in a whole-project build, but the calling
 application would not link against the target application on its own.</p>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-this-diagnostic-checks">What This Diagnostic Checks<a href="#what-this-diagnostic-checks" class="hash-link" aria-label="Direct link to What This Diagnostic Checks" title="Direct link to What This Diagnostic Checks" translate="no">​</a></h3>
 <p>An application is considered reachable when it is the caller&#x27;s own application,
-an OTP application, or reachable through the caller&#x27;s declared dependencies.
+one of the OTP applications <code>erts</code>, <code>kernel</code> and <code>stdlib</code>, which every
+application gets without declaring them, or reachable through the caller&#x27;s
+declared dependencies.
 Calls that cannot be resolved statically (dynamic module expressions) and calls
 that do not resolve to any function are left to W0017.</p>
 <p>A source file compiled into several applications is checked against each of
