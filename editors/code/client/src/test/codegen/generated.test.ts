@@ -10,7 +10,7 @@
 
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { openWorkspaceFile, serverRunning } from '../helpers';
+import { openWorkspaceFile, serverRunning, waitForNoDiagnostic } from '../helpers';
 
 suite('Generated files', () => {
 	test('Go to definition reaches a record in a header that Buck2 generates', async () => {
@@ -28,8 +28,9 @@ suite('Generated files', () => {
 		assert.ok(uri.fsPath.includes('/buck-out/'), uri.fsPath);
 		assert.ok(uri.fsPath.endsWith('/example_service_types.hrl'), uri.fsPath);
 		// `-include_lib("example_service_generated/include/example_service_types.hrl").`
-		const includeErrors = vscode.languages.getDiagnostics(document.uri)
-			.filter(diagnostic => diagnostic.range.start.line === 9 && diagnostic.severity === vscode.DiagnosticSeverity.Error);
-		assert.deepStrictEqual(includeErrors, []);
+		// The diagnostics of the first stage, which reports the header missing,
+		// stay until ELP publishes those of the second.
+		await waitForNoDiagnostic(
+			document, diagnostic => diagnostic.range.start.line === 9 && diagnostic.severity === vscode.DiagnosticSeverity.Error);
 	});
 });

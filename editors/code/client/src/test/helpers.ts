@@ -71,23 +71,41 @@ export function diagnosticCode(diagnostic: vscode.Diagnostic): string | number |
 	return typeof diagnostic.code === 'object' ? diagnostic.code.value : diagnostic.code;
 }
 
+// Resolves with what `pick` returns for the diagnostics of the document, as
+// soon as it returns something.
+function waitForDiagnostics<T>(
+	document: vscode.TextDocument,
+	pick: (diagnostics: vscode.Diagnostic[]) => T | undefined,
+): Promise<T> {
+	return new Promise(resolve => {
+		const check = () => {
+			const picked = pick(vscode.languages.getDiagnostics(document.uri));
+			if (picked !== undefined) {
+				listener.dispose();
+				resolve(picked);
+			}
+		};
+		const listener = vscode.languages.onDidChangeDiagnostics(check);
+		check();
+	});
+}
+
 // Resolves with the first diagnostic of the document that matches, as soon as
 // ELP publishes one.
 export function waitForDiagnostic(
 	document: vscode.TextDocument,
 	matches: (diagnostic: vscode.Diagnostic) => boolean,
 ): Promise<vscode.Diagnostic> {
-	return new Promise(resolve => {
-		const check = () => {
-			const diagnostic = vscode.languages.getDiagnostics(document.uri).find(matches);
-			if (diagnostic) {
-				listener.dispose();
-				resolve(diagnostic);
-			}
-		};
-		const listener = vscode.languages.onDidChangeDiagnostics(check);
-		check();
-	});
+	return waitForDiagnostics(document, diagnostics => diagnostics.find(matches));
+}
+
+// Resolves as soon as no diagnostic of the document matches, such as once ELP
+// replaces the diagnostics it published before a reload.
+export async function waitForNoDiagnostic(
+	document: vscode.TextDocument,
+	matches: (diagnostic: vscode.Diagnostic) => boolean,
+): Promise<void> {
+	await waitForDiagnostics(document, diagnostics => diagnostics.some(matches) ? undefined : true);
 }
 
 export async function replaceText(document: vscode.TextDocument, range: vscode.Range, text: string): Promise<void> {
