@@ -925,15 +925,25 @@ fn add_exported_scopes(
     current_scope_id: &mut ScopeId,
     clause_scopes: &[(ScopeId, VarTable)],
 ) -> VarTable {
+    let outer_scope_id = *current_scope_id;
     let mut scope_info: FxHashMap<Var, Vec<PatId>> = FxHashMap::default();
     let mut ret_vt = VarTable::default();
     for (clause_scope, vt) in clause_scopes {
-        let scope = &scopes[*clause_scope];
-        for (name, pats) in &scope.entries.data {
-            scope_info
-                .entry(*name)
-                .and_modify(|v| v.extend(pats))
-                .or_insert_with(|| pats.clone());
+        // A clause pushes scopes of its own whenever it contains a nested
+        // case, if, receive or binary operator, so the bindings it exports
+        // are spread along the chain from the scope it ends in back to the
+        // one it started from -- not just the last one.
+        let clause_chain: Vec<ScopeId> = scopes
+            .scope_chain(Some(*clause_scope))
+            .take_while(|scope_id| *scope_id != outer_scope_id)
+            .collect();
+        for scope_id in clause_chain {
+            for (name, pats) in &scopes[scope_id].entries.data {
+                scope_info
+                    .entry(*name)
+                    .and_modify(|v| v.extend(pats))
+                    .or_insert_with(|| pats.clone());
+            }
         }
         ret_vt.merge(vt);
     }
