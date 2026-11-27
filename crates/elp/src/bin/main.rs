@@ -1668,6 +1668,45 @@ mod tests {
     }
 
     #[test]
+    fn end_to_end_docs_fixture_has_external_documentation() {
+        let loaded = load::load_project_at(
+            &Fake::default(),
+            &project_path("end_to_end"),
+            DiscoverConfig::buck(),
+            LoadConfig::new(Mode::Cli, BUCK_QUERY_CONFIG),
+        )
+        .expect("the VS Code end-to-end project should load");
+        let analysis = loaded.analysis();
+        let file_id = analysis
+            .module_index(loaded.project_input)
+            .expect("the end-to-end module index should be available")
+            .file_for_module(&ModuleName::new("docs"))
+            .expect("the docs fixture should be in the module index");
+        let text = analysis
+            .file_text(file_id)
+            .expect("docs should be readable");
+        let offset = text
+            .rfind("my_function()")
+            .expect("the fixture should call my_function")
+            + "my_".len();
+        let links = analysis
+            .external_docs(FilePosition {
+                file_id,
+                offset: TextSize::new(offset as u32),
+            })
+            .expect("external documentation should be available")
+            .unwrap_or_default();
+        let actual_urls: Vec<_> = links.iter().map(|link| link.uri.as_str()).collect();
+        assert_eq_expected!(
+            vec![
+                "https://www.internalfb.com/intern/staticdocs/whatsapp-server/docs.html#my_function/0"
+            ],
+            actual_urls,
+            "the VS Code docs fixture should keep its external documentation link"
+        );
+    }
+
+    #[test]
     fn bundled_eqwalizer_support_is_loaded() {
         let loaded = load::load_project_at(
             &Fake::default(),

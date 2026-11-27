@@ -5,3 +5,6 @@ included_targets = ["root//end_to_end/..."]
 
 [eqwalizer]
 enable_all = false
+
+[docs]
+base_url = "https://www.internalfb.com/intern/staticdocs/whatsapp-server"
